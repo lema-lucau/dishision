@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "preppie",
+    "name": "Preppie",
     "slug": "preppie",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -25,6 +25,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-sqlite"
+    ]
   }
 }

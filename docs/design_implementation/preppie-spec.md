@@ -1,6 +1,6 @@
 # Preppie — Design & Implementation Spec
 
-**Version:** 1.2
+**Version:** 1.3
 **Platform:** React Native / Expo SDK 54, SQLite, Android
 **Users:** Independent profiles on separate phones, optionally linked into a household over local WiFi
 **Status:** Specification — not yet implemented
@@ -40,7 +40,7 @@
     5.6 Cooking Mode  
     5.7 Cook complete  
     5.8 Plan  
-    5.9 Diary  
+    5.9 Cook log  
     5.10 Me  
     5.11 Household  
     5.12 Member profile  
@@ -89,7 +89,7 @@
     S7 — Cook logging + leftovers  
     S8 — Cooking Mode  
     S9 — Recommendation engine + Home  
-    S10 — Diary  
+    S10 — Cook log  
     S11 — Planning  
     S12 — Shopping and pantry  
     S13 — Sharing  
@@ -715,9 +715,9 @@ Slate & Fig, deferred to a later slice. Tokens map 1:1 so the switch is a theme 
 ### 5.1 Navigation
 
 ```
-┌─────────────────────────────────────────┐
-│  Home    Recipes    Plan    Diary   Me  │
-└─────────────────────────────────────────┘
+┌────────────────────────────────────────────┐
+│  Home    Recipes    Plan    Cook log   Me  │
+└────────────────────────────────────────────┘
 ```
 
 | Tab | Contains |
@@ -725,7 +725,7 @@ Slate & Fig, deferred to a later slice. Tokens map 1:1 so the switch is a theme 
 | **Home** | Today: plan → leftovers → recommendations → "I'm feeling…" |
 | **Recipes** | List, search, sort, filter, exclusions, add recipe |
 | **Plan** | Calendar, meal planning, shopping list, pantry, staples |
-| **Diary** | Cook history, filterable, log editing |
+| **Cook log** | Cook history, filterable, log editing |
 | **Me** | Stats, settings, backup |
 
 ### 5.2 Home
@@ -897,7 +897,7 @@ Pantry presence shown two ways: a header line ("You have 6 of 8") and a dot per 
 
 **Always:** keep-awake on, screen never dims, ☰ opens the full step list.
 
-**Complete** → consumption summary → diary prompt.
+**Complete** → consumption summary → cook log prompt.
 
 ### 5.7 Cook complete
 
@@ -954,7 +954,7 @@ Checking an item off → pantry_item += quantity (the purchase quantity, §3.5),
 
 **Staples:** the always-have list. Excluded from shopping lists; running_low flag forces one back on.
 
-### 5.9 Diary
+### 5.9 Cook log
 
 Filterable, sortable list of every cook. Filter by recipe, date range, rating, tag. Sort by date or rating.
 
@@ -1160,7 +1160,7 @@ The three shown picks must differ from each other on **protein tag OR duration b
 
 ### 6.5 Degradation
 
-When ratings are sparse (< 30% of recipes rated), w_rating collapses to 0 and its weight redistributes proportionally across recency and frequency. The engine stays useful when the diary goes quiet.
+When ratings are sparse (< 30% of recipes rated), w_rating collapses to 0 and its weight redistributes proportionally across recency and frequency. The engine stays useful when the cook log goes quiet.
 
 ### 6.6 Cold start
 
@@ -1464,7 +1464,7 @@ Snapshots exist to catch unintended layout drift, not to specify design. Rendere
 
 ### 11.3 Conventions
 
-- Test files sit beside source: scaling.ts → scaling.test.ts
+- Test files live under `src/test/`, mirroring the source tree: `src/scaling.ts` → `src/test/scaling.test.ts` (deviates from a colocated-test convention by explicit project decision)
 - Integration tests build a fresh in-memory DB per test — no shared state, no ordering dependencies — by running the real migration chain (§2.6)
 - Fixtures come from the real seed data, not hand-rolled doubles
 - No mocking SQLite. A mocked DB tests the mock.
@@ -1565,7 +1565,7 @@ Each slice ends at a working app. No slice depends on a later one.
 | **4** | Cooking | Cook Now → CookLog → derived counts, **leftovers (create/eat/bin/expire)**, calendar (cooked layer), "I already cooked this" |
 | **5** | Cooking Mode | Session persistence, resume/start-over, master clock, drift, foreground alerts + **local notifications**, complete screen with leftover + shortfall rules |
 | **6** | Recommendations | Score, filters, recency window, relaxation ladder, diversity rule, home screen (incl. leftover strip), "I'm feeling…" picker, exclusions, median cache |
-| **7** | Diary | Log editor, quick tags, photos + compression, substitutions, promote-to-recipe |
+| **7** | Cook log | Log editor, quick tags, photos + compression, substitutions, promote-to-recipe |
 | **8** | Planning | planned_meal, calendar planned layer, week view, home plan card |
 | **9** | Shopping & pantry | List generation, consolidation + pack rounding, **fully editable list**, staples, check-off → pantry, consumption on cook, **auto-add toggle**, pantry editor |
 | **10** | Sharing | Payload, deep link, QR, file, preview, diff, manual merge |
@@ -1688,7 +1688,7 @@ Sessions are sized to end at a committable state. Use the current Sonnet-class m
 - Chip greying with reasons; exclusions view
 - **Verify:** with 5 recipes and the default 5-day window, the ladder steps 5 → 3 → 2 → off and labels each step; changing a cost nulls the median cache; a leftover appears on Home and Eat decrements it
 
-### S10 — Diary
+### S10 — Cook log
 
 *Read first: §5.9, §8*
 
@@ -1817,6 +1817,7 @@ Runtime:
   expo-camera              QR scanning
   react-native-qrcode-svg  QR generation (+ its react-native-svg peer)
   react-native-tcp-socket  household sync transport
+  react-native-safe-area-context  safe-area insets (status bar, notches, gesture/button nav)
   zustand                  log store + UI state
   @expo-google-fonts/fraunces
   @expo-google-fonts/public-sans
@@ -1841,6 +1842,10 @@ Deferred, not forgotten:
 - ~~Name~~ → **Preppie stays.** It's cute, and the household's other member gets a vote.
 
 ## 17. Changelog
+
+**v1.3**
+
+- "Diary" tab and screen renamed to **Cook log** (§5.1, §5.9, §13, §14) — no schema or behaviour change, naming only
 
 **v1.2**
 
