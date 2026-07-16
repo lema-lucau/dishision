@@ -1,71 +1,95 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DebugScreen } from './src/debug/DebugScreen';
-import { useSettingsStore } from './src/debug/settingsStore';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { DbProvider } from './src/db/DbContext';
+import { openDatabase } from './src/db/openDatabase';
+import { logger } from './src/debug/logStore';
+import { TabShell } from './src/navigation/TabShell';
+import { ensureProfile, type Profile } from './src/profile/ensureProfile';
+import { theme } from './src/theme/tokens';
+import { useAppFonts } from './src/theme/useAppFonts';
+import type { DbClient } from './src/db/DbClient';
 
-// Placeholder shell for S0 — the tab navigator and screens arrive in S1 (§14).
-// This exists only to make the Debug screen reachable and prove the log
-// pipeline works end to end.
-function Shell() {
-  const debugMode = useSettingsStore((s) => s.debugMode);
-  const toggleDebugMode = useSettingsStore((s) => s.toggleDebugMode);
-  const insets = useSafeAreaInsets();
-
-  if (debugMode) {
-    return (
-      <View style={styles.container}>
-        <TouchableOpacity
-          style={[styles.backBar, { paddingTop: insets.top + 8 }]}
-          onPress={toggleDebugMode}
-        >
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <DebugScreen />
-        <StatusBar style="auto" />
-      </View>
-    );
-  }
-
+function LoadingScreen() {
   return (
     <View style={styles.center}>
-      <Text style={styles.title}>Preppie</Text>
-      <Text style={styles.subtitle}>Scaffolding — tabs arrive in S1</Text>
-      <TouchableOpacity style={styles.button} onPress={toggleDebugMode}>
-        <Text style={styles.buttonText}>Open Debug</Text>
-      </TouchableOpacity>
-      <StatusBar style="auto" />
+      <ActivityIndicator color={theme.colors.accent} />
+    </View>
+  );
+}
+
+function ErrorScreen({ message }: { message: string }) {
+  return (
+    <View style={styles.center}>
+      <Text style={styles.errorTitle}>Couldn't start Preppie</Text>
+      <Text style={styles.errorMessage}>{message}</Text>
     </View>
   );
 }
 
 export default function App() {
+  const [fontsLoaded, fontsError] = useAppFonts();
+  const [db, setDb] = useState<DbClient | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [initError, setInitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    openDatabase()
+      .then(async (database) => {
+        const createdProfile = await ensureProfile(database);
+        if (cancelled) return;
+        setDb(database);
+        setProfile(createdProfile);
+      })
+      .catch((error) => {
+        logger.error('db', 'App init failed', { error: String(error) });
+        if (!cancelled) setInitError(String(error));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (fontsError) {
+    return <ErrorScreen message={String(fontsError)} />;
+  }
+  if (initError) {
+    return <ErrorScreen message={initError} />;
+  }
+  if (!fontsLoaded || !db || !profile) {
+    return <LoadingScreen />;
+  }
+
   return (
     <SafeAreaProvider>
-      <Shell />
+      <DbProvider db={db}>
+        <TabShell profile={profile} />
+      </DbProvider>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFAF2' },
-  backBar: { paddingHorizontal: 16, paddingBottom: 8 },
-  backText: { color: '#B03D14', fontWeight: '600' },
   center: {
     flex: 1,
-    backgroundColor: '#FFFAF2',
+    backgroundColor: theme.colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.xl,
   },
-  title: { fontSize: 24, fontWeight: '700', color: '#2A1F17' },
-  subtitle: { fontSize: 14, color: '#7E6A56' },
-  button: {
-    backgroundColor: '#D94F1E',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 13,
-    marginTop: 12,
+  errorTitle: {
+    fontFamily: theme.fonts.display.bold,
+    fontSize: theme.fontSize.lg,
+    color: theme.colors.ink,
   },
-  buttonText: { color: '#FFF6EF', fontWeight: '600' },
+  errorMessage: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: theme.fontSize.base,
+    color: theme.colors.ink2,
+    textAlign: 'center',
+  },
 });
