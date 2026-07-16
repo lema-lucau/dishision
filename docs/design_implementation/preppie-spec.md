@@ -1464,7 +1464,7 @@ Snapshots exist to catch unintended layout drift, not to specify design. Rendere
 
 ### 11.3 Conventions
 
-- Test files sit beside source: scaling.ts → scaling.test.ts
+- Test files live under `src/test/`, mirroring the source tree: `src/scaling.ts` → `src/test/scaling.test.ts` (deviates from a colocated-test convention by explicit project decision)
 - Integration tests build a fresh in-memory DB per test — no shared state, no ordering dependencies — by running the real migration chain (§2.6)
 - Fixtures come from the real seed data, not hand-rolled doubles
 - No mocking SQLite. A mocked DB tests the mock.
@@ -1817,6 +1817,7 @@ Runtime:
   expo-camera              QR scanning
   react-native-qrcode-svg  QR generation (+ its react-native-svg peer)
   react-native-tcp-socket  household sync transport
+  react-native-safe-area-context  safe-area insets (status bar, notches, gesture/button nav)
   zustand                  log store + UI state
   @expo-google-fonts/fraunces
   @expo-google-fonts/public-sans

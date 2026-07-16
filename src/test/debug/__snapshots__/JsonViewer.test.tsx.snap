@@ -1,0 +1,287 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`JsonViewer renders a nested payload 1`] = `
+<View
+  style={
+    {
+      "paddingVertical": 4,
+    }
+  }
+>
+  <View>
+    <View
+      accessibilityRole="button"
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "flex-start",
+          "flexDirection": "row",
+          "opacity": 1,
+          "paddingLeft": 0,
+          "paddingVertical": 2,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#7E6A56",
+            "fontFamily": "monospace",
+            "width": 14,
+          }
+        }
+      >
+        ▾
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#2A1F17",
+            "fontFamily": "monospace",
+            "fontWeight": "600",
+          }
+        }
+      >
+        root
+        : 
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#7E6A56",
+            "fontFamily": "monospace",
+          }
+        }
+      >
+        Object{3}
+      </Text>
+    </View>
+    <View
+      style={
+        [
+          {
+            "alignItems": "flex-start",
+            "flexDirection": "row",
+            "paddingVertical": 2,
+          },
+          {
+            "paddingLeft": 12,
+          },
+        ]
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#2A1F17",
+            "fontFamily": "monospace",
+            "fontWeight": "600",
+          }
+        }
+      >
+        window
+        : 
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#B03D14",
+            "flexShrink": 1,
+            "fontFamily": "monospace",
+          }
+        }
+      >
+        5
+      </Text>
+    </View>
+    <View
+      style={
+        [
+          {
+            "alignItems": "flex-start",
+            "flexDirection": "row",
+            "paddingVertical": 2,
+          },
+          {
+            "paddingLeft": 12,
+          },
+        ]
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#2A1F17",
+            "fontFamily": "monospace",
+            "fontWeight": "600",
+          }
+        }
+      >
+        pool
+        : 
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#B03D14",
+            "flexShrink": 1,
+            "fontFamily": "monospace",
+          }
+        }
+      >
+        2
+      </Text>
+    </View>
+    <View>
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "flex-start",
+            "flexDirection": "row",
+            "opacity": 1,
+            "paddingLeft": 12,
+            "paddingVertical": 2,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "monospace",
+              "width": 14,
+            }
+          }
+        >
+          ▸
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#2A1F17",
+              "fontFamily": "monospace",
+              "fontWeight": "600",
+            }
+          }
+        >
+          survivors
+          : 
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "monospace",
+            }
+          }
+        >
+          Array(2)
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`JsonViewer renders primitives without a toggle 1`] = `
+<View
+  style={
+    {
+      "paddingVertical": 4,
+    }
+  }
+>
+  <View
+    style={
+      [
+        {
+          "alignItems": "flex-start",
+          "flexDirection": "row",
+          "paddingVertical": 2,
+        },
+        {
+          "paddingLeft": 0,
+        },
+      ]
+    }
+  >
+    <Text
+      style={
+        {
+          "color": "#2A1F17",
+          "fontFamily": "monospace",
+          "fontWeight": "600",
+        }
+      }
+    >
+      root
+      : 
+    </Text>
+    <Text
+      style={
+        {
+          "color": "#B03D14",
+          "flexShrink": 1,
+          "fontFamily": "monospace",
+        }
+      }
+    >
+      42
+    </Text>
+  </View>
+</View>
+`;
