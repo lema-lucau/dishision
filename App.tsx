@@ -6,6 +6,7 @@ import { openDatabase } from './src/db/openDatabase';
 import { logger } from './src/debug/logStore';
 import { TabShell } from './src/navigation/TabShell';
 import { ensureProfile, type Profile } from './src/profile/ensureProfile';
+import { runSeed } from './src/seed/seedRunner';
 import { theme } from './src/theme/tokens';
 import { useAppFonts } from './src/theme/useAppFonts';
 import type { DbClient } from './src/db/DbClient';
@@ -39,6 +40,7 @@ export default function App() {
     openDatabase()
       .then(async (database) => {
         const createdProfile = await ensureProfile(database);
+        await runSeed(database);
         if (cancelled) return;
         setDb(database);
         setProfile(createdProfile);
