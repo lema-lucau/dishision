@@ -61,6 +61,13 @@ interface RecipeStepRow {
   sort_order: number;
 }
 
+interface StepLaneRow {
+  id: number;
+  recipe_id: number;
+  name: string;
+  sort_order: number;
+}
+
 interface RecipeTagRow {
   recipe_id: number;
   name: string;
@@ -90,6 +97,18 @@ export interface EnrichedIngredient {
   costUpdatedAt: string | null;
 }
 
+export interface EnrichedStep {
+  id: number;
+  phase: 'prep' | 'cook';
+  instruction: string;
+  durationSeconds: number | null;
+  /** Authored for parallel recipes; derived at read time (cumulative prior durations) for sequential ones (§5.6). */
+  startOffsetSeconds: number;
+  effort: 'active' | 'passive';
+  important: boolean;
+  laneName: string | null;
+}
+
 export interface EnrichedRecipe {
   id: number;
   shareId: string;
@@ -107,6 +126,7 @@ export interface EnrichedRecipe {
   updatedAt: string;
   tags: string[];
   ingredients: EnrichedIngredient[];
+  steps: EnrichedStep[];
   activeSeconds: number;
   passiveSeconds: number;
   totalSeconds: number;
@@ -151,6 +171,9 @@ export async function loadEnrichedRecipes(
   );
   const stepRows = await db.getAllAsync<RecipeStepRow>(
     'SELECT * FROM recipe_step ORDER BY recipe_id, sort_order',
+  );
+  const laneRows = await db.getAllAsync<StepLaneRow>(
+    'SELECT * FROM step_lane ORDER BY recipe_id, sort_order',
   );
   const tagRows = await db.getAllAsync<RecipeTagRow>(
     `SELECT rt.recipe_id, t.name, t.type
@@ -209,6 +232,7 @@ export async function loadEnrichedRecipes(
     list.push(row);
     stepsByRecipe.set(row.recipe_id, list);
   }
+  const laneNameById = new Map(laneRows.map((l) => [l.id, l.name]));
   const tagsByRecipe = new Map<number, string[]>();
   for (const row of tagRows) {
     const list = tagsByRecipe.get(row.recipe_id) ?? [];
@@ -290,6 +314,23 @@ export async function loadEnrichedRecipes(
       steps.map((s) => ({ effort: s.effort, durationSeconds: s.duration_seconds })),
     );
 
+    let runningOffset = 0;
+    const enrichedSteps: EnrichedStep[] = steps.map((s) => {
+      const startOffsetSeconds =
+        recipe.timeline_mode === 'sequential' ? runningOffset : s.start_offset_seconds;
+      if (recipe.timeline_mode === 'sequential') runningOffset += s.duration_seconds ?? 0;
+      return {
+        id: s.id,
+        phase: s.phase,
+        instruction: s.instruction,
+        durationSeconds: s.duration_seconds,
+        startOffsetSeconds,
+        effort: s.effort,
+        important: s.important === 1,
+        laneName: s.lane_id != null ? laneNameById.get(s.lane_id) ?? null : null,
+      };
+    });
+
     const hasStaleCost = rawIngredients.some(
       (ing) => ing.cost_updated_at != null && new Date(ing.cost_updated_at).getTime() < staleCutoff,
     );
@@ -315,6 +356,7 @@ export async function loadEnrichedRecipes(
       updatedAt: recipe.updated_at,
       tags,
       ingredients: enrichedIngredients,
+      steps: enrichedSteps,
       activeSeconds: timeSplit.activeSeconds,
       passiveSeconds: timeSplit.passiveSeconds,
       totalSeconds: timeSplit.totalSeconds,

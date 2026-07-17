@@ -8,13 +8,21 @@ export type ChipKey =
   | 'healthy'
   | 'comfort'
   | 'highProtein'
+  | 'lowKcal'
   | 'chicken'
   | 'beef'
+  | 'pork'
+  | 'lamb'
   | 'fish'
   | 'veg'
   | 'cheap'
   | 'usesWhatIHave'
   | 'lowEffort';
+
+/** Chips collapsed under the expandable "Protein" group in the filter bar (§5.3 UI). */
+export const PROTEIN_GROUP_CHIPS: ChipKey[] = ['chicken', 'beef', 'pork', 'lamb', 'fish'];
+
+const LOW_KCAL_THRESHOLD = 500;
 
 export type SortKey =
   | 'name'
@@ -37,6 +45,13 @@ export interface RecipeQuery {
   direction?: SortDirection;
   /** Exclude never_again / active not_tonight rows (§6.2). On by default for the Recipes tab and the picker; off for e.g. an exclusions-management view. */
   applyExclusions?: boolean;
+  /**
+   * Backfill to 3 from the boost pool when chip filtering yields fewer than
+   * 3 (§5.3). This is a picker-only behaviour — the Recipes tab filter is a
+   * hard filter and should show every match, however many (including
+   * zero), never silently padding the list with non-matches.
+   */
+  relax?: boolean;
 }
 
 export interface ChipAvailability {
@@ -44,7 +59,7 @@ export interface ChipAvailability {
   reason?: string;
 }
 
-const PROTEIN_CHIPS: ChipKey[] = ['chicken', 'beef', 'fish', 'veg'];
+const PROTEIN_CHIPS: ChipKey[] = ['chicken', 'beef', 'pork', 'lamb', 'fish', 'veg'];
 const DATA_GATED_THRESHOLD = 0.6;
 
 function isExcludedNow(recipe: EnrichedRecipe, now: number): boolean {
@@ -67,8 +82,12 @@ function chipMatches(recipe: EnrichedRecipe, chip: ChipKey, median: number | nul
       return recipe.tags.includes('comfort');
     case 'highProtein':
       return recipe.proteinPerServing != null && recipe.proteinPerServing >= 30;
+    case 'lowKcal':
+      return recipe.kcalPerServing != null && recipe.kcalPerServing < LOW_KCAL_THRESHOLD;
     case 'chicken':
     case 'beef':
+    case 'pork':
+    case 'lamb':
     case 'fish':
     case 'veg':
       return recipe.tags.includes(chip);
@@ -100,8 +119,10 @@ export function computeChipAvailability(recipes: EnrichedRecipe[]): Record<ChipK
   const total = recipes.length || 1;
   const costCoverage = recipes.filter((r) => r.costPerServing != null).length / total;
   const proteinCoverage = recipes.filter((r) => r.proteinPerServing != null).length / total;
+  const kcalCoverage = recipes.filter((r) => r.kcalPerServing != null).length / total;
   const missingCost = recipes.length - recipes.filter((r) => r.costPerServing != null).length;
   const missingProtein = recipes.length - recipes.filter((r) => r.proteinPerServing != null).length;
+  const missingKcal = recipes.length - recipes.filter((r) => r.kcalPerServing != null).length;
 
   const always: ChipAvailability = { enabled: true };
   return {
@@ -111,6 +132,8 @@ export function computeChipAvailability(recipes: EnrichedRecipe[]): Record<ChipK
     comfort: always,
     chicken: always,
     beef: always,
+    pork: always,
+    lamb: always,
     fish: always,
     veg: always,
     usesWhatIHave: always,
@@ -122,6 +145,10 @@ export function computeChipAvailability(recipes: EnrichedRecipe[]): Record<ChipK
       proteinCoverage >= DATA_GATED_THRESHOLD
         ? always
         : { enabled: false, reason: `Add macros to ${missingProtein} recipes first` },
+    lowKcal:
+      kcalCoverage >= DATA_GATED_THRESHOLD
+        ? always
+        : { enabled: false, reason: `Add macros to ${missingKcal} recipes first` },
   };
 }
 
@@ -221,7 +248,7 @@ export function runRecipeQuery(
 
   let relaxed = false;
   let resultSet = chipFiltered;
-  if (activeChips.length > 0 && chipFiltered.length < 3) {
+  if (query.relax && activeChips.length > 0 && chipFiltered.length < 3) {
     relaxed = true;
     const already = new Set(chipFiltered.map((r) => r.recipe.id));
     const backfill = searched.filter((r) => !already.has(r.recipe.id)).slice(0, 3 - chipFiltered.length);

@@ -17,6 +17,12 @@ export const tags: TagFixture[] = [
   { seedId: 'tag-healthy', name: 'healthy', type: 'diet' },
   { seedId: 'tag-comfort', name: 'comfort', type: 'diet' },
 
+  // meal — drives the collapsible Breakfast/Lunch/Dinner/Dessert sections
+  { seedId: 'tag-breakfast', name: 'breakfast', type: 'meal' },
+  { seedId: 'tag-lunch', name: 'lunch', type: 'meal' },
+  { seedId: 'tag-dinner', name: 'dinner', type: 'meal' },
+  { seedId: 'tag-dessert', name: 'dessert', type: 'meal' },
+
   // style
   { seedId: 'tag-thai', name: 'thai', type: 'style' },
   { seedId: 'tag-italian', name: 'italian', type: 'style' },

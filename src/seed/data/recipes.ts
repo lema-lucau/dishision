@@ -15,7 +15,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🥧',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['lamb', 'comfort', 'irish', 'oven'],
+    tags: ['lamb', 'comfort', 'irish', 'oven', 'dinner'],
     ingredients: [
       { canonicalName: 'lamb mince', displayName: 'lamb mince', quantity: 500, unit: 'g' },
       { canonicalName: 'onion', displayName: 'onion, diced', quantity: 1, unit: 'unit' },
@@ -56,7 +56,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🍲',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['beef', 'comfort', 'oven'],
+    tags: ['beef', 'comfort', 'oven', 'dinner'],
     ingredients: [
       { canonicalName: 'beef mince', displayName: 'beef mince', quantity: 500, unit: 'g' },
       { canonicalName: 'onion', displayName: 'onion, diced', quantity: 1, unit: 'unit' },
@@ -96,7 +96,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'sequential',
     originLabel: "Nana's recipe",
-    tags: ['pork', 'irish', 'comfort', 'one-pot'],
+    tags: ['pork', 'irish', 'comfort', 'one-pot', 'dinner'],
     ingredients: [
       { canonicalName: 'bacon joint', displayName: 'bacon joint', quantity: 800, unit: 'g' },
       { canonicalName: 'cabbage', displayName: 'cabbage, shredded', quantity: 500, unit: 'g' },
@@ -130,7 +130,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🍖',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['beef', 'comfort', 'one-pot'],
+    tags: ['beef', 'comfort', 'one-pot', 'dinner'],
     ingredients: [
       { canonicalName: 'beef stewing steak', displayName: 'beef stewing steak, diced', quantity: 600, unit: 'g' },
       { canonicalName: 'plain flour', displayName: 'plain flour, for dusting', quantity: 20, unit: 'g' },
@@ -168,7 +168,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['curry', 'rice'],
-    tags: ['chicken', 'indian', 'hob'],
+    tags: ['chicken', 'indian', 'hob', 'dinner'],
     ingredients: [
       { canonicalName: 'chicken thigh', displayName: 'chicken thigh, diced', quantity: 600, unit: 'g' },
       { canonicalName: 'onion', displayName: 'onion, sliced', quantity: 2, unit: 'unit' },
@@ -207,7 +207,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['chicken', 'sauce', 'rice'],
-    tags: ['chicken', 'asian', 'hob'],
+    tags: ['chicken', 'asian', 'hob', 'dinner'],
     ingredients: [
       { canonicalName: 'chicken breast', displayName: 'chicken breast, flattened', quantity: 4, unit: 'unit' },
       { canonicalName: 'plain flour', displayName: 'plain flour, for coating', quantity: 60, unit: 'g' },
@@ -248,7 +248,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🍝',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['beef', 'italian', 'comfort'],
+    tags: ['beef', 'italian', 'comfort', 'dinner'],
     ingredients: [
       { canonicalName: 'beef mince', displayName: 'beef mince', quantity: 500, unit: 'g' },
       { canonicalName: 'onion', displayName: 'onion, diced', quantity: 1, unit: 'unit' },
@@ -284,7 +284,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['chicken', 'veg', 'gravy'],
-    tags: ['chicken', 'irish', 'oven', 'comfort'],
+    tags: ['chicken', 'irish', 'oven', 'comfort', 'dinner'],
     ingredients: [
       { canonicalName: 'whole chicken', displayName: 'whole chicken', quantity: 1500, unit: 'g' },
       { canonicalName: 'butter', displayName: 'butter, softened', quantity: 30, unit: 'g' },
@@ -321,7 +321,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🐟',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['fish', 'comfort', 'oven'],
+    tags: ['fish', 'comfort', 'oven', 'dinner'],
     ingredients: [
       { canonicalName: 'smoked haddock', displayName: 'smoked haddock', quantity: 250, unit: 'g' },
       { canonicalName: 'white fish fillet', displayName: 'white fish fillet', quantity: 250, unit: 'g' },
@@ -359,7 +359,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🍝',
     baseServings: 2,
     timelineMode: 'sequential',
-    tags: ['pork', 'italian'],
+    tags: ['pork', 'italian', 'dinner'],
     ingredients: [
       { canonicalName: 'spaghetti', displayName: 'spaghetti', quantity: 200, unit: 'g' },
       { canonicalName: 'streaky bacon', displayName: 'pancetta, diced', quantity: 6, unit: 'unit' },
@@ -388,7 +388,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🌶️',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['beef', 'mexican', 'one-pot'],
+    tags: ['beef', 'mexican', 'one-pot', 'dinner'],
     ingredients: [
       { canonicalName: 'beef mince', displayName: 'beef mince', quantity: 500, unit: 'g' },
       { canonicalName: 'onion', displayName: 'onion, diced', quantity: 1, unit: 'unit' },
@@ -425,7 +425,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 2,
     timelineMode: 'parallel',
     lanes: ['rice', 'chicken', 'sauce'],
-    tags: ['chicken', 'healthy', 'hob', 'asian'],
+    tags: ['chicken', 'healthy', 'hob', 'asian', 'dinner'],
     ingredients: [
       { canonicalName: 'jasmine rice', displayName: 'jasmine rice', quantity: 180, unit: 'g' },
       { canonicalName: 'chicken breast', displayName: 'chicken breast, sliced', quantity: 350, unit: 'g' },
@@ -462,7 +462,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 2,
     timelineMode: 'parallel',
     lanes: ['rice', 'beef', 'sauce'],
-    tags: ['beef', 'hob', 'asian'],
+    tags: ['beef', 'hob', 'asian', 'dinner'],
     ingredients: [
       { canonicalName: 'jasmine rice', displayName: 'jasmine rice', quantity: 180, unit: 'g' },
       { canonicalName: 'beef frying steak', displayName: 'beef frying steak, thin strips', quantity: 350, unit: 'g' },
@@ -497,7 +497,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['chicken', 'toppings'],
-    tags: ['chicken', 'mexican', 'hob'],
+    tags: ['chicken', 'mexican', 'hob', 'dinner'],
     ingredients: [
       { canonicalName: 'chicken breast', displayName: 'chicken breast, sliced', quantity: 500, unit: 'g' },
       { canonicalName: 'red pepper', displayName: 'red pepper, sliced', quantity: 1, unit: 'unit' },
@@ -534,7 +534,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 2,
     timelineMode: 'parallel',
     lanes: ['noodles', 'wok'],
-    tags: ['fish', 'thai', 'hob'],
+    tags: ['fish', 'thai', 'hob', 'dinner'],
     ingredients: [
       { canonicalName: 'rice noodles', displayName: 'rice noodles', quantity: 180, unit: 'g' },
       { canonicalName: 'prawns', displayName: 'prawns', quantity: 200, unit: 'g' },
@@ -571,7 +571,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🧀',
     baseServings: 6,
     timelineMode: 'sequential',
-    tags: ['beef', 'italian', 'comfort', 'oven'],
+    tags: ['beef', 'italian', 'comfort', 'oven', 'dinner'],
     ingredients: [
       { canonicalName: 'beef mince', displayName: 'beef mince', quantity: 500, unit: 'g' },
       { canonicalName: 'onion', displayName: 'onion, diced', quantity: 1, unit: 'unit' },
@@ -612,7 +612,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🌭',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['pork', 'comfort', 'irish'],
+    tags: ['pork', 'comfort', 'irish', 'dinner'],
     ingredients: [
       { canonicalName: 'pork sausage', displayName: 'pork sausage', quantity: 8, unit: 'unit' },
       { canonicalName: 'potato', displayName: 'potato', quantity: 800, unit: 'g' },
@@ -646,7 +646,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🥔',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['pork', 'irish', 'comfort', 'one-pot'],
+    tags: ['pork', 'irish', 'comfort', 'one-pot', 'dinner'],
     ingredients: [
       { canonicalName: 'pork sausage', displayName: 'pork sausage', quantity: 8, unit: 'unit' },
       { canonicalName: 'back bacon', displayName: 'back bacon, chopped', quantity: 6, unit: 'unit' },
@@ -676,7 +676,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🥣',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['fish', 'irish', 'comfort', 'one-pot'],
+    tags: ['fish', 'irish', 'comfort', 'one-pot', 'lunch'],
     ingredients: [
       { canonicalName: 'smoked haddock', displayName: 'smoked haddock', quantity: 200, unit: 'g' },
       { canonicalName: 'white fish fillet', displayName: 'white fish fillet', quantity: 200, unit: 'g' },
@@ -716,7 +716,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['chicken', 'veg'],
-    tags: ['chicken', 'healthy', 'traybake', 'oven'],
+    tags: ['chicken', 'healthy', 'traybake', 'oven', 'dinner'],
     ingredients: [
       { canonicalName: 'chicken thigh', displayName: 'chicken thigh, bone-in', quantity: 8, unit: 'unit' },
       { canonicalName: 'potato', displayName: 'potato, chunked', quantity: 500, unit: 'g' },
@@ -750,7 +750,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['sausages', 'veg'],
-    tags: ['pork', 'comfort', 'traybake', 'oven'],
+    tags: ['pork', 'comfort', 'traybake', 'oven', 'dinner'],
     ingredients: [
       { canonicalName: 'pork sausage', displayName: 'pork sausage', quantity: 8, unit: 'unit' },
       { canonicalName: 'potato', displayName: 'potato, chunked', quantity: 400, unit: 'g' },
@@ -781,7 +781,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🍳',
     baseServings: 1,
     timelineMode: 'sequential',
-    tags: ['veg', 'healthy'],
+    tags: ['veg', 'healthy', 'breakfast'],
     ingredients: [
       { canonicalName: 'eggs', displayName: 'egg', quantity: 3, unit: 'unit' },
       { canonicalName: 'butter', displayName: 'butter', quantity: 10, unit: 'g' },
@@ -809,7 +809,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🍲',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['veg', 'healthy', 'irish', 'one-pot'],
+    tags: ['veg', 'healthy', 'irish', 'one-pot', 'lunch'],
     ingredients: [
       { canonicalName: 'leek', displayName: 'leek, sliced', quantity: 3, unit: 'unit' },
       { canonicalName: 'onion', displayName: 'onion, diced', quantity: 1, unit: 'unit' },
@@ -840,7 +840,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🍅',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['veg', 'healthy'],
+    tags: ['veg', 'healthy', 'lunch'],
     ingredients: [
       { canonicalName: 'onion', displayName: 'onion, diced', quantity: 1, unit: 'unit' },
       { canonicalName: 'garlic', displayName: 'garlic, crushed', quantity: 2, unit: 'unit' },
@@ -872,7 +872,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🍜',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['chicken', 'healthy', 'comfort'],
+    tags: ['chicken', 'healthy', 'comfort', 'lunch'],
     ingredients: [
       { canonicalName: 'chicken breast', displayName: 'chicken breast', quantity: 300, unit: 'g' },
       { canonicalName: 'carrot', displayName: 'carrot, sliced', quantity: 2, unit: 'unit' },
@@ -905,7 +905,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🍺',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['beef', 'irish', 'comfort', 'one-pot'],
+    tags: ['beef', 'irish', 'comfort', 'one-pot', 'dinner'],
     ingredients: [
       { canonicalName: 'beef stewing steak', displayName: 'beef stewing steak, diced', quantity: 600, unit: 'g' },
       { canonicalName: 'plain flour', displayName: 'plain flour, for dusting', quantity: 20, unit: 'g' },
@@ -941,7 +941,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['fish', 'chips'],
-    tags: ['fish', 'irish', 'oven'],
+    tags: ['fish', 'irish', 'oven', 'dinner'],
     ingredients: [
       { canonicalName: 'white fish fillet', displayName: 'white fish fillet', quantity: 4, unit: 'unit' },
       { canonicalName: 'plain flour', displayName: 'plain flour, for coating', quantity: 50, unit: 'g' },
@@ -974,7 +974,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🌭',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['pork', 'comfort'],
+    tags: ['pork', 'comfort', 'dinner'],
     ingredients: [
       { canonicalName: 'pork sausage', displayName: 'pork sausage', quantity: 8, unit: 'unit' },
       { canonicalName: 'potato', displayName: 'potato', quantity: 800, unit: 'g' },
@@ -1008,7 +1008,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['batter', 'gravy'],
-    tags: ['pork', 'comfort', 'oven', 'british'],
+    tags: ['pork', 'comfort', 'oven', 'british', 'dinner'],
     ingredients: [
       { canonicalName: 'pork sausage', displayName: 'pork sausage', quantity: 8, unit: 'unit' },
       { canonicalName: 'plain flour', displayName: 'plain flour', quantity: 140, unit: 'g' },
@@ -1040,7 +1040,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['chicken', 'sauce', 'rice'],
-    tags: ['chicken', 'indian', 'comfort'],
+    tags: ['chicken', 'indian', 'comfort', 'dinner'],
     ingredients: [
       { canonicalName: 'chicken thigh', displayName: 'chicken thigh, diced', quantity: 600, unit: 'g' },
       { canonicalName: 'natural yoghurt', displayName: 'yoghurt, for marinating', quantity: 100, unit: 'g' },
@@ -1078,7 +1078,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['beef', 'toppings'],
-    tags: ['beef', 'mexican', 'hob'],
+    tags: ['beef', 'mexican', 'hob', 'dinner'],
     ingredients: [
       { canonicalName: 'beef mince', displayName: 'beef mince', quantity: 500, unit: 'g' },
       { canonicalName: 'onion', displayName: 'onion, diced', quantity: 1, unit: 'unit' },
@@ -1114,7 +1114,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🍝',
     baseServings: 2,
     timelineMode: 'sequential',
-    tags: ['veg', 'italian'],
+    tags: ['veg', 'italian', 'dinner'],
     ingredients: [
       { canonicalName: 'spaghetti', displayName: 'spaghetti', quantity: 200, unit: 'g' },
       { canonicalName: 'pesto', displayName: 'pesto', quantity: 80, unit: 'g' },
@@ -1142,7 +1142,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🧀',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['veg', 'comfort', 'oven'],
+    tags: ['veg', 'comfort', 'oven', 'dinner'],
     ingredients: [
       { canonicalName: 'macaroni', displayName: 'macaroni', quantity: 350, unit: 'g' },
       { canonicalName: 'butter', displayName: 'butter', quantity: 50, unit: 'g' },
@@ -1174,7 +1174,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 2,
     timelineMode: 'parallel',
     lanes: ['salmon', 'veg'],
-    tags: ['fish', 'healthy', 'traybake', 'oven'],
+    tags: ['fish', 'healthy', 'traybake', 'oven', 'dinner'],
     ingredients: [
       { canonicalName: 'salmon fillet', displayName: 'salmon fillet', quantity: 2, unit: 'unit' },
       { canonicalName: 'cherry tomatoes', displayName: 'cherry tomatoes', quantity: 150, unit: 'g' },
@@ -1207,7 +1207,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 2,
     timelineMode: 'parallel',
     lanes: ['rice', 'prawns'],
-    tags: ['fish', 'healthy', 'hob', 'asian'],
+    tags: ['fish', 'healthy', 'hob', 'asian', 'dinner'],
     ingredients: [
       { canonicalName: 'jasmine rice', displayName: 'jasmine rice', quantity: 180, unit: 'g' },
       { canonicalName: 'prawns', displayName: 'prawns', quantity: 300, unit: 'g' },
@@ -1240,7 +1240,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🌶️',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['veg', 'healthy', 'mexican', 'one-pot'],
+    tags: ['veg', 'healthy', 'mexican', 'one-pot', 'dinner'],
     ingredients: [
       { canonicalName: 'onion', displayName: 'onion, diced', quantity: 1, unit: 'unit' },
       { canonicalName: 'garlic', displayName: 'garlic, crushed', quantity: 2, unit: 'unit' },
@@ -1274,7 +1274,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🍲',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['veg', 'healthy', 'one-pot'],
+    tags: ['veg', 'healthy', 'one-pot', 'lunch'],
     ingredients: [
       { canonicalName: 'onion', displayName: 'onion, diced', quantity: 1, unit: 'unit' },
       { canonicalName: 'carrot', displayName: 'carrot, diced', quantity: 2, unit: 'unit' },
@@ -1307,7 +1307,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 2,
     timelineMode: 'parallel',
     lanes: ['chicken', 'salad'],
-    tags: ['chicken', 'healthy'],
+    tags: ['chicken', 'healthy', 'lunch'],
     ingredients: [
       { canonicalName: 'chicken breast', displayName: 'chicken breast', quantity: 300, unit: 'g' },
       { canonicalName: 'olive oil', displayName: 'olive oil', quantity: 2, unit: 'tbsp', scalable: false },
@@ -1340,7 +1340,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🥪',
     baseServings: 2,
     timelineMode: 'sequential',
-    tags: ['pork'],
+    tags: ['pork', 'lunch'],
     ingredients: [
       { canonicalName: 'back bacon', displayName: 'back bacon', quantity: 6, unit: 'unit' },
       { canonicalName: 'bread', displayName: 'bread, toasted', quantity: 4, unit: 'unit' },
@@ -1367,7 +1367,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 2,
     timelineMode: 'parallel',
     lanes: ['grill', 'pan', 'toast'],
-    tags: ['pork', 'irish', 'comfort', 'hob'],
+    tags: ['pork', 'irish', 'comfort', 'hob', 'breakfast'],
     ingredients: [
       { canonicalName: 'pork sausage', displayName: 'pork sausage', quantity: 4, unit: 'unit' },
       { canonicalName: 'streaky bacon', displayName: 'streaky bacon', quantity: 4, unit: 'unit' },
@@ -1402,7 +1402,7 @@ export const recipes: RecipeFixture[] = [
     photoEmoji: '🥞',
     baseServings: 4,
     timelineMode: 'sequential',
-    tags: ['veg', 'comfort'],
+    tags: ['veg', 'comfort', 'breakfast'],
     ingredients: [
       { canonicalName: 'plain flour', displayName: 'plain flour', quantity: 200, unit: 'g' },
       { canonicalName: 'eggs', displayName: 'egg', quantity: 2, unit: 'unit' },
@@ -1432,7 +1432,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['chicken', 'sides'],
-    tags: ['chicken', 'oven', 'comfort'],
+    tags: ['chicken', 'oven', 'comfort', 'dinner'],
     ingredients: [
       { canonicalName: 'chicken breast', displayName: 'chicken breast', quantity: 4, unit: 'unit' },
       { canonicalName: 'butter', displayName: 'butter, softened', quantity: 80, unit: 'g' },
@@ -1468,7 +1468,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['rice', 'pork', 'sauce'],
-    tags: ['pork', 'asian', 'hob'],
+    tags: ['pork', 'asian', 'hob', 'dinner'],
     ingredients: [
       { canonicalName: 'jasmine rice', displayName: 'jasmine rice', quantity: 300, unit: 'g' },
       { canonicalName: 'pork loin', displayName: 'pork loin, diced', quantity: 500, unit: 'g' },
@@ -1506,7 +1506,7 @@ export const recipes: RecipeFixture[] = [
     baseServings: 4,
     timelineMode: 'parallel',
     lanes: ['rice', 'chicken'],
-    tags: ['chicken', 'asian', 'hob'],
+    tags: ['chicken', 'asian', 'hob', 'dinner'],
     ingredients: [
       { canonicalName: 'jasmine rice', displayName: 'jasmine rice', quantity: 300, unit: 'g' },
       { canonicalName: 'chicken thigh', displayName: 'chicken thigh, diced', quantity: 400, unit: 'g' },

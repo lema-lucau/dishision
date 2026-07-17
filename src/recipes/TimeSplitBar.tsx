@@ -2,11 +2,8 @@
 // hands-on (accent) and passive (amber), with a plain-language key beneath.
 // Used on the recipe detail screen, list rows, and (later) Cooking Mode.
 import { StyleSheet, Text, View } from 'react-native';
+import { formatDuration } from '../lib/formatDuration';
 import { theme } from '../theme/tokens';
-
-function formatMinutes(seconds: number): string {
-  return `${Math.round(seconds / 60)} min`;
-}
 
 interface TimeSplitBarProps {
   activeSeconds: number;
@@ -31,7 +28,7 @@ export function TimeSplitBar({ activeSeconds, passiveSeconds, compact }: TimeSpl
       {!compact && (
         <View style={styles.headerRow}>
           <Text style={styles.headerLabel}>TIME</Text>
-          <Text style={styles.headerValue}>{formatMinutes(total)}</Text>
+          <Text style={styles.headerValue}>{formatDuration(total)}</Text>
         </View>
       )}
       <View style={[styles.track, compact && styles.trackCompact]}>
@@ -43,13 +40,13 @@ export function TimeSplitBar({ activeSeconds, passiveSeconds, compact }: TimeSpl
           {activeSeconds > 0 && (
             <Text style={styles.keyLabel}>
               <Text style={styles.keyDotActive}>■ </Text>
-              {formatMinutes(activeSeconds)} hands-on
+              {formatDuration(activeSeconds)} hands-on
             </Text>
           )}
           {passiveSeconds > 0 && (
             <Text style={styles.keyLabel}>
               <Text style={styles.keyDotPassive}>■ </Text>
-              {formatMinutes(passiveSeconds)} passive
+              {formatDuration(passiveSeconds)} passive
             </Text>
           )}
         </View>

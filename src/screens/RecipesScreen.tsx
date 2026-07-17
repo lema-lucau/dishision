@@ -9,15 +9,18 @@ import { ExclusionsScreen } from '../recipes/ExclusionsScreen';
 import { FilterChipBar } from '../recipes/FilterChipBar';
 import { emptyRecipeDraft, loadRecipeDraft } from '../recipes/loadRecipeForEdit';
 import { loadEnrichedRecipes, type EnrichedRecipe } from '../recipes/loadRecipes';
+import { MealSection } from '../recipes/MealSection';
+import { MEAL_TYPES, MEAL_TYPE_LABELS, recipeMealType, type MealType } from '../recipes/mealType';
 import { copyRecipe, clearExclusion, deleteRecipe, setExclusion, toggleFavourite } from '../recipes/recipeMutations';
 import { RecipeDetailScreen } from '../recipes/RecipeDetailScreen';
 import { RecipeFormScreen } from '../recipes/RecipeFormScreen';
-import { RecipeListItem } from '../recipes/RecipeListItem';
-import type { ChipKey, SortDirection, SortKey } from '../recipes/queryEngine';
+import type { ChipKey, QueryResultItem, SortDirection, SortKey } from '../recipes/queryEngine';
 import { runRecipeQuery } from '../recipes/queryEngine';
 import { createManualRecipe, updateManualRecipe, type RecipeDraft } from '../recipes/recipeSave';
-import { SortMenu } from '../recipes/SortMenu';
+import { SORT_LABELS, SortMenu } from '../recipes/SortMenu';
 import { theme } from '../theme/tokens';
+
+const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
 
 type ViewState =
   | { mode: 'list' }
@@ -36,6 +39,32 @@ export function RecipesScreen() {
   const [direction, setDirection] = useState<SortDirection>('asc');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [editDraft, setEditDraft] = useState<RecipeDraft | null>(null);
+  const [layout, setLayout] = useState<'list' | 'grid'>('grid');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<MealType>>(new Set());
+  const [pageSize, setPageSize] = useState(10);
+  const [sectionPages, setSectionPages] = useState<Record<MealType, number>>({
+    breakfast: 1,
+    lunch: 1,
+    dinner: 1,
+    dessert: 1,
+  });
+
+  function toggleSection(mealType: MealType) {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(mealType)) next.delete(mealType);
+      else next.add(mealType);
+      return next;
+    });
+  }
+
+  // A filter/sort/pageSize change can leave a section's current page out of
+  // range (or just stale) — reset every section back to page 1 rather than
+  // showing an empty page silently.
+  useEffect(() => {
+    setSectionPages({ breakfast: 1, lunch: 1, dinner: 1, dessert: 1 });
+  }, [search, chips, sort, direction, pageSize]);
 
   const reload = useCallback(async () => {
     const data = await loadEnrichedRecipes(db);
@@ -141,6 +170,14 @@ export function RecipesScreen() {
 
   const result = runRecipeQuery(recipes, { search, chips, sort, direction });
 
+  const itemsByMealType = new Map<MealType, QueryResultItem[]>();
+  for (const item of result.items) {
+    const mealType = recipeMealType(item.recipe);
+    const list = itemsByMealType.get(mealType) ?? [];
+    list.push(item);
+    itemsByMealType.set(mealType, list);
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -162,30 +199,77 @@ export function RecipesScreen() {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        <FilterChipBar selected={chips} availability={result.chipAvailability} onToggle={toggleChip} />
+        <TouchableOpacity
+          style={styles.filtersToggle}
+          onPress={() => setFiltersExpanded((e) => !e)}
+        >
+          <Text style={styles.filtersToggleText}>
+            {filtersExpanded ? '▾' : '▸'} Filters{chips.length > 0 ? ` (${chips.length})` : ''}
+          </Text>
+        </TouchableOpacity>
+        {filtersExpanded && (
+          <FilterChipBar selected={chips} availability={result.chipAvailability} onToggle={toggleChip} />
+        )}
 
         <View style={styles.toolbarRow}>
-          <TouchableOpacity onPress={() => setSortMenuOpen(true)}>
-            <Text style={styles.toolbarLink}>Sort ▾</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setView({ mode: 'exclusions' })}>
+          <View style={styles.sortGroup}>
+            <Text style={styles.sortByLabel}>Sort by</Text>
+            <TouchableOpacity onPress={() => setSortMenuOpen(true)} style={styles.sortButton}>
+              <Text style={styles.toolbarLink}>{SORT_LABELS[sort]}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.layoutToggle}>
+            <TouchableOpacity
+              onPress={() => setLayout('grid')}
+              style={[styles.layoutButton, layout === 'grid' && styles.layoutButtonActive]}
+            >
+              <Text style={[styles.layoutButtonText, layout === 'grid' && styles.layoutButtonTextActive]}>⊞</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setLayout('list')}
+              style={[styles.layoutButton, layout === 'list' && styles.layoutButtonActive]}
+            >
+              <Text style={[styles.layoutButtonText, layout === 'list' && styles.layoutButtonTextActive]}>☰</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.pageSizeRow}>
+          <Text style={styles.pageSizeLabel}>Show</Text>
+          {PAGE_SIZE_OPTIONS.map((size) => (
+            <TouchableOpacity
+              key={size}
+              onPress={() => setPageSize(size)}
+              style={[styles.pageSizeButton, pageSize === size && styles.pageSizeButtonActive]}
+            >
+              <Text style={[styles.pageSizeButtonText, pageSize === size && styles.pageSizeButtonTextActive]}>{size}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity onPress={() => setView({ mode: 'exclusions' })} style={styles.exclusionsLink}>
             <Text style={styles.toolbarLink}>Exclusions</Text>
           </TouchableOpacity>
-          <Text style={styles.matchCount}>{result.items.length} matches</Text>
         </View>
+
+        <Text style={styles.matchCount}>{result.items.length} matches</Text>
         {result.relaxed && <Text style={styles.relaxedNote}>Closest matches — not all fit your filters exactly.</Text>}
 
-        <View style={styles.list}>
-          {result.items.map(({ recipe, matchedInNotes }) => (
-            <RecipeListItem
-              key={recipe.id}
-              recipe={recipe}
-              matchedInNotes={matchedInNotes}
-              onPress={() => setView({ mode: 'detail', recipeId: recipe.id })}
+        {MEAL_TYPES.map((mealType) => {
+          const items = itemsByMealType.get(mealType) ?? [];
+          return (
+            <MealSection
+              key={mealType}
+              title={MEAL_TYPE_LABELS[mealType]}
+              items={items}
+              layout={layout}
+              collapsed={collapsedSections.has(mealType)}
+              onToggle={() => toggleSection(mealType)}
+              onSelectRecipe={(recipe) => setView({ mode: 'detail', recipeId: recipe.id })}
+              page={sectionPages[mealType]}
+              pageSize={pageSize}
+              onPageChange={(page) => setSectionPages((prev) => ({ ...prev, [mealType]: page }))}
             />
-          ))}
-          {result.items.length === 0 && <Text style={styles.emptyText}>No recipes match yet.</Text>}
-        </View>
+          );
+        })}
       </ScrollView>
 
       <SortMenu
@@ -227,10 +311,41 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   scrollContent: { gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
-  toolbarRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.base },
+  filtersToggle: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.chipBg,
+  },
+  filtersToggleText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.sm },
+  sortGroup: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  sortByLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  sortButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.chipBg,
+  },
   toolbarLink: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
-  matchCount: { marginLeft: 'auto', fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+  layoutToggle: { flexDirection: 'row', gap: 2, marginLeft: 'auto', backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, padding: 2 },
+  layoutButton: { paddingHorizontal: theme.spacing.sm, paddingVertical: 4, borderRadius: theme.radius.pill },
+  layoutButtonActive: { backgroundColor: theme.colors.accent },
+  layoutButtonText: { fontSize: theme.fontSize.base, color: theme.colors.ink2 },
+  layoutButtonTextActive: { color: theme.colors.accentFg },
+  pageSizeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  exclusionsLink: { marginLeft: 'auto' },
+  pageSizeLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2, marginRight: 2 },
+  pageSizeButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.chipBg,
+  },
+  pageSizeButtonActive: { backgroundColor: theme.colors.accent },
+  pageSizeButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  pageSizeButtonTextActive: { color: theme.colors.accentFg },
+  matchCount: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
   relaxedNote: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.amberText, fontStyle: 'italic' },
-  list: {},
-  emptyText: { fontFamily: theme.fonts.body.regular, color: theme.colors.ink3, textAlign: 'center', marginTop: theme.spacing.xl },
 });

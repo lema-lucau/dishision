@@ -6,7 +6,7 @@
 
 export type BaseUnit = 'g' | 'ml' | 'unit';
 export type RecipeUnit = 'g' | 'ml' | 'tsp' | 'tbsp' | 'cup' | 'unit';
-export type TagType = 'protein' | 'diet' | 'style' | 'equipment' | 'custom';
+export type TagType = 'protein' | 'diet' | 'style' | 'equipment' | 'meal' | 'custom';
 export type Phase = 'prep' | 'cook';
 export type Effort = 'active' | 'passive';
 export type TimelineMode = 'sequential' | 'parallel';

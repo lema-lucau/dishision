@@ -2,7 +2,10 @@
 // pending S7-S8; everything else — scaling, macros, cost, pantry dots,
 // timeline preview — is real.
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useConfirmModal } from '../components/useConfirmModal';
+import { capitalize } from '../lib/capitalize';
+import { formatDuration } from '../lib/formatDuration';
 import { formatScaledQuantity, scaleQuantity } from '../lib/scaling';
 import { theme } from '../theme/tokens';
 import { ActionButton } from './ActionButton';
@@ -37,6 +40,8 @@ export function RecipeDetailScreen({
   onClearExclusion,
 }: RecipeDetailScreenProps) {
   const [servings, setServings] = useState(recipe.baseServings);
+  const [stepsExpanded, setStepsExpanded] = useState(false);
+  const { modal, notice, confirm } = useConfirmModal();
 
   const scaledIngredients = useMemo(
     () =>
@@ -48,8 +53,10 @@ export function RecipeDetailScreen({
   );
 
   const pantryCount = recipe.ingredients.filter((i) => i.inPantry).length;
-
   const macroComplete = recipe.macroCompleteCount === recipe.totalIngredientCount && recipe.totalIngredientCount > 0;
+
+  const activePercent = recipe.totalSeconds > 0 ? Math.round((recipe.activeSeconds / recipe.totalSeconds) * 100) : 0;
+  const passivePercent = recipe.totalSeconds > 0 ? 100 - activePercent : 0;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -73,7 +80,7 @@ export function RecipeDetailScreen({
         )}
         {recipe.tags.map((t) => (
           <View key={t} style={styles.metaChip}>
-            <Text style={styles.metaChipText}>{t}</Text>
+            <Text style={styles.metaChipText}>{capitalize(t)}</Text>
           </View>
         ))}
         <View style={styles.metaChip}>
@@ -111,11 +118,13 @@ export function RecipeDetailScreen({
         </View>
       ))}
 
-      <View style={styles.macrosRow}>
-        <MacroBox value={recipe.kcalPerServing} label="Kcal" />
-        <MacroBox value={recipe.proteinPerServing} label="Protein" />
-        <MacroBox value={recipe.carbsPerServing} label="Carbs" />
-        <MacroBox value={recipe.fatPerServing} label="Fat" />
+      <View style={styles.macrosSection}>
+        <View style={styles.macrosRow}>
+          <MacroBox value={recipe.kcalPerServing} label="Kcal" />
+          <MacroBox value={recipe.proteinPerServing} label="Protein" />
+          <MacroBox value={recipe.carbsPerServing} label="Carbs" />
+          <MacroBox value={recipe.fatPerServing} label="Fat" />
+        </View>
       </View>
       {!macroComplete && (
         <Text style={styles.partialFlag}>
@@ -129,66 +138,105 @@ export function RecipeDetailScreen({
         </Text>
       )}
 
-      <Text style={styles.sectionTitle}>TIMELINE</Text>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>TIMELINE</Text>
+        {recipe.steps.length > 0 && (
+          <TouchableOpacity onPress={() => setStepsExpanded((e) => !e)}>
+            <Text style={styles.viewStepsLink}>{stepsExpanded ? 'Hide steps' : 'View steps'}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
       <View style={styles.timelinePreview}>
         {recipe.totalSeconds === 0 && <Text style={styles.pantrySummary}>No timed steps yet.</Text>}
         {recipe.totalSeconds > 0 && (
           <View style={styles.timelineBarTrack}>
-            <View
-              style={[
-                styles.timelineBarFill,
-                { flex: recipe.activeSeconds || 0.0001, backgroundColor: theme.colors.accent },
-              ]}
-            />
-            <View
-              style={[
-                styles.timelineBarFill,
-                { flex: recipe.passiveSeconds || 0.0001, backgroundColor: theme.colors.amber },
-              ]}
-            />
+            {recipe.activeSeconds > 0 && (
+              <View style={[styles.timelineBarFill, { flex: recipe.activeSeconds, backgroundColor: theme.colors.accent }]}>
+                <Text style={styles.timelinePercentText}>{activePercent}%</Text>
+              </View>
+            )}
+            {recipe.passiveSeconds > 0 && (
+              <View style={[styles.timelineBarFill, { flex: recipe.passiveSeconds, backgroundColor: theme.colors.amber }]}>
+                <Text style={styles.timelinePercentText}>{passivePercent}%</Text>
+              </View>
+            )}
           </View>
         )}
       </View>
 
+      {stepsExpanded && (
+        <View style={styles.stepsList}>
+          {recipe.steps.map((step) => (
+            <View key={step.id} style={styles.stepRow}>
+              <View style={styles.stepBadgeRow}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>{capitalize(step.phase)}</Text>
+                </View>
+                {step.laneName && (
+                  <View style={styles.stepBadge}>
+                    <Text style={styles.stepBadgeText}>{step.laneName}</Text>
+                  </View>
+                )}
+                {step.durationSeconds != null && (
+                  <View style={styles.stepBadge}>
+                    <Text style={styles.stepBadgeText}>{formatDuration(step.durationSeconds)}</Text>
+                  </View>
+                )}
+                {step.important && (
+                  <View style={[styles.stepBadge, styles.stepBadgeAlert]}>
+                    <Text style={[styles.stepBadgeText, styles.stepBadgeAlertText]}>⚠ Alert</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.stepInstruction}>{step.instruction}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       <TouchableOpacity
         style={styles.primaryButton}
-        onPress={() => Alert.alert('Cooking Mode', 'Arrives in a later slice.')}
+        onPress={() => notice('Cooking Mode', 'Arrives in a later slice.')}
       >
         <Text style={styles.primaryButtonText}>Start cooking</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => Alert.alert('Cook log', 'Arrives in a later slice.')}>
-        <Text style={styles.secondaryLink}>I already cooked this</Text>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => notice('Cook log', 'Arrives in a later slice.')}
+      >
+        <Text style={styles.secondaryButtonText}>I already cooked this</Text>
       </TouchableOpacity>
 
-      <View style={styles.actionsRow}>
+      <View style={[styles.actionsRow, styles.actionsRowFirst]}>
         <ActionButton
           label={recipe.isFavourite ? '★ Favourited' : '☆ Favourite'}
           variant={recipe.isFavourite ? 'amber' : 'neutral'}
           onPress={onToggleFavourite}
+          fill
         />
-        <ActionButton label="Edit" variant="neutral" onPress={onEdit} />
-        <ActionButton label="Copy & tweak" variant="accent" onPress={onCopy} />
+        <ActionButton label="Edit" variant="neutral" onPress={onEdit} fill />
+        <ActionButton label="Copy & tweak" variant="accent" onPress={onCopy} fill />
       </View>
       <View style={styles.actionsRow}>
         {recipe.exclusion ? (
-          <ActionButton label="Un-exclude" variant="green" onPress={onClearExclusion} />
+          <ActionButton label="Un-exclude" variant="green" onPress={onClearExclusion} fill />
         ) : (
           <>
-            <ActionButton label="Not tonight" variant="amber" onPress={() => onSetExclusion('not_tonight')} />
-            <ActionButton label="Never again" variant="danger" onPress={() => onSetExclusion('never_again')} />
+            <ActionButton label="Not tonight" variant="amber" onPress={() => onSetExclusion('not_tonight')} fill />
+            <ActionButton label="Never again" variant="danger" onPress={() => onSetExclusion('never_again')} fill />
           </>
         )}
         <ActionButton
           label="Delete"
           variant="danger"
+          fill
           onPress={() =>
-            Alert.alert('Delete recipe', `Delete "${recipe.name}"? This can't be undone.`, [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Delete', style: 'destructive', onPress: onDelete },
-            ])
+            confirm('Delete recipe', `Delete "${recipe.name}"? This can't be undone.`, 'Delete', onDelete, true)
           }
         />
       </View>
+
+      {modal}
     </ScrollView>
   );
 }
@@ -222,6 +270,7 @@ const styles = StyleSheet.create({
     color: theme.colors.ink3,
     letterSpacing: 0.5,
   },
+  viewStepsLink: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   servingStepper: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
   stepperButton: {
     width: 28,
@@ -245,12 +294,42 @@ const styles = StyleSheet.create({
   pantryDot: { color: theme.colors.green, width: 14 },
   ingredientName: { flex: 1, fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink },
   ingredientQty: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  macrosSection: { paddingVertical: theme.spacing.base },
   macrosRow: { flexDirection: 'row', gap: theme.spacing.sm },
   partialFlag: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.amberText },
   costLine: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
   timelinePreview: { gap: theme.spacing.xs },
-  timelineBarTrack: { flexDirection: 'row', height: 20, borderRadius: theme.radius.chip, overflow: 'hidden' },
-  timelineBarFill: { minWidth: 2 },
+  timelineBarTrack: { flexDirection: 'row', height: 24, borderRadius: theme.radius.chip, overflow: 'hidden' },
+  timelineBarFill: { minWidth: 24, alignItems: 'center', justifyContent: 'center' },
+  timelinePercentText: {
+    fontFamily: theme.fonts.data.semiBold,
+    fontSize: theme.fontSize.xs,
+    color: '#FFFFFF',
+  },
+  stepsList: { gap: theme.spacing.sm },
+  stepRow: {
+    gap: theme.spacing.xs,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceWarm,
+    borderRadius: theme.radius.card,
+  },
+  stepBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: theme.spacing.xs },
+  stepBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.chipBg,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.radius.pill,
+  },
+  stepBadgeAlert: { backgroundColor: theme.colors.redTint },
+  stepBadgeText: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: theme.fontSize.xs,
+    lineHeight: theme.fontSize.xs + 2,
+    color: theme.colors.ink2,
+  },
+  stepBadgeAlertText: { color: theme.colors.red },
+  stepInstruction: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink },
   primaryButton: {
     backgroundColor: theme.colors.accent,
     borderRadius: theme.radius.card,
@@ -259,11 +338,13 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
   },
   primaryButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
-  secondaryLink: {
-    fontFamily: theme.fonts.body.medium,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.accentText,
-    textAlign: 'center',
+  secondaryButton: {
+    backgroundColor: theme.colors.chipBg,
+    borderRadius: theme.radius.card,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
   },
-  actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, paddingTop: theme.spacing.xs },
+  secondaryButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+  actionsRow: { flexDirection: 'row', gap: theme.spacing.base, marginBottom: theme.spacing.base },
+  actionsRowFirst: { marginTop: theme.spacing.base },
 });

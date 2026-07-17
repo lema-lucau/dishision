@@ -1,6 +1,6 @@
 # Preppie — Design & Implementation Spec
 
-**Version:** 1.3
+**Version:** 1.4
 **Platform:** React Native / Expo SDK 54, SQLite, Android
 **Users:** Independent profiles on separate phones, optionally linked into a household over local WiFi
 **Status:** Specification — not yet implemented
@@ -24,13 +24,16 @@
     3.4 Scaling  
     3.5 Pack rounding — shopping only  
 4. Design system  
-    4.1 Palette — Ember  
-    4.2 Category colours (calendar, tags)  
-    4.3 Typography  
-    4.4 Scale and spacing  
-    4.5 Signature element — the time split bar  
-    4.6 Emoji photo tiles  
-    4.7 Dark mode  
+    4.1 Theming architecture  
+    4.2 Colour tokens  
+    4.3 The seven themes  
+    4.4 Category colours (calendar, tags)  
+    4.5 Typography  
+    4.6 Scale and spacing  
+    4.7 Signature element — the time split bar  
+    4.8 Emoji photo tiles  
+    4.9 Theme roster  
+    4.10 Theme picker  
 5. Screens  
     5.1 Navigation  
     5.2 Home  
@@ -468,7 +471,8 @@ CREATE TABLE setting (
 -- Keys include: median_cost_per_serving, median_cost_computed_at,
 -- recency_window_days, weights (w_recency etc.), auto_add_shortfalls
 -- ('1' default — §5.7), currency_code + currency_symbol ('EUR' / '€'
--- default — display only, §5.10), cost_staleness_days, theme,
+-- default — display only, §5.10), cost_staleness_days, theme
+-- ('hearth' default — §4.9),
 -- alert toggles, debug_mode.
 
 -- ============================================================
@@ -626,25 +630,124 @@ Recipes need 140g of something sold in 200g bags. The shop does not sell 0.7 bag
 
 ## 4. Design system
 
-### 4.1 Palette — Ember
+### 4.1 Theming architecture
+
+Preppie ships **seven themes**, user-selectable in settings. **Hearth is the default.**
+
+This is cheap to build *only* because it's designed in from the first commit. Retrofitting themes onto an app with hex literals scattered through components is a week of archaeology; building on tokens from day one makes a new theme a data entry exercise.
+
+**The contract:**
+
+```ts
+// Every theme is the same shape. No exceptions.
+interface Theme {
+  id: string;
+  name: string;
+  mode: 'light' | 'dark';   // drives status bar + keyboard appearance
+  colour: ColourTokens;      // §4.2 — every key required
+  category: CategoryColours; // §4.4 — every key required
+}
+```
+
+**Rules:**
+
+- **Every theme defines every token.** No optional keys, no fallbacks. A theme missing `--amber-text` is a compile error, not a runtime surprise. TypeScript enforces this: `Record<ThemeId, Theme>` with a fully-required `ColourTokens`.
+- **No hex literals in components. Ever.** Colour comes from `useTheme()` or it doesn't exist. This is the single constraint the whole system rests on — one stray hex value is a bug that only appears when someone switches theme, which is the worst kind.
+- **Dark themes map onto the same slots.** A dark theme cannot invent tokens a light theme lacks. If a token only makes sense in dark, the light themes must still define something sensible for it. This is a real limitation and a healthy one — it stops the token set sprawling.
+- **Semantic names, not descriptive ones.** `--accent`, not `--terracotta`. The whole point is that the value changes per theme while the meaning doesn't.
+
+**Implementation:**
+
+```ts
+const themes: Record<ThemeId, Theme> = {
+  hearth, ember, seaglass, clay, risograph, midnightKitchen, dusk,
+};
+
+// Provider reads setting('theme'), defaults to 'hearth'
+<ThemeProvider>  →  useTheme(): Theme
+```
+
+Switching writes the `theme` row in `setting` (§2.3) and the provider re-renders. **Instant, no animation, applies everywhere at once.** Since switching requires deliberately visiting settings, there's no mid-cook edge case worth engineering around — the user did it on purpose. Apply, close the screen, it's done.
+
+**Cost:** ~half a session for the provider, hook, and picker. Each additional theme after that is a token table and nothing else — the seven below are that exercise done seven times.
+
+### 4.2 Colour tokens
+
+The full required set. Every theme fills every row. Names carried through unchanged from the original Ember proposal so nothing downstream in this spec needs renaming.
+
+| Token | Role |
+| --- | --- |
+| `--bg` | Page background |
+| `--surface` | Cards, tab bar |
+| `--surface-warm` | Macro tiles, subtle fills, emoji photo tiles (§4.6) |
+| `--chip-bg` | Inactive chips, segmented control track |
+| `--border` | Hairlines, dividers |
+| `--border-strong` | Ingredient row separators |
+| `--accent` | Primary actions, active states, hands-on time |
+| `--accent-text` | Text-safe accent (must clear 4.5:1 on `--bg`) |
+| `--accent-fg` | Text on accent fills |
+| `--amber` | Passive time, warnings |
+| `--amber-text` | Text-safe amber |
+| `--green` | Success, "you have this" |
+| `--red` | Destructive, never-again |
+| `--ink` | Primary text |
+| `--ink-2` | Secondary text |
+| `--ink-3` | Tertiary, labels |
+| `--ink-4` | Disabled, inactive tabs |
+
+`--accent-text` and `--amber-text` exist because a colour that works as a button fill often fails as small text. Where the base already clears 4.5:1, the text variant is simply the same value — the slot still has to be filled.
+
+### 4.3 The seven themes
+
+Each table is the full, pinned token set — nothing left as "TBD." Contrast ratios are against that theme's `--bg` unless noted.
+
+#### Hearth — default
 
 ```
---bg              #FFFAF2   warm cream, page background
+--bg              #FDF8F3   warm sand, page background
 --surface         #FFFFFF   cards, tab bar
---surface-warm    #FDF1E1   macro tiles, subtle fills, emoji photo tiles
---chip-bg         #FCEBD5   inactive chips, segmented control track
---border          #F6E4CD   hairlines, dividers
---border-strong   #F6E9D8   ingredient row separators
+--surface-warm    #F5EDE5   macro tiles, emoji photo tiles
+--chip-bg         #F3E9DF   inactive chips
+--border          #EDE4DA   hairlines
+--border-strong   #EFE6DC   row separators
 
---accent          #D94F1E   burnt orange — buttons, active states
---accent-text     #B03D14   text-safe variant (AA on --bg)
---accent-fg       #FFF6EF   text on accent fills
+--accent          #C25E3A   terracotta — buttons, hands-on time
+--accent-text     #A34A2A   5.8:1 — text-safe variant
+--accent-fg       #FFF6F0   text on terracotta
+
+--amber           #E8A33D   passive time, warnings
+--amber-text      #92620E   4.7:1 — text-safe amber
+
+--green           #6B8F5E   success, "you have this"
+--red             #B3261E   destructive, never-again
+
+--ink             #2C2420   primary text
+--ink-2           #7A6E64   secondary text
+--ink-3           #A0938A   tertiary, labels
+--ink-4           #B8ADA3   disabled, inactive tabs
+```
+
+The original proposal, warm terracotta on sand. Cookbook-familiar and safe — the trade-off named in §4.9.
+
+#### Ember
+
+```
+--bg              #FFFAF2   warm cream
+--surface         #FFFFFF   cards, tab bar
+--surface-warm    #FDF1E1   macro tiles, emoji photo tiles
+--chip-bg         #FCEBD5   inactive chips
+--border          #F6E4CD   hairlines
+--border-strong   #F6E9D8   row separators
+
+--accent          #D94F1E   burnt orange — buttons, hands-on time
+--accent-text     #B03D14   5.9:1 — text-safe variant
+--accent-fg       #FFF6EF   text on orange
 
 --amber           #F5A623   marigold — passive time, warnings
 --amber-text      #9A6410   text-safe amber
 
---green           #5C8A3C   success, "you have this"
---red             #C0392B   destructive, never-again
+--green           #5C8A3C   success
+--red             #B3261E   destructive
 
 --ink             #2A1F17   primary text
 --ink-2           #7E6A56   secondary text
@@ -652,23 +755,203 @@ Recipes need 140g of something sold in 200g bags. The shop does not sell 0.7 bag
 --ink-4           #C4A883   disabled, inactive tabs
 ```
 
-**Accessibility note:** --accent (#D94F1E) is 4.3:1 on --bg — fine for large text and button fills with --accent-fg on top, but **never** for body text. Use --accent-text (#B03D14, 5.9:1) for any text under 18px.
+A hotter, more saturated sibling of Hearth. Same family, louder. This was the spec's own working theme before the roster widened — kept for anyone who preferred it.
 
-### 4.2 Category colours (calendar, tags)
+#### Seaglass
 
 ```
-chicken     #E8A33D
-beef        #A33B2A
-pork        #D6837E
-fish        #4A8CA8
-veg         #5C8A3C
-lamb        #8B4A5C
-other       #9B8264
+--bg              #F2F5F5   cool off-white
+--surface         #FFFFFF   cards, tab bar
+--surface-warm    #E7EEED   macro tiles, emoji photo tiles
+--chip-bg         #E2E9E9   inactive chips
+--border          #DCE4E4   hairlines
+--border-strong   #E4EBEA   row separators
+
+--accent          #0D6B66   deep teal — buttons, hands-on time
+--accent-text     #0D6B66   5.4:1 — passes AA at any size as-is
+--accent-fg       #EFF9F8   text on teal
+
+--amber           #B45309   copper — passive time, warnings
+--amber-text      #8F4207   4.6:1 base is fills-only; this for small text
+
+--green           #0D6B66   reuses accent
+--red             #B3261E   destructive
+
+--ink             #10292A   primary text
+--ink-2           #5A706F   secondary text
+--ink-3           #879A99   tertiary, labels
+--ink-4           #9CACAB   disabled, inactive tabs
 ```
 
-Chosen for distinctness at 12px dot size, not for realism.
+Teal and copper is oxidised copper — the pairing has a physical logic. The one theme here whose accent already clears AA at any size, so `--accent-text` is unchanged from `--accent`. Note the "amber" slot is filled with copper, not an amber hue — the token name is semantic (§4.1, rule 4), not literal.
 
-### 4.3 Typography
+#### Clay
+
+```
+--bg              #F5F1EC   warm stone
+--surface         #FDFBF9   cards, tab bar
+--surface-warm    #EDE7E0   macro tiles, emoji photo tiles
+--chip-bg         #E9E2DA   inactive chips
+--border          #E4DCD3   hairlines
+--border-strong   #E8E1D9   row separators
+
+--accent          #8A5A44   muted clay-brown — buttons, hands-on time
+--accent-text     #6E4736   5.7:1 — text-safe variant
+--accent-fg       #F8F3EE   text on clay
+
+--amber           #7A8B6F   sage-grey — passive time, warnings
+--amber-text      #56634E   text-safe sage
+
+--green           #7A8B6F   reuses amber slot
+--red             #9C4A3C   destructive, kept in-family rather than a stock red
+
+--ink             #302A24   primary text
+--ink-2           #7C7168   secondary text
+--ink-3           #A69A8E   tertiary, labels
+--ink-4           #B5AAA0   disabled, inactive tabs
+```
+
+Warm without a drop of orange — where Hearth and Ember both live. Quiet, desaturated, grown-up.
+
+#### Risograph
+
+```
+--bg              #FFFDF6   warm paper
+--surface         #FFFFFF   cards, tab bar
+--surface-warm    #FFF3F7   macro tiles, emoji photo tiles
+--chip-bg         #FFFFFF   inactive chips (bordered, see structural note)
+--border          #191919   hairlines — hard black, not a hairline grey
+--border-strong   #E2E0D8   row separators (softer, ingredient rows only)
+
+--accent          #FF4F79   hot pink — buttons, hands-on time
+--accent-text     #D62D5B   5.1:1 — text-safe variant
+--accent-fg       #FFFFFF   text on pink
+
+--amber           #2C6BED   electric blue — passive time, warnings
+--amber-text      #1A4FC4   text-safe blue
+
+--green           #1E8A5F   success
+--red             #D62D5B   reuses accent-text
+
+--ink             #191919   primary text
+--ink-2           #5C5C5C   secondary text
+--ink-3           #9C9C9C   tertiary, labels
+--ink-4           #BEBEBE   disabled, inactive tabs
+```
+
+**Structural note:** Risograph is the one theme where `--border` isn't a subtle hairline — it's a deliberate 1.5–2px solid black, part of the zine-print identity (card outlines, offset shadows on primary buttons). Components reading `--border` for a hard outline and `--border-strong` for a soft one should still work unmodified, but this theme is the edge case worth testing first when the token system is built, since it's the one that stretches "hairline" furthest from its literal meaning. It's also the one theme where the "amber" slot is filled with blue rather than any warm hue — again, semantic not literal.
+
+#### Midnight Kitchen
+
+```
+--bg              #14161C   near-black slate
+--surface         #1A1D25   cards, tab bar surface (tab bar itself uses #0F1116, see note)
+--surface-warm    #1A1D25   macro tiles, emoji photo tiles
+--chip-bg         #1F232C   inactive chips
+--border          #232733   hairlines
+--border-strong   #232733   row separators
+
+--accent          #4ADE80   mint green — buttons, hands-on time
+--accent-text     #2FAE5E   4.6:1 on bg at small sizes; #4ADE80 itself is fill-only
+--accent-fg       #06240F   text on mint
+
+--amber           #3B4657   slate-blue — passive time, warnings
+--amber-text      #8891A3   --ink-2 doubles as the text-safe variant here
+
+--green           #4ADE80   reuses accent
+--red             #FBBF24   amber-toned warning rather than a saturated red, to avoid two competing alarms on a dark ground
+
+--ink             #E8EAEF   primary text
+--ink-2           #8891A3   secondary text
+--ink-3           #6B7484   tertiary, labels
+--ink-4           #5A6273   disabled, inactive tabs
+```
+
+**Note:** the tab bar itself is `#0F1116`, one step darker than `--surface`, for visual separation from content — the only theme where the tab bar isn't literally `--surface`. Handle as a `tabBarBg` token if the component needs it distinctly, defaulting to `--surface` in every other theme.
+
+Dark-first, not a dark-mode derivative — designed as its own thing. Zero glare at 7pm; mint is sharp enough to read clearly against slate. Replaces the placeholder "Slate & Fig" dark mode from earlier drafts.
+
+#### Dusk
+
+```
+--bg              #1B1A22   charcoal-violet
+--surface         #222129   cards, tab bar surface (tab bar itself uses #151419, see note)
+--surface-warm    #26252F   macro tiles, emoji photo tiles
+--chip-bg         #26252F   inactive chips
+--border          #2A2934   hairlines
+--border-strong   #2A2934   row separators
+
+--accent          #F2A65A   apricot — buttons, hands-on time
+--accent-text     #F2A65A   4.9:1 on bg — clears AA as-is
+--accent-fg       #2A1A08   text on apricot
+
+--amber           #5B7B9A   dusty blue — passive time, warnings
+--amber-text      #8FA9C0   lighter tint for small text on dark ground
+
+--green           #7FA96B   success
+--red             #E8646A   softened red, sits more comfortably on a violet ground than a pure red
+
+--ink             #E6E3ED   primary text
+--ink-2           #918CA3   secondary text
+--ink-3           #726D85   tertiary, labels
+--ink-4           #605B72   disabled, inactive tabs
+```
+
+**Note:** same tab-bar pattern as Midnight Kitchen — `#151419` is one step darker than `--surface` for separation.
+
+Softer and warmer than Midnight Kitchen — apricot and dusty blue read as evening rather than technical. The second dark option, for anyone who finds mint-on-slate too clinical.
+
+### 4.4 Category colours (calendar, tags)
+
+Per-theme, since they must sit legibly on that theme's background. Same seven categories throughout: chicken, beef, pork, fish, veg, lamb, other.
+
+**Hearth:**
+```
+chicken #E8A33D   beef #A33B2A   pork #D6837E
+fish    #4A8CA8   veg  #6B8F5E   lamb #8B4A5C   other #9B8264
+```
+
+**Ember:**
+```
+chicken #F5A623   beef #B03D14   pork #E0958A
+fish    #4A8CA8   veg  #5C8A3C   lamb #9A5266   other #A88860
+```
+
+**Seaglass:**
+```
+chicken #C77D11   beef #A33B2A   pork #C4746E
+fish    #2E7D96   veg  #3E7D4F   lamb #8B4A5C   other #7C8B95
+```
+
+**Clay:**
+```
+chicken #B8791E   beef #9C4A3C   pork #C08478
+fish    #4E7A88   veg  #7A8B6F   lamb #8A5A6E   other #9C8E7E
+```
+
+**Risograph:**
+```
+chicken #FFB020   beef #FF4F79   pork #FF9EBB
+fish    #2C6BED   veg  #1E8A5F   lamb #B057E0   other #5C5C5C
+```
+
+**Midnight Kitchen:**
+```
+chicken #E9B949   beef #E8646A   pork #E0A0A6
+fish    #5B9BD5   veg  #4ADE80   lamb #B084D6   other #8891A3
+```
+
+**Dusk:**
+```
+chicken #F2A65A   beef #E8646A   pork #E0A9AA
+fish    #5B7B9A   veg  #7FA96B   lamb #B58AC7   other #918CA3
+```
+
+Chosen per-theme for distinctness at 12px dot size, not realism — a dot legible on Hearth's cream is not automatically legible on Midnight Kitchen's slate.
+
+### 4.5 Typography
+
+Shared across all themes — type is not themed.
 
 | Role | Face | Usage |
 | --- | --- | --- |
@@ -676,9 +959,11 @@ Chosen for distinctness at 12px dot size, not for realism.
 | Body | Public Sans (400/500/600/700) | Everything else |
 | Data | IBM Plex Mono (500/600) | Quantities, timers, macros, counts |
 
-Rationale: Fraunces carries cookbook warmth without tipping into pastiche; Public Sans stays legible at small sizes under bad kitchen light; monospace for numbers means quantities align in a column and timers don't jitter as digits change width.
+Rationale: Fraunces carries cookbook warmth without tipping into pastiche and reads comfortably across all seven palettes, warm or cool, light or dark; Public Sans stays legible at small sizes under bad kitchen light; monospace for numbers means quantities align in a column and timers don't jitter as digits change width.
 
-### 4.4 Scale and spacing
+**Exception:** Risograph's chips and body labels may read better in a print-adjacent face (Karla, in the original mockup). If this divergence is kept, it's the one theme allowed a body-face override, declared on the `Theme` object as an optional `bodyFaceOverride`, not a silent exception.
+
+### 4.6 Scale and spacing
 
 ```
 Type:    11 / 12.5 / 14 / 16 / 20 / 24 / 32 / 44 (Cooking Mode)
@@ -686,9 +971,11 @@ Space:   4 / 8 / 12 / 16 / 18 / 24 / 32
 Radius:  6 (chips) / 10 (tiles) / 13 (cards, buttons) / 20 (pills)
 ```
 
-### 4.5 Signature element — the time split bar
+Risograph's card borders and offset shadows (§4.3) are additive to this scale, not a replacement for it.
 
-The one thing no other recipe app shows. A two-tone bar directly under the recipe title, splitting total time into hands-on (accent) and passive (amber), with a plain-language key beneath.
+### 4.7 Signature element — the time split bar
+
+The one thing no other recipe app shows. A two-tone bar directly under the recipe title, splitting total time into hands-on (`--accent`) and passive (`--amber`), with a plain-language key beneath.
 
 ```
 TIME                                    32 MIN
@@ -698,17 +985,107 @@ TIME                                    32 MIN
 
 It answers the question people actually have — *how much of my evening does this cost?* — which "32 min" alone never does. It appears on the recipe screen, the list rows, and the Cooking Mode header.
 
-### 4.6 Emoji photo tiles
+**This is the element that stress-tests a theme.** `--accent` and `--amber` must be distinguishable at 9px height, from three feet, in bright light. Checked across all seven:
 
-Until a recipe has a real photo, its `photo_emoji` renders as the thumbnail and hero: the emoji at large size (list rows ~28px, detail hero ~64px), centred on a `--surface-warm` tile with the standard tile radius. Deliberate and warm, not a broken-image placeholder. Every seeded recipe carries a hand-picked, dish-appropriate emoji (§9.1); user recipes default to 🍽️ and the emoji is editable in the recipe form.
+| Theme | --accent | --amber | Distinguishable? |
+| --- | --- | --- | --- |
+| Hearth | terracotta | amber | Yes — warm/warm but different enough in value |
+| Ember | orange | marigold | Yes, marginal — closest pairing in the set, worth a squint test on-device |
+| Seaglass | teal | copper | Yes — strongest pairing, different hues entirely |
+| Clay | clay-brown | sage-grey | Yes — different hues, both muted |
+| Risograph | hot pink | electric blue | Yes — maximum separation |
+| Midnight Kitchen | mint | slate-blue | Yes — high contrast against dark ground |
+| Dusk | apricot | dusty blue | Yes — warm/cool split reads clearly |
 
-### 4.7 Dark mode
+Ember is flagged because both tones sit in the same warm-orange family; it's the one theme worth an explicit on-device check once built, not just a contrast-ratio calculation.
 
-Slate & Fig, deferred to a later slice. Tokens map 1:1 so the switch is a theme swap, not a redesign.
+### 4.8 Emoji photo tiles
+
+Until a recipe has a real photo, its `photo_emoji` renders as the thumbnail and hero: the emoji at large size (list rows ~28px, detail hero ~64px), centred on a `--surface-warm` tile with the standard tile radius. Deliberate and warm, not a broken-image placeholder. Every seeded recipe carries a hand-picked, dish-appropriate emoji (§9.1); user recipes default to 🍽️ and the emoji is editable in the recipe form. Renders correctly in all seven themes since it only depends on `--surface-warm`, which every theme defines.
+
+### 4.9 Theme roster
+
+| id | Name | Mode | Status |
+| --- | --- | --- | --- |
+| `hearth` | Hearth | light | **Default** |
+| `ember` | Ember | light | Shipped |
+| `seaglass` | Seaglass | light | Shipped |
+| `clay` | Clay | light | Shipped |
+| `risograph` | Risograph | light | Shipped |
+| `midnightKitchen` | Midnight Kitchen | dark | Shipped |
+| `dusk` | Dusk | dark | Shipped |
+
+All seven pinned in §4.3 — nothing left open for this roster. Two dark options ship (Midnight Kitchen, Dusk), covering both a technical-cool and a warm-evening dark preference. Replaces the earlier "Slate & Fig" placeholder entirely.
+
+The architecture is roster-agnostic beyond these seven: adding an eighth theme is one entry in the `themes` record plus one row in the picker grid. No structural work.
+
+### 4.10 Theme picker
+
+Settings → Theme. **Two steps: browse, then preview before committing.**
+
+**Step 1 — grid.** Every theme as a small card, tap to open its preview.
 
 ```
---bg #23212B  --surface #2C2A36  --accent #E4915E  --amber #6D5F7E  --ink #EDE9F0
+┌─────────────────────────────────┐
+│  ← Theme                        │
+│                                 │
+│  ┌─────────┐  ┌─────────┐       │
+│  │▓▓▓▓░░░░ │  │▓▓▓▓░░░░ │       │
+│  │ Hearth  │  │ Ember   │       │
+│  │ ● active│  │         │       │
+│  └─────────┘  └─────────┘       │
+│  ┌─────────┐  ┌─────────┐       │
+│  │▓▓▓▓░░░░ │  │▓▓▓▓░░░░ │       │
+│  │ Seaglass│  │ Clay    │       │
+│  └─────────┘  └─────────┘       │
+│  ┌─────────┐  ┌─────────┐       │
+│  │▓▓▓▓░░░░ │  │▓▓▓▓░░░░ │       │
+│  │Risograph│  │Midnight │       │
+│  └─────────┘  └─────────┘       │
+│  ┌─────────┐                    │
+│  │▓▓▓▓░░░░ │                    │
+│  │ Dusk    │                    │
+│  └─────────┘                    │
+└─────────────────────────────────┘
 ```
+
+Each card shows a miniature time-split bar in that theme's `--accent`/`--amber` — the one element that actually differentiates them (§4.7) — plus the theme name and an "active" marker on the current selection. Tapping a card, including the active one, opens its full preview.
+
+**Step 2 — full preview.** Not a swatch strip: **the actual recipe detail screen (§5.5), rendered live in the tapped theme**, so the decision is made against real content — the time split bar, ingredient rows, macro tiles, the primary button — not an abstraction of it.
+
+```
+┌─────────────────────────────────┐
+│  ← Back              Seaglass   │
+│                                 │
+│  🍛  Thai Green Curry           │
+│      Weeknight staple.          │
+│                                 │
+│  ★4.5  Chicken  Cooked 7×  Hob  │
+│                                 │
+│  TIME                    32 MIN │
+│  ██████████░░░░░░░░░░░░░░░░░░░  │
+│  ■ 14m hands-on ■ 18m simmering │
+│                                 │
+│  INGREDIENTS           [2] 4  6 │
+│  Chicken thigh            400 g │
+│  Coconut milk             400 ml│
+│  Green curry paste        3 tbsp│
+│                                 │
+│  612 kcal  38g P  21g C  41g F  │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │     Start cooking         │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │      Apply theme          │  │
+│  └───────────────────────────┘  │
+└─────────────────────────────────┘
+```
+
+The preview uses a fixed sample recipe (the same Thai Green Curry used throughout this spec's mockups, shown here with its emoji tile per §4.8), not the person's own data — consistent content across themes makes the comparison fair, and it works even on a fresh install before any real recipe exists.
+
+**Apply theme** writes the `theme` setting (§2.3), closes back to Settings, and the whole app reflects the change immediately — no animation, no restart, per §4.1. **Back** returns to the grid with no change made. Nothing commits from Step 1 alone; a tap on a card is always "show me," never "set this."
 
 ## 5. Screens
 
@@ -1015,7 +1392,7 @@ Tap a cook → log editor:
 
 **Settings:**
 
-- Theme (Ember / Slate & Fig)
+- **Theme** — picker (§4.10), defaults to Hearth, seven shipped (§4.9)
 - Recommendation weight sliders (§6.1)
 - **Recency window** — days to exclude recently cooked recipes (0–30, default 5)
 - Default serving size
@@ -1460,7 +1837,11 @@ Two runners is a deliberate trade: Vitest for the 90% that's pure logic (fast, w
 
 Home (with plan / without plan / with leftovers / empty library), Recipe detail (full data / partial macros / emoji tile), Cooking Mode (running / paused / behind), Member profile (5 favourites / 0 favourites), Debug screen.
 
-Snapshots exist to catch unintended layout drift, not to specify design. Rendered against both themes.
+Snapshots exist to catch unintended layout drift, not to specify design.
+
+**Rendered against every theme in the roster (§4.9), not just two.** A theme that's never rendered in a test is a theme that's silently broken — this suite is the only thing that catches a hardcoded hex literal, since the bug is invisible until someone switches. Add a theme, the matrix grows automatically.
+
+Plus a dedicated token-completeness test: every theme in the record must define every key in `ColourTokens` and `CategoryColours`. TypeScript should catch this at compile time; the test catches it if someone reaches for a cast.
 
 ### 11.3 Conventions
 
@@ -1559,7 +1940,7 @@ Each slice ends at a working app. No slice depends on a later one.
 | # | Slice | Contents |
 | --- | --- | --- |
 | **0** | Scaffolding | Expo SDK 54, dependency allowlist installed, Vitest + jest-expo, log store + Debug screen, CI-able npm test |
-| **1** | Foundation | SQLite schema via migrations (FK pragma, WAL, user_version), Ember tokens, tab shell, first-run profile |
+| **1** | Foundation | SQLite schema via migrations (FK pragma, WAL, user_version), theme provider + Hearth tokens, tab shell, first-run profile |
 | **2** | Seed data | Generation tooling + full seeded library: ~40 recipes with emoji, ~250–350 costed ingredients |
 | **3** | Recipes | List (emoji tiles), search, sort, filter, detail screen, scaling, macros, cost, manual CRUD, copy-and-tweak |
 | **4** | Cooking | Cook Now → CookLog → derived counts, **leftovers (create/eat/bin/expire)**, calendar (cooked layer), "I already cooked this" |
@@ -1602,7 +1983,7 @@ Sessions are sized to end at a committable state. Use the current Sonnet-class m
 
 - SQLite via expo-sqlite; DB-open helper is the only place connections are made — sets `PRAGMA foreign_keys = ON` and WAL (§2.6)
 - Migration runner on `PRAGMA user_version`; the full §2.3 DDL is migration 001 (visibility, photo_emoji, leftover, sync_secret all inline — nothing ALTERed on later)
-- Ember tokens as a theme object; no hardcoded colours anywhere
+- Theme provider, `useTheme()` hook, Hearth as the sole theme initially (remaining six land in S17); no hardcoded colours anywhere
 - Tab navigator shell, five empty screens; fonts loaded (Fraunces, Public Sans, IBM Plex Mono)
 - First-run: mint person_id, assign random food emoji, create profile row
 - **Verify:** app boots, tabs navigate, DB has all tables, profile row exists with an emoji; an integration test proves a cascade actually cascades
@@ -1769,8 +2150,10 @@ Sessions are sized to end at a committable state. Use the current Sonnet-class m
 
 *Read first: §4.7, §11.2 (snapshot list)*
 
-- Dark mode (Slate & Fig)
-- Full snapshot suite (§11.2), both themes
+- Remaining six themes: Ember, Seaglass, Clay, Risograph, Midnight Kitchen, Dusk (§4.3 — all pinned, no design work left, just token entry)
+- Theme picker: grid (§4.10 step 1) → full-preview screen rendering the real recipe detail component in the tapped theme (§4.10 step 2) → Apply
+- Risograph's hard-border and body-face-override cases (§4.3, §4.5) — the two structural edge cases in the token system
+- Full snapshot suite (§11.2), all seven themes
 - Empty states across every screen
 - **Verify:** snapshot suite green; every screen has a designed empty state
 
@@ -1779,7 +2162,9 @@ Sessions are sized to end at a committable state. Use the current Sonnet-class m
 Carried from Memento, plus new:
 
 - **No hardcoded names.** Nothing assumes "Lema" or "Tara".
-- **All colours from the theme object.** No hex literals in components.
+- **All colours from the theme object.** No hex literals in components, ever. Colour comes from `useTheme()` or it doesn't exist. This is the constraint the whole theming system rests on — a stray literal is a bug that only surfaces when someone switches theme.
+- **Every theme defines every token.** No optional keys, no fallbacks, no theme-specific tokens.
+- **Type is not themed.** Faces and scale are fixed across all themes.
 - **Photos: unconditional resize.** See §8. Non-negotiable.
 - **Counts are derived.** Never store a cook count, rating average, or streak. (`leftover` is the sole sanctioned stored-state exception — §2.5.)
 - **`PRAGMA foreign_keys = ON` on every connection**, app and tests, via the single DB-open helper. No other code opens connections. (§2.6)
@@ -1842,6 +2227,20 @@ Deferred, not forgotten:
 - ~~Name~~ → **Preppie stays.** It's cute, and the household's other member gets a vote.
 
 ## 17. Changelog
+
+**v1.4**
+
+- **Design system replaced with a multi-theme architecture** (§4.1–4.10). Section renumbered throughout.
+- **Seven themes shipped, all fully pinned:** Hearth (new default), Ember, Seaglass, Clay, Risograph, Midnight Kitchen, Dusk — no "Slate & Fig" placeholder, no open TBD slots (§4.3, §4.9)
+- Colour tokens formalised as a required contract using the existing `--amber`/`--green`/`--red`/`--surface-warm` names — semantic, not descriptive; every theme fills every slot (§4.2)
+- Category colours now defined per-theme, not once globally (§4.4)
+- Time-split bar contrast checked explicitly across all seven; Ember flagged as the closest accent/amber pairing, worth an on-device check (§4.7)
+- Emoji photo tiles (§4.8, carried over unchanged) confirmed to work across all seven since they depend only on `--surface-warm`
+- **Theme picker redesigned as two steps:** a grid to browse, then a full live preview of the actual recipe detail screen in the tapped theme before Apply (§4.10)
+- Two structural edge cases documented: Risograph's hard borders, optional per-theme body-face override (§4.3, §4.5)
+- Snapshot suite (§11.2) now renders every theme, not two, plus a token-completeness test
+- Build slices and sessions updated: S1 builds the provider with Hearth only; S17 lands the remaining six themes plus the two-step picker (§13, §14)
+- Constraints (§15) tightened: theming constraint split into three explicit rules
 
 **v1.3**
 

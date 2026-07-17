@@ -23,6 +23,7 @@ function recipe(overrides: Partial<EnrichedRecipe> = {}): EnrichedRecipe {
     updatedAt: new Date(2026, 0, id).toISOString(),
     tags: [],
     ingredients: [],
+    steps: [],
     activeSeconds: 600,
     passiveSeconds: 0,
     totalSeconds: 600,
@@ -120,11 +121,11 @@ describe('chip availability threshold (§5.3)', () => {
   });
 });
 
-describe('relaxation backfill (§5.3)', () => {
+describe('relaxation backfill (§5.3) — picker only, relax: true', () => {
   it('backfills to 3 and marks the result relaxed when fewer than 3 match', () => {
     const matching = recipe({ tags: ['chicken'] });
     const others = Array.from({ length: 5 }, () => recipe({ tags: ['beef'] }));
-    const result = runRecipeQuery([matching, ...others], { chips: ['chicken'], sort: 'name' });
+    const result = runRecipeQuery([matching, ...others], { chips: ['chicken'], sort: 'name', relax: true });
     expect(result.relaxed).toBe(true);
     expect(result.items.length).toBe(3);
     expect(result.items[0].recipe.id).toBe(matching.id);
@@ -132,9 +133,25 @@ describe('relaxation backfill (§5.3)', () => {
 
   it('does not relax when 3 or more already match', () => {
     const matches = Array.from({ length: 4 }, () => recipe({ tags: ['chicken'] }));
-    const result = runRecipeQuery(matches, { chips: ['chicken'], sort: 'name' });
+    const result = runRecipeQuery(matches, { chips: ['chicken'], sort: 'name', relax: true });
     expect(result.relaxed).toBe(false);
     expect(result.items.length).toBe(4);
+  });
+});
+
+describe('Recipes tab hard filter (§5.4) — no relax by default', () => {
+  it('shows every match, however few, without backfilling', () => {
+    const matching = recipe({ tags: ['chicken'] });
+    const others = Array.from({ length: 5 }, () => recipe({ tags: ['beef'] }));
+    const result = runRecipeQuery([matching, ...others], { chips: ['chicken'], sort: 'name' });
+    expect(result.relaxed).toBe(false);
+    expect(result.items.map((i) => i.recipe.id)).toEqual([matching.id]);
+  });
+
+  it('shows zero results rather than padding when nothing matches', () => {
+    const others = Array.from({ length: 5 }, () => recipe({ tags: ['beef'] }));
+    const result = runRecipeQuery(others, { chips: ['chicken'], sort: 'name' });
+    expect(result.items).toHaveLength(0);
   });
 });
 

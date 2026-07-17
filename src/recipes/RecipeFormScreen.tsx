@@ -4,7 +4,6 @@
 // read-only timeline preview — the cheap 90% of the visual editor.
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Switch,
@@ -13,7 +12,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
+import { capitalize } from '../lib/capitalize';
+import { formatDuration } from '../lib/formatDuration';
 import { theme } from '../theme/tokens';
 import { createUserIngredient, searchCanonicalIngredients, type CanonicalIngredientOption } from './ingredientSearch';
 import type { RecipeDraft, RecipeIngredientDraft, RecipeStepDraft } from './recipeSave';
@@ -54,6 +56,7 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
   const [ingredientQuery, setIngredientQuery] = useState('');
   const [suggestions, setSuggestions] = useState<CanonicalIngredientOption[]>([]);
   const [saving, setSaving] = useState(false);
+  const { modal, notice } = useConfirmModal();
 
   const sequentialOffsets = useMemo(
     () => (draft.timelineMode === 'sequential' ? deriveSequentialOffsets(draft.steps) : null),
@@ -157,7 +160,7 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
 
   async function handleSave() {
     if (!draft.name.trim()) {
-      Alert.alert('Name required', 'Give the recipe a name before saving.');
+      notice('Name required', 'Give the recipe a name before saving.');
       return;
     }
     setSaving(true);
@@ -221,7 +224,7 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
                 onPress={() => update({ timelineMode: mode })}
                 style={[styles.segmentButton, draft.timelineMode === mode && styles.segmentButtonActive]}
               >
-                <Text style={[styles.segmentText, draft.timelineMode === mode && styles.segmentTextActive]}>{mode}</Text>
+                <Text style={[styles.segmentText, draft.timelineMode === mode && styles.segmentTextActive]}>{capitalize(mode)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -232,7 +235,7 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
       <View style={styles.tagWrap}>
         {TAG_SUGGESTIONS.map((tag) => (
           <TouchableOpacity key={tag} onPress={() => toggleTag(tag)} style={[styles.tagChip, draft.tags.includes(tag) && styles.tagChipActive]}>
-            <Text style={[styles.tagChipText, draft.tags.includes(tag) && styles.tagChipTextActive]}>{tag}</Text>
+            <Text style={[styles.tagChipText, draft.tags.includes(tag) && styles.tagChipTextActive]}>{capitalize(tag)}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -264,13 +267,13 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
               onChangeText={(v) => updateIngredient(index, { displayName: v })}
               placeholder="display name"
             />
-            <TouchableOpacity onPress={() => moveIngredient(index, -1)}>
+            <TouchableOpacity onPress={() => moveIngredient(index, -1)} style={styles.iconButton} hitSlop={8}>
               <Text style={styles.reorderLink}>↑</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => moveIngredient(index, 1)}>
+            <TouchableOpacity onPress={() => moveIngredient(index, 1)} style={styles.iconButton} hitSlop={8}>
               <Text style={styles.reorderLink}>↓</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => removeIngredient(index)}>
+            <TouchableOpacity onPress={() => removeIngredient(index)} style={styles.iconButton} hitSlop={8}>
               <Text style={styles.removeLink}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -321,26 +324,30 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
         </View>
       )}
 
+      <View style={styles.stepsSection}>
       <Text style={styles.sectionTitle}>STEPS</Text>
+      <View style={styles.stepsStack}>
       {draft.steps.map((step, index) => (
         <View key={index} style={styles.ingredientCard}>
-          <View style={styles.inlineRow}>
+          <View style={styles.stepHeaderRow}>
             <View style={styles.segmented}>
               {(['prep', 'cook'] as Phase[]).map((p) => (
                 <TouchableOpacity key={p} onPress={() => updateStep(index, { phase: p })} style={[styles.segmentButton, step.phase === p && styles.segmentButtonActive]}>
-                  <Text style={[styles.segmentText, step.phase === p && styles.segmentTextActive]}>{p}</Text>
+                  <Text style={[styles.segmentText, step.phase === p && styles.segmentTextActive]}>{capitalize(p)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity onPress={() => moveStep(index, -1)}>
-              <Text style={styles.reorderLink}>↑</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => moveStep(index, 1)}>
-              <Text style={styles.reorderLink}>↓</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => removeStep(index)}>
-              <Text style={styles.removeLink}>✕</Text>
-            </TouchableOpacity>
+            <View style={styles.stepControls}>
+              <TouchableOpacity onPress={() => moveStep(index, -1)} style={styles.iconButton} hitSlop={8}>
+                <Text style={styles.reorderLink}>↑</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => moveStep(index, 1)} style={styles.iconButton} hitSlop={8}>
+                <Text style={styles.reorderLink}>↓</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => removeStep(index)} style={styles.iconButton} hitSlop={8}>
+                <Text style={styles.removeLink}>✕</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <TextInput
             style={styles.input}
@@ -359,7 +366,7 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
             </View>
           )}
           <View style={styles.inlineRow}>
-            <Text style={styles.switchLabel}>Duration (min)</Text>
+            <Text style={styles.switchLabel}>Duration (mins)</Text>
             <TextInput
               style={[styles.input, styles.flexSmall]}
               keyboardType="numeric"
@@ -369,7 +376,7 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
             />
             {draft.timelineMode === 'parallel' && (
               <>
-                <Text style={styles.switchLabel}>Offset (min)</Text>
+                <Text style={styles.switchLabel}>Offset (mins)</Text>
                 <TextInput
                   style={[styles.input, styles.flexSmall]}
                   keyboardType="numeric"
@@ -384,47 +391,66 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
             <View style={styles.segmented}>
               {(['active', 'passive'] as Effort[]).map((e) => (
                 <TouchableOpacity key={e} onPress={() => updateStep(index, { effort: e })} style={[styles.segmentButton, step.effort === e && styles.segmentButtonActive]}>
-                  <Text style={[styles.segmentText, step.effort === e && styles.segmentTextActive]}>{e}</Text>
+                  <Text style={[styles.segmentText, step.effort === e && styles.segmentTextActive]}>{capitalize(e)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={styles.switchLabel}>Important</Text>
+            <Text style={styles.switchLabel}>Needs alert</Text>
             <Switch value={step.important} onValueChange={(v) => updateStep(index, { important: v })} />
           </View>
           {sequentialOffsets && (
-            <Text style={styles.derivedOffset}>Derived start: {Math.round(sequentialOffsets[index] / 60)} min</Text>
+            <Text style={styles.derivedOffset}>Derived start: {formatDuration(sequentialOffsets[index])}</Text>
           )}
         </View>
       ))}
-      <View style={styles.inlineRow}>
-        <TouchableOpacity onPress={() => update({ steps: [...draft.steps, emptyStep('prep')] })}>
+      </View>
+      <View style={styles.addStepRow}>
+        <TouchableOpacity style={styles.addStepButton} onPress={() => update({ steps: [...draft.steps, emptyStep('prep')] })}>
           <Text style={styles.addLink}>+ Add prep step</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => update({ steps: [...draft.steps, emptyStep('cook')] })}>
+        <TouchableOpacity style={styles.addStepButton} onPress={() => update({ steps: [...draft.steps, emptyStep('cook')] })}>
           <Text style={styles.addLink}>+ Add cook step</Text>
         </TouchableOpacity>
       </View>
+      </View>
 
       <Text style={styles.sectionTitle}>TIMELINE PREVIEW</Text>
-      <View style={styles.timelinePreview}>
+      <View style={styles.timelinePreviewCard}>
         {totalSeconds === 0 && <Text style={styles.switchLabel}>Add step durations to preview the timeline.</Text>}
-        {draft.steps.map((step, index) => {
-          const width = totalSeconds > 0 ? Math.max(4, ((step.durationSeconds ?? 0) / totalSeconds) * 100) : 0;
-          return (
-            <View
-              key={index}
-              style={[
-                styles.timelineBlock,
-                { width: `${width}%`, backgroundColor: step.effort === 'passive' ? theme.colors.amber : theme.colors.accent },
-              ]}
-            />
-          );
-        })}
+        {totalSeconds > 0 && (
+          <>
+            <View style={styles.timelinePreview}>
+              {draft.steps.map((step, index) => {
+                const width = Math.max(4, ((step.durationSeconds ?? 0) / totalSeconds) * 100);
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.timelineBlock,
+                      { width: `${width}%`, backgroundColor: step.effort === 'passive' ? theme.colors.amber : theme.colors.accent },
+                    ]}
+                  />
+                );
+              })}
+            </View>
+            <View style={styles.timelineLegendRow}>
+              <Text style={styles.timelineLegendItem}>
+                <Text style={{ color: theme.colors.accent }}>■ </Text>Active
+              </Text>
+              <Text style={styles.timelineLegendItem}>
+                <Text style={{ color: theme.colors.amber }}>■ </Text>Passive
+              </Text>
+              <Text style={styles.timelineLegendTotal}>{formatDuration(totalSeconds)} total</Text>
+            </View>
+          </>
+        )}
       </View>
 
       <TouchableOpacity style={styles.primaryButton} onPress={handleSave} disabled={saving}>
         <Text style={styles.primaryButtonText}>{saving ? 'Saving…' : 'Save recipe'}</Text>
       </TouchableOpacity>
+
+      {modal}
     </ScrollView>
   );
 }
@@ -443,7 +469,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.card,
   },
   emojiPickText: { fontSize: theme.fontSize.md, lineHeight: theme.fontSize.md + 2 },
-  label: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  label: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2, marginBottom: theme.spacing.xs },
   input: {
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -455,7 +481,7 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
     backgroundColor: theme.colors.surface,
   },
-  row: { flexDirection: 'row', gap: theme.spacing.base },
+  row: { flexDirection: 'row', gap: theme.spacing.base, marginBottom: theme.spacing.base },
   flexHalf: { flex: 1 },
   flex1: { flex: 1 },
   flexSmall: { width: 76 },
@@ -494,10 +520,29 @@ const styles = StyleSheet.create({
   tagChipTextActive: { color: theme.colors.accentFg },
   sectionTitle: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.5, marginTop: theme.spacing.sm },
   inlineRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.sm },
-  ingredientCard: { gap: theme.spacing.sm, padding: theme.spacing.base, backgroundColor: theme.colors.surfaceWarm, borderRadius: theme.radius.card },
+  stepHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm },
+  stepControls: { flexDirection: 'row', gap: theme.spacing.xs },
+  ingredientCard: { gap: theme.spacing.md, padding: theme.spacing.base, backgroundColor: theme.colors.surfaceWarm, borderRadius: theme.radius.card },
+  stepsSection: { gap: theme.spacing.sm },
+  stepsStack: { gap: theme.spacing.base },
+  iconButton: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 6,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.chipBg,
+  },
   reorderLink: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.ink3, fontSize: theme.fontSize.base },
   removeLink: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.red, fontSize: theme.fontSize.sm },
   addLink: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText, fontSize: theme.fontSize.sm },
+  addStepRow: { flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.xs },
+  addStepButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.accentTint,
+  },
   switchLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
   suggestionRow: {
     alignSelf: 'flex-start',
@@ -509,8 +554,22 @@ const styles = StyleSheet.create({
   suggestionText: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink },
   newIngredientRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.sm },
   derivedOffset: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, fontStyle: 'italic' },
-  timelinePreview: { flexDirection: 'row', height: 20, borderRadius: theme.radius.card, overflow: 'hidden', backgroundColor: theme.colors.chipBg },
+  timelinePreviewCard: {
+    gap: theme.spacing.sm,
+    padding: theme.spacing.base,
+    backgroundColor: theme.colors.surfaceWarm,
+    borderRadius: theme.radius.card,
+  },
+  timelinePreview: { flexDirection: 'row', height: 20, borderRadius: theme.radius.pill, overflow: 'hidden', backgroundColor: theme.colors.chipBg },
   timelineBlock: { height: '100%' },
+  timelineLegendRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: theme.spacing.base },
+  timelineLegendItem: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+  timelineLegendTotal: {
+    marginLeft: 'auto',
+    fontFamily: theme.fonts.data.medium,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.ink3,
+  },
   primaryButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.card, paddingVertical: theme.spacing.base, alignItems: 'center', marginTop: theme.spacing.base },
   primaryButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
 });

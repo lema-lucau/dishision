@@ -10,6 +10,8 @@ interface ActionButtonProps {
   label: string;
   onPress: () => void;
   variant?: ActionButtonVariant;
+  /** Stretches to share equal width with its siblings in a row (§5.5 evenly-spaced action rows). */
+  fill?: boolean;
 }
 
 const VARIANT_STYLES: Record<ActionButtonVariant, { bg: string; fg: string }> = {
@@ -20,11 +22,16 @@ const VARIANT_STYLES: Record<ActionButtonVariant, { bg: string; fg: string }> = 
   danger: { bg: theme.colors.redTint, fg: theme.colors.red },
 };
 
-export function ActionButton({ label, onPress, variant = 'neutral' }: ActionButtonProps) {
+export function ActionButton({ label, onPress, variant = 'neutral', fill = false }: ActionButtonProps) {
   const { bg, fg } = VARIANT_STYLES[variant];
   return (
-    <TouchableOpacity onPress={onPress} style={[styles.button, { backgroundColor: bg }]}>
-      <Text style={[styles.label, { color: fg }]}>{label}</Text>
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.button, fill && styles.buttonFill, { backgroundColor: bg }]}
+    >
+      <Text style={[styles.label, { color: fg }]} numberOfLines={1}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -35,6 +42,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radius.pill,
+  },
+  buttonFill: {
+    flex: 1,
+    alignSelf: 'stretch',
+    alignItems: 'center',
   },
   label: {
     fontFamily: theme.fonts.body.semiBold,
