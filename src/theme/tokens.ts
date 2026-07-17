@@ -11,12 +11,17 @@ export const colors = {
   accent: '#D94F1E',
   accentText: '#B03D14',
   accentFg: '#FFF6EF',
+  accentTint: '#FBE3D6',
 
   amber: '#F5A623',
   amberText: '#9A6410',
+  amberTint: '#FDEDD3',
 
   green: '#5C8A3C',
+  greenTint: '#E6EFDD',
+
   red: '#C0392B',
+  redTint: '#F8DCD7',
 
   ink: '#2A1F17',
   ink2: '#7E6A56',
