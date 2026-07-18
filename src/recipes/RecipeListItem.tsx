@@ -6,11 +6,11 @@ import { EmojiTile } from './EmojiTile';
 
 interface RecipeListItemProps {
   recipe: EnrichedRecipe;
-  matchedInNotes?: boolean;
+  matchedNote?: string | null;
   onPress: () => void;
 }
 
-export function RecipeListItem({ recipe, matchedInNotes, onPress }: RecipeListItemProps) {
+export function RecipeListItem({ recipe, matchedNote, onPress }: RecipeListItemProps) {
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       <EmojiTile emoji={recipe.photoEmoji} />
@@ -27,7 +27,11 @@ export function RecipeListItem({ recipe, matchedInNotes, onPress }: RecipeListIt
         <View style={styles.metaRow}>
           {recipe.avgRating != null && <Text style={styles.metaText}>★{recipe.avgRating.toFixed(1)}</Text>}
           <Text style={styles.metaText}>Cooked {recipe.timesCooked}×</Text>
-          {matchedInNotes && <Text style={styles.noteMatch}>matched in your notes</Text>}
+          {matchedNote != null && (
+            <Text style={styles.noteMatch} numberOfLines={1}>
+              matched in your notes: "{matchedNote}"
+            </Text>
+          )}
         </View>
       </View>
     </TouchableOpacity>

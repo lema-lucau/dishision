@@ -2,12 +2,14 @@ import { StyleSheet, Text, View } from 'react-native';
 import { theme } from '../theme/tokens';
 
 // Placeholder for S1 (§13). The real Home — plan card, leftovers strip,
-// recommendations, "I'm feeling…" — lands in S6-S9.
+// recommendations, "I'm feeling…" — lands in S9, on top of the
+// recommendation engine (§6) and the leftover/cook-log data layer S7 built
+// (src/cooking/leftoverMutations.ts, src/cooking/cookLog.ts).
 export function HomeScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Home</Text>
-      <Text style={styles.subtitle}>Today's plan and recommendations arrive in S6-S9.</Text>
+      <Text style={styles.subtitle}>Today's plan and recommendations arrive in S9.</Text>
     </View>
   );
 }

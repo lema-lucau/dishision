@@ -48,11 +48,11 @@ export function MealSection({
             <Text style={styles.emptyText}>No recipes yet.</Text>
           ) : layout === 'list' ? (
             <View style={styles.list}>
-              {pageItems.map(({ recipe, matchedInNotes }) => (
+              {pageItems.map(({ recipe, matchedNote }) => (
                 <RecipeListItem
                   key={recipe.id}
                   recipe={recipe}
-                  matchedInNotes={matchedInNotes}
+                  matchedNote={matchedNote}
                   onPress={() => onSelectRecipe(recipe)}
                 />
               ))}

@@ -1,10 +1,9 @@
-// §5.5 recipe detail. Cook Now / Cooking Mode / cook logging are stubbed
-// pending S7-S8; everything else — scaling, macros, cost, pantry dots,
-// timeline preview — is real.
+// §5.5 recipe detail.
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { capitalize } from '../lib/capitalize';
+import { formatCurrency } from '../lib/currency';
 import { formatDuration } from '../lib/formatDuration';
 import { formatScaledQuantity, scaleQuantity } from '../lib/scaling';
 import { theme } from '../theme/tokens';
@@ -16,6 +15,7 @@ import { TimeSplitBar } from './TimeSplitBar';
 
 interface RecipeDetailScreenProps {
   recipe: EnrichedRecipe;
+  currencySymbol: string;
   onBack: () => void;
   onEdit: () => void;
   onCopy: () => void;
@@ -23,14 +23,13 @@ interface RecipeDetailScreenProps {
   onToggleFavourite: () => void;
   onSetExclusion: (kind: 'never_again' | 'not_tonight') => void;
   onClearExclusion: () => void;
-}
-
-function formatCurrency(value: number): string {
-  return `€${value.toFixed(2)}`;
+  onStartCooking: () => void;
+  onAlreadyCookedThis: () => void;
 }
 
 export function RecipeDetailScreen({
   recipe,
+  currencySymbol,
   onBack,
   onEdit,
   onCopy,
@@ -38,10 +37,12 @@ export function RecipeDetailScreen({
   onToggleFavourite,
   onSetExclusion,
   onClearExclusion,
+  onStartCooking,
+  onAlreadyCookedThis,
 }: RecipeDetailScreenProps) {
   const [servings, setServings] = useState(recipe.baseServings);
   const [stepsExpanded, setStepsExpanded] = useState(false);
-  const { modal, notice, confirm } = useConfirmModal();
+  const { modal, confirm } = useConfirmModal();
 
   const scaledIngredients = useMemo(
     () =>
@@ -133,7 +134,7 @@ export function RecipeDetailScreen({
       )}
       {recipe.costPerServing != null && (
         <Text style={styles.costLine}>
-          ~{formatCurrency(recipe.costPerServing)} per serving
+          ~{formatCurrency(recipe.costPerServing, currencySymbol)} per serving
           {recipe.hasStaleCost ? ' · some prices may be out of date' : ''}
         </Text>
       )}
@@ -194,16 +195,10 @@ export function RecipeDetailScreen({
         </View>
       )}
 
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={() => notice('Cooking Mode', 'Arrives in a later slice.')}
-      >
+      <TouchableOpacity style={styles.primaryButton} onPress={onStartCooking}>
         <Text style={styles.primaryButtonText}>Start cooking</Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={() => notice('Cook log', 'Arrives in a later slice.')}
-      >
+      <TouchableOpacity style={styles.secondaryButton} onPress={onAlreadyCookedThis}>
         <Text style={styles.secondaryButtonText}>I already cooked this</Text>
       </TouchableOpacity>
 
@@ -304,7 +299,7 @@ const styles = StyleSheet.create({
   timelinePercentText: {
     fontFamily: theme.fonts.data.semiBold,
     fontSize: theme.fontSize.xs,
-    color: '#FFFFFF',
+    color: theme.colors.accentFg,
   },
   stepsList: { gap: theme.spacing.sm },
   stepRow: {

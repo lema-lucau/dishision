@@ -3,5 +3,5 @@
 module.exports = {
   preset: 'jest-expo',
   testMatch: ['**/src/test/**/*.test.tsx'],
-  setupFiles: ['<rootDir>/node_modules/react-native-safe-area-context/jest/mock.tsx'],
+  setupFiles: ['<rootDir>/jest.setup.js'],
 };

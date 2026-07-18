@@ -1,27 +1,741 @@
-import { StyleSheet, Text, View } from 'react-native';
+// §5.9 Cook log: search, filterable/sortable history in grid or list view,
+// pagination, multi-select tag filters, long-press or multi-select delete,
+// and a log editor (stars, quick tags, free-text fields — photos and
+// substitutions with promote-to-recipe are explicitly S10 per spec).
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { DatePickerModal } from '../components/DatePickerModal';
+import { useConfirmModal } from '../components/useConfirmModal';
+import { deleteCookLog, loadCookLogs, updateCookLog, type CookLogDraft, type CookLogRow } from '../cooking/cookLog';
+import { useDb } from '../db/DbContext';
+import { formatShortDate } from '../lib/formatDate';
+import { EmojiTile } from '../recipes/EmojiTile';
 import { theme } from '../theme/tokens';
 
-// Placeholder for S1 (§13). Cook history and log editing arrive in S7, S10.
-export function CookLogScreen() {
+const QUICK_TAGS = ['too salty', 'perfect', 'too slow', 'too bland', 'would repeat', 'too much effort'];
+const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
+type SortKey = 'date' | 'rating';
+
+interface CookLogScreenProps {
+  /** Set by the Plan tab when tapping a cooked meal — jumps straight into that log's editor. */
+  focusLogId?: number | null;
+  onFocusHandled?: () => void;
+}
+
+export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps) {
+  const db = useDb();
+  const [logs, setLogs] = useState<CookLogRow[] | null>(null);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<SortKey>('date');
+  const [minStars, setMinStars] = useState<number | null>(null);
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [dateFrom, setDateFrom] = useState<string | null>(null);
+  const [dateTo, setDateTo] = useState<string | null>(null);
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid');
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [editing, setEditing] = useState<CookLogRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CookLogRow | 'bulk' | null>(null);
+  const [notFoundNotice, setNotFoundNotice] = useState(false);
+  const { modal } = useConfirmModal();
+
+  const reload = useCallback(async () => {
+    const rows = await loadCookLogs(db, {
+      minStars: minStars ?? undefined,
+      tags: selectedTags.size > 0 ? Array.from(selectedTags) : undefined,
+      dateFrom: dateFrom ? `${dateFrom}T00:00:00.000Z` : undefined,
+      dateTo: dateTo ? `${dateTo}T23:59:59.999Z` : undefined,
+    });
+    const sorted = [...rows].sort((a, b) =>
+      sort === 'date' ? b.cookedAt.localeCompare(a.cookedAt) : (b.stars ?? -1) - (a.stars ?? -1),
+    );
+    setLogs(sorted);
+  }, [db, sort, minStars, selectedTags, dateFrom, dateTo]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, sort, minStars, selectedTags, dateFrom, dateTo, pageSize]);
+
+  useEffect(() => {
+    if (!focusLogId) return;
+    loadCookLogs(db, { logId: focusLogId }).then((rows) => {
+      if (rows[0]) setEditing(rows[0]);
+      else setNotFoundNotice(true);
+      onFocusHandled?.();
+    });
+  }, [focusLogId, db, onFocusHandled]);
+
+  function toggleTagFilter(tag: string) {
+    setSelectedTags((tags) => {
+      const next = new Set(tags);
+      if (next.has(tag)) next.delete(tag);
+      else next.add(tag);
+      return next;
+    });
+  }
+
+  function toggleSelected(id: number) {
+    setSelectedIds((ids) => {
+      const next = new Set(ids);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    for (const id of selectedIds) {
+      await deleteCookLog(db, id);
+    }
+    setSelectedIds(new Set());
+    setSelectMode(false);
+    setDeleteTarget(null);
+    await reload();
+  }
+
+  async function handleSingleDelete(log: CookLogRow) {
+    await deleteCookLog(db, log.id);
+    setDeleteTarget(null);
+    await reload();
+  }
+
+  function handlePress(log: CookLogRow) {
+    if (selectMode) toggleSelected(log.id);
+    else setEditing(log);
+  }
+
+  function handleLongPress(log: CookLogRow) {
+    if (!selectMode) setDeleteTarget(log);
+  }
+
+  if (editing) {
+    return (
+      <CookLogEditor
+        log={editing}
+        onCancel={() => setEditing(null)}
+        onSaved={async () => {
+          setEditing(null);
+          await reload();
+        }}
+        onDeleted={async () => {
+          setEditing(null);
+          await reload();
+        }}
+      />
+    );
+  }
+
+  const searched = search.trim()
+    ? (logs ?? []).filter((log) => {
+        const needle = search.trim().toLowerCase();
+        const haystack = [log.recipeName, log.notes, log.whatWentWell, log.whatToChange, ...log.quickTags]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(needle);
+      })
+    : logs ?? [];
+
+  const totalPages = Math.max(1, Math.ceil(searched.length / pageSize));
+  const clampedPage = Math.min(page, totalPages);
+  const pageItems = searched.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Cook Log</Text>
-      <Text style={styles.subtitle}>Cook history and log editing arrive in S7, S10.</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Cook Log</Text>
+        <TouchableOpacity
+          onPress={() => {
+            setSelectMode((s) => !s);
+            setSelectedIds(new Set());
+          }}
+          style={[styles.selectButton, selectMode && styles.selectButtonActive]}
+        >
+          <Text style={[styles.selectButtonText, selectMode && styles.selectButtonTextActive]}>{selectMode ? 'Cancel' : 'Select'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.searchRow}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput
+          style={styles.searchInput}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search logs, notes…"
+          placeholderTextColor={theme.colors.ink3}
+        />
+      </View>
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        <TouchableOpacity style={styles.filtersToggle} onPress={() => setFiltersExpanded((e) => !e)}>
+          <Text style={styles.filtersToggleText}>
+            {filtersExpanded ? '▾' : '▸'} Filters
+            {selectedTags.size > 0 || minStars != null || dateFrom || dateTo ? ' •' : ''}
+          </Text>
+        </TouchableOpacity>
+
+        {filtersExpanded && (
+          <View style={styles.filtersPanel}>
+            <View style={styles.filterRow}>
+              {[3, 4, 5].map((n) => (
+                <TouchableOpacity
+                  key={n}
+                  onPress={() => setMinStars(minStars === n ? null : n)}
+                  style={[styles.chip, minStars === n && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, minStars === n && styles.chipTextActive]}>{n}★+</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.filterRow}>
+              {QUICK_TAGS.map((tag) => (
+                <TouchableOpacity
+                  key={tag}
+                  onPress={() => toggleTagFilter(tag)}
+                  style={[styles.chip, selectedTags.has(tag) && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, selectedTags.has(tag) && styles.chipTextActive]}>{tag}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.dateRangeRow}>
+              <TouchableOpacity style={styles.dateButton} onPress={() => setShowFromPicker(true)}>
+                <Text style={styles.dateButtonLabel}>From</Text>
+                <Text style={styles.dateButtonValue}>{dateFrom ?? 'Any'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dateButton} onPress={() => setShowToPicker(true)}>
+                <Text style={styles.dateButtonLabel}>To</Text>
+                <Text style={styles.dateButtonValue}>{dateTo ?? 'Any'}</Text>
+              </TouchableOpacity>
+              {(dateFrom || dateTo) && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setDateFrom(null);
+                    setDateTo(null);
+                  }}
+                  style={styles.clearDatesButton}
+                >
+                  <Text style={styles.clearDatesText}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.toolbarRow}>
+          <View style={styles.sortGroup}>
+            <Text style={styles.sortByLabel}>Sort by</Text>
+            <TouchableOpacity onPress={() => setSort(sort === 'date' ? 'rating' : 'date')} style={styles.sortButton}>
+              <Text style={styles.toolbarLink}>{sort === 'date' ? 'Date' : 'Rating'}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.layoutToggle}>
+            <TouchableOpacity onPress={() => setLayout('grid')} style={[styles.layoutButton, layout === 'grid' && styles.layoutButtonActive]}>
+              <Text style={[styles.layoutButtonText, layout === 'grid' && styles.layoutButtonTextActive]}>⊞</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setLayout('list')} style={[styles.layoutButton, layout === 'list' && styles.layoutButtonActive]}>
+              <Text style={[styles.layoutButtonText, layout === 'list' && styles.layoutButtonTextActive]}>☰</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.pageSizeRow}>
+          <Text style={styles.pageSizeLabel}>Show</Text>
+          {PAGE_SIZE_OPTIONS.map((size) => (
+            <TouchableOpacity
+              key={size}
+              onPress={() => setPageSize(size)}
+              style={[styles.pageSizeButton, pageSize === size && styles.pageSizeButtonActive]}
+            >
+              <Text style={[styles.pageSizeButtonText, pageSize === size && styles.pageSizeButtonTextActive]}>{size}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.matchCount}>{searched.length} cooks logged</Text>
+
+        {logs === null ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={theme.colors.accent} />
+          </View>
+        ) : searched.length === 0 ? (
+          <Text style={styles.emptyText}>No cooks logged yet.</Text>
+        ) : layout === 'grid' ? (
+          <View style={styles.grid}>
+            {pageItems.map((log) => (
+              <CookLogGridItem
+                key={log.id}
+                log={log}
+                selectMode={selectMode}
+                selected={selectedIds.has(log.id)}
+                onPress={() => handlePress(log)}
+                onLongPress={() => handleLongPress(log)}
+              />
+            ))}
+          </View>
+        ) : (
+          <View style={styles.list}>
+            {pageItems.map((log) => (
+              <CookLogListItem
+                key={log.id}
+                log={log}
+                selectMode={selectMode}
+                selected={selectedIds.has(log.id)}
+                onPress={() => handlePress(log)}
+                onLongPress={() => handleLongPress(log)}
+              />
+            ))}
+          </View>
+        )}
+
+        {searched.length > pageSize && (
+          <View style={styles.pagination}>
+            <TouchableOpacity
+              disabled={clampedPage <= 1}
+              onPress={() => setPage(clampedPage - 1)}
+              style={[styles.pageButton, clampedPage <= 1 && styles.pageButtonDisabled]}
+            >
+              <Text style={[styles.pageButtonText, clampedPage <= 1 && styles.pageButtonTextDisabled]}>‹ Prev</Text>
+            </TouchableOpacity>
+            <Text style={styles.pageLabel}>
+              Page {clampedPage} of {totalPages}
+            </Text>
+            <TouchableOpacity
+              disabled={clampedPage >= totalPages}
+              onPress={() => setPage(clampedPage + 1)}
+              style={[styles.pageButton, clampedPage >= totalPages && styles.pageButtonDisabled]}
+            >
+              <Text style={[styles.pageButtonText, clampedPage >= totalPages && styles.pageButtonTextDisabled]}>Next ›</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+
+      {selectMode && selectedIds.size > 0 && (
+        <View style={styles.selectionBar}>
+          <Text style={styles.selectionCount}>{selectedIds.size} selected</Text>
+          <TouchableOpacity style={styles.selectionDeleteButton} onPress={() => setDeleteTarget('bulk')}>
+            <Text style={styles.selectionDeleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <DatePickerModal
+        visible={showFromPicker}
+        value={dateFrom}
+        onSelect={(d) => {
+          setDateFrom(d);
+          setShowFromPicker(false);
+        }}
+        onClose={() => setShowFromPicker(false)}
+      />
+      <DatePickerModal
+        visible={showToPicker}
+        value={dateTo}
+        onSelect={(d) => {
+          setDateTo(d);
+          setShowToPicker(false);
+        }}
+        onClose={() => setShowToPicker(false)}
+      />
+
+      {modal}
+      {deleteTarget && deleteTarget !== 'bulk' && (
+        <DeleteConfirm
+          message={`Delete this log for "${deleteTarget.recipeName}"? Any leftover tied to it goes too.`}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => handleSingleDelete(deleteTarget)}
+        />
+      )}
+      {deleteTarget === 'bulk' && (
+        <DeleteConfirm
+          message={`Delete ${selectedIds.size} log${selectedIds.size === 1 ? '' : 's'}? This can't be undone.`}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleBulkDelete}
+        />
+      )}
+      {notFoundNotice && (
+        <DeleteConfirm
+          title="Log not found"
+          message="That cook log doesn't exist anymore — it may have been deleted."
+          singleButton
+          onCancel={() => setNotFoundNotice(false)}
+          onConfirm={() => setNotFoundNotice(false)}
+        />
+      )}
     </View>
   );
 }
 
+function DeleteConfirm({
+  title = 'Delete log',
+  message,
+  onCancel,
+  onConfirm,
+  singleButton,
+}: {
+  title?: string;
+  message: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  singleButton?: boolean;
+}) {
+  return (
+    <View style={styles.confirmBackdrop}>
+      <TouchableOpacity style={styles.confirmBackdropTouchable} activeOpacity={1} onPress={onCancel} />
+      <View style={styles.confirmCard}>
+        <Text style={styles.confirmTitle}>{title}</Text>
+        <Text style={styles.confirmMessage}>{message}</Text>
+        <View style={styles.confirmButtonRow}>
+          {!singleButton && (
+            <TouchableOpacity style={styles.confirmCancelButton} onPress={onCancel}>
+              <Text style={styles.confirmCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.confirmDeleteButton} onPress={onConfirm}>
+            <Text style={styles.confirmDeleteText}>{singleButton ? 'OK' : 'Delete'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function CookLogListItem({
+  log,
+  selectMode,
+  selected,
+  onPress,
+  onLongPress,
+}: {
+  log: CookLogRow;
+  selectMode: boolean;
+  selected: boolean;
+  onPress: () => void;
+  onLongPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.row} onPress={onPress} onLongPress={onLongPress} activeOpacity={0.7}>
+      {selectMode && <Text style={styles.selectCheck}>{selected ? '☑' : '☐'}</Text>}
+      <EmojiTile emoji={log.photoEmoji} size={44} emojiSize={24} />
+      <View style={styles.rowBody}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {log.recipeName}
+        </Text>
+        <Text style={styles.rowMeta}>
+          {formatShortDate(log.cookedAt)}
+          {log.stars != null ? ` · ★${log.stars}` : ''}
+          {log.quickTags.length > 0 ? ` · ${log.quickTags.join(', ')}` : ''}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function CookLogGridItem({
+  log,
+  selectMode,
+  selected,
+  onPress,
+  onLongPress,
+}: {
+  log: CookLogRow;
+  selectMode: boolean;
+  selected: boolean;
+  onPress: () => void;
+  onLongPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={[styles.card, selected && styles.cardSelected]} onPress={onPress} onLongPress={onLongPress} activeOpacity={0.7}>
+      {selectMode && <Text style={styles.selectCheck}>{selected ? '☑' : '☐'}</Text>}
+      <EmojiTile emoji={log.photoEmoji} size={56} emojiSize={30} />
+      <Text style={styles.cardTitle} numberOfLines={1}>
+        {log.recipeName}
+      </Text>
+      <Text style={styles.cardMeta}>
+        {formatShortDate(log.cookedAt)}
+        {log.stars != null ? ` · ★${log.stars}` : ''}
+      </Text>
+      {log.quickTags.length > 0 && (
+        <Text style={styles.cardTags} numberOfLines={1}>
+          {log.quickTags.join(', ')}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+function CookLogEditor({
+  log,
+  onCancel,
+  onSaved,
+  onDeleted,
+}: {
+  log: CookLogRow;
+  onCancel: () => void;
+  onSaved: () => void;
+  onDeleted: () => void;
+}) {
+  const db = useDb();
+  const [stars, setStars] = useState<number | null>(log.stars);
+  const [quickTags, setQuickTags] = useState<string[]>(log.quickTags);
+  const [whatWentWell, setWhatWentWell] = useState(log.whatWentWell ?? '');
+  const [whatToChange, setWhatToChange] = useState(log.whatToChange ?? '');
+  const [notes, setNotes] = useState(log.notes ?? '');
+  const [saving, setSaving] = useState(false);
+  const { modal, confirm } = useConfirmModal();
+
+  function toggleTag(tag: string) {
+    setQuickTags((tags) => (tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag]));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const draft: CookLogDraft = {
+        recipeId: log.recipeId,
+        cookedAt: log.cookedAt,
+        servingsMade: log.servingsMade,
+        servingsEaten: log.servingsEaten,
+        stars,
+        notes,
+        whatWentWell,
+        whatToChange,
+        quickTags,
+        viaCookingMode: false,
+      };
+      await updateCookLog(db, log.id, draft);
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.editorContent}>
+      <TouchableOpacity style={styles.backButton} onPress={onCancel}>
+        <Text style={styles.back}>← Cancel</Text>
+      </TouchableOpacity>
+      <View style={styles.editorHeaderRow}>
+        <EmojiTile emoji={log.photoEmoji} size={52} emojiSize={28} />
+        <View style={styles.editorHeaderText}>
+          <Text style={styles.title}>{log.recipeName}</Text>
+          <Text style={styles.rowMeta}>{formatShortDate(log.cookedAt)}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.label}>Stars</Text>
+      <View style={styles.starsRow}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <TouchableOpacity key={n} onPress={() => setStars(n)}>
+            <Text style={styles.star}>{stars != null && n <= stars ? '★' : '☆'}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.label}>Quick tags</Text>
+      <View style={styles.filterRow}>
+        {QUICK_TAGS.map((tag) => (
+          <TouchableOpacity key={tag} onPress={() => toggleTag(tag)} style={[styles.chip, quickTags.includes(tag) && styles.chipActive]}>
+            <Text style={[styles.chipText, quickTags.includes(tag) && styles.chipTextActive]}>{tag}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.label}>What went well</Text>
+      <TextInput style={styles.textArea} value={whatWentWell} onChangeText={setWhatWentWell} multiline />
+      <Text style={styles.label}>What to change</Text>
+      <TextInput style={styles.textArea} value={whatToChange} onChangeText={setWhatToChange} multiline />
+      <Text style={styles.label}>Notes</Text>
+      <TextInput style={styles.textArea} value={notes} onChangeText={setNotes} multiline />
+
+      <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
+        <Text style={styles.saveButtonText}>{saving ? 'Saving…' : 'Save'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() =>
+          confirm('Delete log', 'Delete this cook log? Any leftover tied to it goes too.', 'Delete', async () => {
+            await deleteCookLog(db, log.id);
+            onDeleted();
+          }, true)
+        }
+      >
+        <Text style={styles.deleteButtonText}>Delete log</Text>
+      </TouchableOpacity>
+      {modal}
+    </ScrollView>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: theme.spacing.base },
-  title: {
-    fontFamily: theme.fonts.display.bold,
-    fontSize: theme.fontSize.xl,
-    color: theme.colors.ink,
-    marginBottom: theme.spacing.sm,
+  container: { flex: 1, padding: theme.spacing.base, gap: theme.spacing.md },
+  center: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.xxl },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
+  selectButton: { paddingHorizontal: theme.spacing.md, paddingVertical: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+  selectButtonActive: { backgroundColor: theme.colors.accent },
+  selectButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+  selectButtonTextActive: { color: theme.colors.accentFg },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: 10,
+    backgroundColor: theme.colors.surfaceWarm,
   },
-  subtitle: {
+  searchIcon: { fontSize: theme.fontSize.base },
+  searchInput: {
+    flex: 1,
+    height: theme.fontSize.base + 8,
+    lineHeight: theme.fontSize.base + 8,
     fontFamily: theme.fonts.body.regular,
     fontSize: theme.fontSize.base,
-    color: theme.colors.ink2,
+    color: theme.colors.ink,
+    padding: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
+  scroll: { flex: 1 },
+  scrollContent: { gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
+  filtersToggle: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.chipBg,
+  },
+  filtersToggleText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  filtersPanel: { gap: theme.spacing.sm },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },
+  chip: { paddingHorizontal: theme.spacing.md, paddingVertical: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+  chipActive: { backgroundColor: theme.colors.accent },
+  chipText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  chipTextActive: { color: theme.colors.accentFg },
+  dateRangeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+  dateButton: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.card,
+    backgroundColor: theme.colors.surfaceWarm,
+  },
+  dateButtonLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+  dateButtonValue: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink },
+  clearDatesButton: { paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.sm },
+  clearDatesText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.red },
+  toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.sm },
+  sortGroup: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  sortByLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  sortButton: { paddingHorizontal: theme.spacing.md, paddingVertical: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+  toolbarLink: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+  layoutToggle: { flexDirection: 'row', gap: 2, marginLeft: 'auto', backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, padding: 2 },
+  layoutButton: { paddingHorizontal: theme.spacing.sm, paddingVertical: 4, borderRadius: theme.radius.pill },
+  layoutButtonActive: { backgroundColor: theme.colors.accent },
+  layoutButtonText: { fontSize: theme.fontSize.base, color: theme.colors.ink2 },
+  layoutButtonTextActive: { color: theme.colors.accentFg },
+  pageSizeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  pageSizeLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2, marginRight: 2 },
+  pageSizeButton: { paddingHorizontal: theme.spacing.md, paddingVertical: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+  pageSizeButtonActive: { backgroundColor: theme.colors.accent },
+  pageSizeButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  pageSizeButtonTextActive: { color: theme.colors.accentFg },
+  matchCount: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+  emptyText: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic' },
+  list: { gap: theme.spacing.sm },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  rowBody: { flex: 1, gap: 2 },
+  rowTitle: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink },
+  rowMeta: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: theme.spacing.sm },
+  card: {
+    width: '48%',
+    gap: 4,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  cardSelected: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentTint },
+  cardTitle: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink },
+  cardMeta: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+  cardTags: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+  selectCheck: { fontSize: theme.fontSize.lg, color: theme.colors.accentText },
+  pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: theme.spacing.sm },
+  pageButton: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+  pageButtonDisabled: { opacity: 0.4 },
+  pageButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+  pageButtonTextDisabled: { color: theme.colors.ink4 },
+  pageLabel: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+  selectionBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.base,
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  selectionCount: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink },
+  selectionDeleteButton: { backgroundColor: theme.colors.redTint, borderRadius: theme.radius.card, paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm },
+  selectionDeleteButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.red },
+  editorContent: { gap: theme.spacing.sm, paddingBottom: theme.spacing.xxl },
+  editorHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
+  editorHeaderText: { gap: 2 },
+  backButton: { marginBottom: theme.spacing.sm },
+  back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
+  label: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2, marginTop: theme.spacing.sm },
+  starsRow: { flexDirection: 'row', gap: theme.spacing.xs },
+  star: { fontSize: theme.fontSize.xl, color: theme.colors.amber },
+  textArea: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.card,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+    fontFamily: theme.fonts.body.regular,
+    fontSize: theme.fontSize.base,
+    lineHeight: theme.fontSize.base + 4,
+    color: theme.colors.ink,
+    minHeight: 48,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+  },
+  saveButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.card, paddingVertical: theme.spacing.base, alignItems: 'center', marginTop: theme.spacing.base },
+  saveButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
+  deleteButton: { backgroundColor: theme.colors.redTint, borderRadius: theme.radius.card, paddingVertical: theme.spacing.sm, alignItems: 'center' },
+  deleteButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.red },
+  confirmBackdrop: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl },
+  confirmBackdropTouchable: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(42,31,23,0.4)' },
+  confirmCard: { width: '100%', maxWidth: 360, backgroundColor: theme.colors.surface, borderRadius: theme.radius.card, padding: theme.spacing.lg, gap: theme.spacing.md },
+  confirmTitle: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.lg, color: theme.colors.ink },
+  confirmMessage: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink2 },
+  confirmButtonRow: { flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'flex-end' },
+  confirmCancelButton: { paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+  confirmCancelText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  confirmDeleteButton: { paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm, borderRadius: theme.radius.pill, backgroundColor: theme.colors.redTint },
+  confirmDeleteText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.red },
 });

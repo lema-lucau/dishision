@@ -11,6 +11,7 @@ import { PlanScreen } from '../screens/PlanScreen';
 import { RecipesScreen } from '../screens/RecipesScreen';
 import { theme } from '../theme/tokens';
 import { TABS, type TabKey } from './tabs';
+import { useUiChromeStore } from './uiChromeStore';
 
 interface TabShellProps {
   profile: Profile;
@@ -19,8 +20,10 @@ interface TabShellProps {
 export function TabShell({ profile }: TabShellProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [debugScreenOpen, setDebugScreenOpen] = useState(false);
+  const [cookLogFocusId, setCookLogFocusId] = useState<number | null>(null);
   const debugModeEnabled = useSettingsStore((s) => s.debugMode);
   const toggleDebugMode = useSettingsStore((s) => s.toggleDebugMode);
+  const tabBarHidden = useUiChromeStore((s) => s.tabBarHidden);
   const insets = useSafeAreaInsets();
 
   if (debugScreenOpen) {
@@ -42,8 +45,17 @@ export function TabShell({ profile }: TabShellProps) {
       <View style={[styles.content, { paddingTop: insets.top }]}>
         {activeTab === 'home' && <HomeScreen />}
         {activeTab === 'recipes' && <RecipesScreen />}
-        {activeTab === 'plan' && <PlanScreen />}
-        {activeTab === 'cookLog' && <CookLogScreen />}
+        {activeTab === 'plan' && (
+          <PlanScreen
+            onOpenCookLog={(cookLogId) => {
+              setCookLogFocusId(cookLogId);
+              setActiveTab('cookLog');
+            }}
+          />
+        )}
+        {activeTab === 'cookLog' && (
+          <CookLogScreen focusLogId={cookLogFocusId} onFocusHandled={() => setCookLogFocusId(null)} />
+        )}
         {activeTab === 'me' && (
           <MeScreen
             profile={profile}
@@ -53,22 +65,24 @@ export function TabShell({ profile }: TabShellProps) {
           />
         )}
       </View>
-      <View style={[styles.tabBar, { paddingBottom: insets.bottom || theme.spacing.sm }]}>
-        {TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab.key}
-            style={styles.tabButton}
-            onPress={() => setActiveTab(tab.key)}
-          >
-            <Text style={[styles.tabIcon, activeTab !== tab.key && styles.tabIconInactive]}>
-              {tab.icon}
-            </Text>
-            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {!tabBarHidden && (
+        <View style={[styles.tabBar, { paddingBottom: insets.bottom || theme.spacing.sm }]}>
+          {TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={styles.tabButton}
+              onPress={() => setActiveTab(tab.key)}
+            >
+              <Text style={[styles.tabIcon, activeTab !== tab.key && styles.tabIconInactive]}>
+                {tab.icon}
+              </Text>
+              <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
