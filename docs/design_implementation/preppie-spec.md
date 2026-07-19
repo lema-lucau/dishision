@@ -10,6 +10,7 @@
 1. Product definition  
     1.1 Principles  
     1.2 Non-goals for v1  
+    1.3 Target devices  
 2. Data model  
     2.1 Core entities  
     2.2 Entity relationships  
@@ -129,6 +130,22 @@ It is not a recipe manager that happens to make suggestions. It is a decision en
 - No ingredient expiry modelling (leftovers expire, §5.7 — raw ingredients do not)
 - No recipe photos in the seed for v1 — seeded recipes ship with per-recipe emoji placeholders (§9.1); real photos come in a later version, heavily compressed through the §8 pipeline
 - No sharing of logs, notes, photos, plans, or pantry — ever. Ratings are the only opinion that can cross, and only on explicit opt-in (§7.6).
+
+### 1.3 Target devices
+
+Preppie is developed and daily-driven on two specific physical phones, not generic emulator profiles. Both are 20:9 aspect ratio, both run edge-to-edge Android gesture navigation — every screen must be sanity-checked against both.
+
+| | Xiaomi 12 Lite | Xiaomi 13T |
+| --- | --- | --- |
+| Screen | 6.55" AMOLED, 120Hz | 6.67" AMOLED, 144Hz |
+| Resolution | 1080 × 2400 px | 1220 × 2712 px |
+| Aspect ratio | 20:9 | 20:9 |
+| Density | ~402 ppi | ~446 ppi |
+| Android | 12 → 14, HyperOS | 13, HyperOS |
+
+The 13T is physically larger with meaningfully higher pixel density and a taller screen — fixed-pixel paddings/font sizes tuned on one device can look cramped or oversized on the other. Prefer relative/flex-based layout and `useWindowDimensions`/`Dimensions` for anything that must adapt; avoid hardcoded absolute heights on scrollable or button-bearing screens.
+
+**Safe areas, always.** Both phones use edge-to-edge gesture navigation with no persistent system chrome reserving space — the app must reserve its own. Any screen with content near the top or bottom edge (footers, floating action rows, headers not already inside a nav header, and *especially* full-bleed screens like Cooking Mode (§5.6) that hide the tab bar) must pull insets from `useSafeAreaInsets` (`react-native-safe-area-context`, §15.1) rather than guessing a fixed padding value. A control that renders at a fixed distance from the bottom of the viewport will sit under the gesture nav bar on one or both devices — this has already bitten the Debug screen and Cooking Mode's control row once each; treat it as a standing checklist item for every new bottom-anchored control, not a one-off fix.
 
 ## 2. Data model
 
@@ -1273,6 +1290,8 @@ Pantry presence shown two ways: a header line ("You have 6 of 8") and a dot per 
 - Nothing outside an active cooking session may schedule a notification. Ever.
 
 **Always:** keep-awake on, screen never dims, ☰ opens the full step list.
+
+**Layout note (§1.3):** this screen hides the tab bar and claims the full viewport, so it owns responsibility for its own bottom clearance. The control row ([⏸][←][→][☰]) and the Complete/Exit buttons must be padded by `useSafeAreaInsets().bottom`, not a fixed margin — with the tab bar hidden there is nothing else reserving that space, and a fixed value that looks right on the 12 Lite sits under the 13T's gesture bar (or vice versa). The all-steps (☰) modal is a bottom sheet — it must stay vertically centred and scrollable within its own bounds regardless of step count, not grow off-screen.
 
 **Complete** → consumption summary → cook log prompt.
 

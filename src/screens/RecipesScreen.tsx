@@ -5,6 +5,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDb } from '../db/DbContext';
+import { CookCompleteScreen } from '../recipes/CookCompleteScreen';
+import { CookingModeScreen } from '../recipes/CookingModeScreen';
 import { ExclusionsScreen } from '../recipes/ExclusionsScreen';
 import { FilterChipBar } from '../recipes/FilterChipBar';
 import { emptyRecipeDraft, loadRecipeDraft } from '../recipes/loadRecipeForEdit';
@@ -17,6 +19,7 @@ import { RecipeFormScreen } from '../recipes/RecipeFormScreen';
 import type { ChipKey, QueryResultItem, SortDirection, SortKey } from '../recipes/queryEngine';
 import { runRecipeQuery } from '../recipes/queryEngine';
 import { createManualRecipe, updateManualRecipe, type RecipeDraft } from '../recipes/recipeSave';
+import { getCurrencySymbol } from '../settings/getSetting';
 import { SORT_LABELS, SortMenu } from '../recipes/SortMenu';
 import { theme } from '../theme/tokens';
 
@@ -27,11 +30,14 @@ type ViewState =
   | { mode: 'detail'; recipeId: number }
   | { mode: 'create' }
   | { mode: 'edit'; recipeId: number }
-  | { mode: 'exclusions' };
+  | { mode: 'exclusions' }
+  | { mode: 'cookComplete'; recipeId: number; retroactive: boolean }
+  | { mode: 'cookingMode'; recipeId: number };
 
 export function RecipesScreen() {
   const db = useDb();
   const [recipes, setRecipes] = useState<EnrichedRecipe[] | null>(null);
+  const [currencySymbol, setCurrencySymbol] = useState('€');
   const [view, setView] = useState<ViewState>({ mode: 'list' });
   const [search, setSearch] = useState('');
   const [chips, setChips] = useState<ChipKey[]>([]);
@@ -74,6 +80,10 @@ export function RecipesScreen() {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  useEffect(() => {
+    getCurrencySymbol(db).then(setCurrencySymbol);
+  }, [db]);
 
   useEffect(() => {
     if (view.mode === 'create') {
@@ -140,6 +150,7 @@ export function RecipesScreen() {
     return (
       <RecipeDetailScreen
         recipe={recipe}
+        currencySymbol={currencySymbol}
         onBack={() => setView({ mode: 'list' })}
         onEdit={() => setView({ mode: 'edit', recipeId: recipe.id })}
         onCopy={async () => {
@@ -164,6 +175,42 @@ export function RecipesScreen() {
           await clearExclusion(db, recipe.id);
           await reload();
         }}
+        onStartCooking={() => setView({ mode: 'cookingMode', recipeId: recipe.id })}
+        onAlreadyCookedThis={() => setView({ mode: 'cookComplete', recipeId: recipe.id, retroactive: true })}
+      />
+    );
+  }
+
+  if (view.mode === 'cookingMode') {
+    const recipe = recipes.find((r) => r.id === view.recipeId);
+    if (!recipe) {
+      setView({ mode: 'list' });
+      return null;
+    }
+    return (
+      <CookingModeScreen
+        recipe={recipe}
+        onExit={() => setView({ mode: 'detail', recipeId: recipe.id })}
+        onComplete={() => setView({ mode: 'cookComplete', recipeId: recipe.id, retroactive: false })}
+      />
+    );
+  }
+
+  if (view.mode === 'cookComplete') {
+    const recipe = recipes.find((r) => r.id === view.recipeId);
+    if (!recipe) {
+      setView({ mode: 'list' });
+      return null;
+    }
+    return (
+      <CookCompleteScreen
+        recipe={recipe}
+        retroactive={view.retroactive}
+        onDone={async () => {
+          await reload();
+          setView({ mode: 'detail', recipeId: recipe.id });
+        }}
+        onCancel={() => setView({ mode: 'detail', recipeId: recipe.id })}
       />
     );
   }

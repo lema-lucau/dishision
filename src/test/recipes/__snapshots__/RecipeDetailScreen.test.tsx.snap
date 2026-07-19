@@ -1,0 +1,4248 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`] = `
+<RCTScrollView
+  contentContainerStyle={
+    {
+      "gap": 12,
+      "padding": 16,
+      "paddingBottom": 32,
+    }
+  }
+  style={
+    {
+      "backgroundColor": "#FFFAF2",
+      "flex": 1,
+    }
+  }
+>
+  <View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "opacity": 1,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B03D14",
+            "fontFamily": "PublicSans_600SemiBold",
+          }
+        }
+      >
+        ← Back
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 12,
+        }
+      }
+    >
+      <View
+        style={
+          [
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "justifyContent": "center",
+            },
+            {
+              "borderRadius": 10,
+              "height": 64,
+              "width": 64,
+            },
+          ]
+        }
+      >
+        <Text
+          style={
+            {
+              "fontSize": 40,
+            }
+          }
+        >
+          🍛
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#2A1F17",
+              "fontFamily": "Fraunces_700Bold",
+              "fontSize": 24,
+            }
+          }
+        >
+          Thai Green Curry
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_400Regular",
+              "fontSize": 14,
+            }
+          }
+        >
+          Weeknight staple.
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "flex-start",
+          "flexDirection": "row",
+          "flexWrap": "wrap",
+          "gap": 4,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignSelf": "flex-start",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "paddingHorizontal": 8,
+            "paddingVertical": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_500Medium",
+              "fontSize": 11,
+              "lineHeight": 13,
+            }
+          }
+        >
+          ★
+          4.5
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "alignSelf": "flex-start",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "paddingHorizontal": 8,
+            "paddingVertical": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_500Medium",
+              "fontSize": 11,
+              "lineHeight": 13,
+            }
+          }
+        >
+          Chicken
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "alignSelf": "flex-start",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "paddingHorizontal": 8,
+            "paddingVertical": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_500Medium",
+              "fontSize": 11,
+              "lineHeight": 13,
+            }
+          }
+        >
+          Cooked 
+          7
+          ×
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "baseline",
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#B0906B",
+              "fontFamily": "PublicSans_600SemiBold",
+              "fontSize": 11,
+              "letterSpacing": 0.5,
+            }
+          }
+        >
+          TIME
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#2A1F17",
+              "fontFamily": "IBMPlexMono_600SemiBold",
+              "fontSize": 14,
+            }
+          }
+        >
+          23 mins
+        </Text>
+      </View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FCEBD5",
+              "borderRadius": 6,
+              "flexDirection": "row",
+              "height": 8,
+              "overflow": "hidden",
+            },
+            undefined,
+          ]
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#D94F1E",
+              },
+              {
+                "flex": 0.21739130434782608,
+              },
+            ]
+          }
+        />
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#F5A623",
+              },
+              {
+                "flex": 0.782608695652174,
+              },
+            ]
+          }
+        />
+      </View>
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "gap": 12,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_400Regular",
+              "fontSize": 11,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#D94F1E",
+              }
+            }
+          >
+            ■ 
+          </Text>
+          5 mins
+           hands-on
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_400Regular",
+              "fontSize": 11,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#F5A623",
+              }
+            }
+          >
+            ■ 
+          </Text>
+          18 mins
+           passive
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B0906B",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          }
+        }
+      >
+        INGREDIENTS
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onClick={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FCEBD5",
+              "borderRadius": 6,
+              "height": 28,
+              "justifyContent": "center",
+              "opacity": 1,
+              "width": 28,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#B03D14",
+                "fontFamily": "PublicSans_700Bold",
+                "fontSize": 16,
+              }
+            }
+          >
+            −
+          </Text>
+        </View>
+        <Text
+          style={
+            {
+              "color": "#2A1F17",
+              "fontFamily": "IBMPlexMono_600SemiBold",
+              "fontSize": 14,
+              "minWidth": 20,
+              "textAlign": "center",
+            }
+          }
+        >
+          2
+        </Text>
+        <View
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onClick={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FCEBD5",
+              "borderRadius": 6,
+              "height": 28,
+              "justifyContent": "center",
+              "opacity": 1,
+              "width": 28,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#B03D14",
+                "fontFamily": "PublicSans_700Bold",
+                "fontSize": 16,
+              }
+            }
+          >
+            +
+          </Text>
+        </View>
+      </View>
+    </View>
+    <Text
+      style={
+        {
+          "color": "#7E6A56",
+          "fontFamily": "PublicSans_400Regular",
+          "fontSize": 12.5,
+        }
+      }
+    >
+      You have 
+      1
+       of 
+      2
+    </Text>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "borderBottomColor": "#F6E9D8",
+          "borderBottomWidth": 1,
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#5C8A3C",
+            "width": 14,
+          }
+        }
+      >
+        ●
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={
+          {
+            "color": "#2A1F17",
+            "flex": 1,
+            "fontFamily": "PublicSans_400Regular",
+            "fontSize": 14,
+          }
+        }
+      >
+        Chicken thigh
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#7E6A56",
+            "fontFamily": "IBMPlexMono_500Medium",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        400
+         
+        g
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "borderBottomColor": "#F6E9D8",
+          "borderBottomWidth": 1,
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#5C8A3C",
+            "width": 14,
+          }
+        }
+      >
+        ○
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={
+          {
+            "color": "#2A1F17",
+            "flex": 1,
+            "fontFamily": "PublicSans_400Regular",
+            "fontSize": 14,
+          }
+        }
+      >
+        Coconut milk
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#7E6A56",
+            "fontFamily": "IBMPlexMono_500Medium",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        400
+         
+        ml
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "paddingVertical": 16,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            612
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Kcal
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            38
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Protein
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            21
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Carbs
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            41
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Fat
+          </Text>
+        </View>
+      </View>
+    </View>
+    <Text
+      style={
+        {
+          "color": "#7E6A56",
+          "fontFamily": "PublicSans_400Regular",
+          "fontSize": 12.5,
+        }
+      }
+    >
+      ~
+      €4.20
+       per serving
+    </Text>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B0906B",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          }
+        }
+      >
+        TIMELINE
+      </Text>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "opacity": 1,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#B03D14",
+              "fontFamily": "PublicSans_600SemiBold",
+              "fontSize": 12.5,
+            }
+          }
+        >
+          View steps
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "borderRadius": 6,
+            "flexDirection": "row",
+            "height": 24,
+            "overflow": "hidden",
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "alignItems": "center",
+                "justifyContent": "center",
+                "minWidth": 24,
+              },
+              {
+                "backgroundColor": "#D94F1E",
+                "flex": 300,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#FFF6EF",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 11,
+              }
+            }
+          >
+            22
+            %
+          </Text>
+        </View>
+        <View
+          style={
+            [
+              {
+                "alignItems": "center",
+                "justifyContent": "center",
+                "minWidth": 24,
+              },
+              {
+                "backgroundColor": "#F5A623",
+                "flex": 1080,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#FFF6EF",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 11,
+              }
+            }
+          >
+            78
+            %
+          </Text>
+        </View>
+      </View>
+    </View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#D94F1E",
+          "borderRadius": 13,
+          "marginTop": 8,
+          "opacity": 1,
+          "paddingVertical": 12,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#FFF6EF",
+            "fontFamily": "PublicSans_700Bold",
+            "fontSize": 14,
+          }
+        }
+      >
+        Start cooking
+      </Text>
+    </View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#FCEBD5",
+          "borderRadius": 13,
+          "opacity": 1,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B03D14",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        I already cooked this
+      </Text>
+    </View>
+    <View
+      style={
+        [
+          {
+            "flexDirection": "row",
+            "gap": 16,
+            "marginBottom": 16,
+          },
+          {
+            "marginTop": 16,
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#7E6A56",
+              },
+            ]
+          }
+        >
+          ☆ Favourite
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#7E6A56",
+              },
+            ]
+          }
+        >
+          Edit
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FBE3D6",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#B03D14",
+              },
+            ]
+          }
+        >
+          Copy & tweak
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "gap": 16,
+          "marginBottom": 16,
+        }
+      }
+    >
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FDEDD3",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#9A6410",
+              },
+            ]
+          }
+        >
+          Not tonight
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#F8DCD7",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#C0392B",
+              },
+            ]
+          }
+        >
+          Never again
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#F8DCD7",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#C0392B",
+              },
+            ]
+          }
+        >
+          Delete
+        </Text>
+      </View>
+    </View>
+  </View>
+</RCTScrollView>
+`;
+
+exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macros with the "N of M ingredients" flag 1`] = `
+<RCTScrollView
+  contentContainerStyle={
+    {
+      "gap": 12,
+      "padding": 16,
+      "paddingBottom": 32,
+    }
+  }
+  style={
+    {
+      "backgroundColor": "#FFFAF2",
+      "flex": 1,
+    }
+  }
+>
+  <View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "opacity": 1,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B03D14",
+            "fontFamily": "PublicSans_600SemiBold",
+          }
+        }
+      >
+        ← Back
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 12,
+        }
+      }
+    >
+      <View
+        style={
+          [
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "justifyContent": "center",
+            },
+            {
+              "borderRadius": 10,
+              "height": 64,
+              "width": 64,
+            },
+          ]
+        }
+      >
+        <Text
+          style={
+            {
+              "fontSize": 40,
+            }
+          }
+        >
+          🍛
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#2A1F17",
+              "fontFamily": "Fraunces_700Bold",
+              "fontSize": 24,
+            }
+          }
+        >
+          Thai Green Curry
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_400Regular",
+              "fontSize": 14,
+            }
+          }
+        >
+          Weeknight staple.
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "flex-start",
+          "flexDirection": "row",
+          "flexWrap": "wrap",
+          "gap": 4,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignSelf": "flex-start",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "paddingHorizontal": 8,
+            "paddingVertical": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_500Medium",
+              "fontSize": 11,
+              "lineHeight": 13,
+            }
+          }
+        >
+          ★
+          4.5
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "alignSelf": "flex-start",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "paddingHorizontal": 8,
+            "paddingVertical": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_500Medium",
+              "fontSize": 11,
+              "lineHeight": 13,
+            }
+          }
+        >
+          Chicken
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "alignSelf": "flex-start",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "paddingHorizontal": 8,
+            "paddingVertical": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_500Medium",
+              "fontSize": 11,
+              "lineHeight": 13,
+            }
+          }
+        >
+          Cooked 
+          7
+          ×
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "baseline",
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#B0906B",
+              "fontFamily": "PublicSans_600SemiBold",
+              "fontSize": 11,
+              "letterSpacing": 0.5,
+            }
+          }
+        >
+          TIME
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#2A1F17",
+              "fontFamily": "IBMPlexMono_600SemiBold",
+              "fontSize": 14,
+            }
+          }
+        >
+          23 mins
+        </Text>
+      </View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FCEBD5",
+              "borderRadius": 6,
+              "flexDirection": "row",
+              "height": 8,
+              "overflow": "hidden",
+            },
+            undefined,
+          ]
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#D94F1E",
+              },
+              {
+                "flex": 0.21739130434782608,
+              },
+            ]
+          }
+        />
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#F5A623",
+              },
+              {
+                "flex": 0.782608695652174,
+              },
+            ]
+          }
+        />
+      </View>
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "gap": 12,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_400Regular",
+              "fontSize": 11,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#D94F1E",
+              }
+            }
+          >
+            ■ 
+          </Text>
+          5 mins
+           hands-on
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_400Regular",
+              "fontSize": 11,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#F5A623",
+              }
+            }
+          >
+            ■ 
+          </Text>
+          18 mins
+           passive
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B0906B",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          }
+        }
+      >
+        INGREDIENTS
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onClick={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FCEBD5",
+              "borderRadius": 6,
+              "height": 28,
+              "justifyContent": "center",
+              "opacity": 1,
+              "width": 28,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#B03D14",
+                "fontFamily": "PublicSans_700Bold",
+                "fontSize": 16,
+              }
+            }
+          >
+            −
+          </Text>
+        </View>
+        <Text
+          style={
+            {
+              "color": "#2A1F17",
+              "fontFamily": "IBMPlexMono_600SemiBold",
+              "fontSize": 14,
+              "minWidth": 20,
+              "textAlign": "center",
+            }
+          }
+        >
+          2
+        </Text>
+        <View
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onClick={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FCEBD5",
+              "borderRadius": 6,
+              "height": 28,
+              "justifyContent": "center",
+              "opacity": 1,
+              "width": 28,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#B03D14",
+                "fontFamily": "PublicSans_700Bold",
+                "fontSize": 16,
+              }
+            }
+          >
+            +
+          </Text>
+        </View>
+      </View>
+    </View>
+    <Text
+      style={
+        {
+          "color": "#7E6A56",
+          "fontFamily": "PublicSans_400Regular",
+          "fontSize": 12.5,
+        }
+      }
+    >
+      You have 
+      1
+       of 
+      2
+    </Text>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "borderBottomColor": "#F6E9D8",
+          "borderBottomWidth": 1,
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#5C8A3C",
+            "width": 14,
+          }
+        }
+      >
+        ●
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={
+          {
+            "color": "#2A1F17",
+            "flex": 1,
+            "fontFamily": "PublicSans_400Regular",
+            "fontSize": 14,
+          }
+        }
+      >
+        Chicken thigh
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#7E6A56",
+            "fontFamily": "IBMPlexMono_500Medium",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        400
+         
+        g
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "borderBottomColor": "#F6E9D8",
+          "borderBottomWidth": 1,
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#5C8A3C",
+            "width": 14,
+          }
+        }
+      >
+        ○
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={
+          {
+            "color": "#2A1F17",
+            "flex": 1,
+            "fontFamily": "PublicSans_400Regular",
+            "fontSize": 14,
+          }
+        }
+      >
+        Coconut milk
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#7E6A56",
+            "fontFamily": "IBMPlexMono_500Medium",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        400
+         
+        ml
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "paddingVertical": 16,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            306
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Kcal
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            19
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Protein
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            0
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Carbs
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            6
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Fat
+          </Text>
+        </View>
+      </View>
+    </View>
+    <Text
+      style={
+        {
+          "color": "#9A6410",
+          "fontFamily": "PublicSans_400Regular",
+          "fontSize": 11,
+        }
+      }
+    >
+      ⚠ From 
+      1
+       of 
+      2
+       ingredients
+    </Text>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B0906B",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          }
+        }
+      >
+        TIMELINE
+      </Text>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "opacity": 1,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#B03D14",
+              "fontFamily": "PublicSans_600SemiBold",
+              "fontSize": 12.5,
+            }
+          }
+        >
+          View steps
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "borderRadius": 6,
+            "flexDirection": "row",
+            "height": 24,
+            "overflow": "hidden",
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "alignItems": "center",
+                "justifyContent": "center",
+                "minWidth": 24,
+              },
+              {
+                "backgroundColor": "#D94F1E",
+                "flex": 300,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#FFF6EF",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 11,
+              }
+            }
+          >
+            22
+            %
+          </Text>
+        </View>
+        <View
+          style={
+            [
+              {
+                "alignItems": "center",
+                "justifyContent": "center",
+                "minWidth": 24,
+              },
+              {
+                "backgroundColor": "#F5A623",
+                "flex": 1080,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#FFF6EF",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 11,
+              }
+            }
+          >
+            78
+            %
+          </Text>
+        </View>
+      </View>
+    </View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#D94F1E",
+          "borderRadius": 13,
+          "marginTop": 8,
+          "opacity": 1,
+          "paddingVertical": 12,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#FFF6EF",
+            "fontFamily": "PublicSans_700Bold",
+            "fontSize": 14,
+          }
+        }
+      >
+        Start cooking
+      </Text>
+    </View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#FCEBD5",
+          "borderRadius": 13,
+          "opacity": 1,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B03D14",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        I already cooked this
+      </Text>
+    </View>
+    <View
+      style={
+        [
+          {
+            "flexDirection": "row",
+            "gap": 16,
+            "marginBottom": 16,
+          },
+          {
+            "marginTop": 16,
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#7E6A56",
+              },
+            ]
+          }
+        >
+          ☆ Favourite
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#7E6A56",
+              },
+            ]
+          }
+        >
+          Edit
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FBE3D6",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#B03D14",
+              },
+            ]
+          }
+        >
+          Copy & tweak
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "gap": 16,
+          "marginBottom": 16,
+        }
+      }
+    >
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FDEDD3",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#9A6410",
+              },
+            ]
+          }
+        >
+          Not tonight
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#F8DCD7",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#C0392B",
+              },
+            ]
+          }
+        >
+          Never again
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#F8DCD7",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#C0392B",
+              },
+            ]
+          }
+        >
+          Delete
+        </Text>
+      </View>
+    </View>
+  </View>
+</RCTScrollView>
+`;
+
+exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji tile when there is no photo 1`] = `
+<RCTScrollView
+  contentContainerStyle={
+    {
+      "gap": 12,
+      "padding": 16,
+      "paddingBottom": 32,
+    }
+  }
+  style={
+    {
+      "backgroundColor": "#FFFAF2",
+      "flex": 1,
+    }
+  }
+>
+  <View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "opacity": 1,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B03D14",
+            "fontFamily": "PublicSans_600SemiBold",
+          }
+        }
+      >
+        ← Back
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 12,
+        }
+      }
+    >
+      <View
+        style={
+          [
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "justifyContent": "center",
+            },
+            {
+              "borderRadius": 10,
+              "height": 64,
+              "width": 64,
+            },
+          ]
+        }
+      >
+        <Text
+          style={
+            {
+              "fontSize": 40,
+            }
+          }
+        >
+          🍛
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#2A1F17",
+              "fontFamily": "Fraunces_700Bold",
+              "fontSize": 24,
+            }
+          }
+        >
+          Thai Green Curry
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_400Regular",
+              "fontSize": 14,
+            }
+          }
+        >
+          Weeknight staple.
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "flex-start",
+          "flexDirection": "row",
+          "flexWrap": "wrap",
+          "gap": 4,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignSelf": "flex-start",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "paddingHorizontal": 8,
+            "paddingVertical": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_500Medium",
+              "fontSize": 11,
+              "lineHeight": 13,
+            }
+          }
+        >
+          ★
+          4.5
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "alignSelf": "flex-start",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "paddingHorizontal": 8,
+            "paddingVertical": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_500Medium",
+              "fontSize": 11,
+              "lineHeight": 13,
+            }
+          }
+        >
+          Chicken
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "alignSelf": "flex-start",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "paddingHorizontal": 8,
+            "paddingVertical": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_500Medium",
+              "fontSize": 11,
+              "lineHeight": 13,
+            }
+          }
+        >
+          Cooked 
+          7
+          ×
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "baseline",
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#B0906B",
+              "fontFamily": "PublicSans_600SemiBold",
+              "fontSize": 11,
+              "letterSpacing": 0.5,
+            }
+          }
+        >
+          TIME
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#2A1F17",
+              "fontFamily": "IBMPlexMono_600SemiBold",
+              "fontSize": 14,
+            }
+          }
+        >
+          23 mins
+        </Text>
+      </View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FCEBD5",
+              "borderRadius": 6,
+              "flexDirection": "row",
+              "height": 8,
+              "overflow": "hidden",
+            },
+            undefined,
+          ]
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#D94F1E",
+              },
+              {
+                "flex": 0.21739130434782608,
+              },
+            ]
+          }
+        />
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#F5A623",
+              },
+              {
+                "flex": 0.782608695652174,
+              },
+            ]
+          }
+        />
+      </View>
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "gap": 12,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_400Regular",
+              "fontSize": 11,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#D94F1E",
+              }
+            }
+          >
+            ■ 
+          </Text>
+          5 mins
+           hands-on
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#7E6A56",
+              "fontFamily": "PublicSans_400Regular",
+              "fontSize": 11,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#F5A623",
+              }
+            }
+          >
+            ■ 
+          </Text>
+          18 mins
+           passive
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B0906B",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          }
+        }
+      >
+        INGREDIENTS
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onClick={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FCEBD5",
+              "borderRadius": 6,
+              "height": 28,
+              "justifyContent": "center",
+              "opacity": 1,
+              "width": 28,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#B03D14",
+                "fontFamily": "PublicSans_700Bold",
+                "fontSize": 16,
+              }
+            }
+          >
+            −
+          </Text>
+        </View>
+        <Text
+          style={
+            {
+              "color": "#2A1F17",
+              "fontFamily": "IBMPlexMono_600SemiBold",
+              "fontSize": 14,
+              "minWidth": 20,
+              "textAlign": "center",
+            }
+          }
+        >
+          2
+        </Text>
+        <View
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onClick={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FCEBD5",
+              "borderRadius": 6,
+              "height": 28,
+              "justifyContent": "center",
+              "opacity": 1,
+              "width": 28,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#B03D14",
+                "fontFamily": "PublicSans_700Bold",
+                "fontSize": 16,
+              }
+            }
+          >
+            +
+          </Text>
+        </View>
+      </View>
+    </View>
+    <Text
+      style={
+        {
+          "color": "#7E6A56",
+          "fontFamily": "PublicSans_400Regular",
+          "fontSize": 12.5,
+        }
+      }
+    >
+      You have 
+      1
+       of 
+      2
+    </Text>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "borderBottomColor": "#F6E9D8",
+          "borderBottomWidth": 1,
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#5C8A3C",
+            "width": 14,
+          }
+        }
+      >
+        ●
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={
+          {
+            "color": "#2A1F17",
+            "flex": 1,
+            "fontFamily": "PublicSans_400Regular",
+            "fontSize": 14,
+          }
+        }
+      >
+        Chicken thigh
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#7E6A56",
+            "fontFamily": "IBMPlexMono_500Medium",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        400
+         
+        g
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "borderBottomColor": "#F6E9D8",
+          "borderBottomWidth": 1,
+          "flexDirection": "row",
+          "gap": 8,
+          "paddingVertical": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#5C8A3C",
+            "width": 14,
+          }
+        }
+      >
+        ○
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={
+          {
+            "color": "#2A1F17",
+            "flex": 1,
+            "fontFamily": "PublicSans_400Regular",
+            "fontSize": 14,
+          }
+        }
+      >
+        Coconut milk
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#7E6A56",
+            "fontFamily": "IBMPlexMono_500Medium",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        400
+         
+        ml
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "paddingVertical": 16,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            612
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Kcal
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            38
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Protein
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            21
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Carbs
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FDF1E1",
+              "borderRadius": 10,
+              "flex": 1,
+              "gap": 2,
+              "justifyContent": "center",
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#2A1F17",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 20,
+              }
+            }
+          >
+            41
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B0906B",
+                "fontFamily": "PublicSans_500Medium",
+                "fontSize": 11,
+                "letterSpacing": 0.5,
+                "textTransform": "uppercase",
+              }
+            }
+          >
+            Fat
+          </Text>
+        </View>
+      </View>
+    </View>
+    <Text
+      style={
+        {
+          "color": "#7E6A56",
+          "fontFamily": "PublicSans_400Regular",
+          "fontSize": 12.5,
+        }
+      }
+    >
+      ~
+      €4.20
+       per serving
+    </Text>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B0906B",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          }
+        }
+      >
+        TIMELINE
+      </Text>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "opacity": 1,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#B03D14",
+              "fontFamily": "PublicSans_600SemiBold",
+              "fontSize": 12.5,
+            }
+          }
+        >
+          View steps
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "borderRadius": 6,
+            "flexDirection": "row",
+            "height": 24,
+            "overflow": "hidden",
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "alignItems": "center",
+                "justifyContent": "center",
+                "minWidth": 24,
+              },
+              {
+                "backgroundColor": "#D94F1E",
+                "flex": 300,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#FFF6EF",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 11,
+              }
+            }
+          >
+            22
+            %
+          </Text>
+        </View>
+        <View
+          style={
+            [
+              {
+                "alignItems": "center",
+                "justifyContent": "center",
+                "minWidth": 24,
+              },
+              {
+                "backgroundColor": "#F5A623",
+                "flex": 1080,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#FFF6EF",
+                "fontFamily": "IBMPlexMono_600SemiBold",
+                "fontSize": 11,
+              }
+            }
+          >
+            78
+            %
+          </Text>
+        </View>
+      </View>
+    </View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#D94F1E",
+          "borderRadius": 13,
+          "marginTop": 8,
+          "opacity": 1,
+          "paddingVertical": 12,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#FFF6EF",
+            "fontFamily": "PublicSans_700Bold",
+            "fontSize": 14,
+          }
+        }
+      >
+        Start cooking
+      </Text>
+    </View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#FCEBD5",
+          "borderRadius": 13,
+          "opacity": 1,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#B03D14",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        I already cooked this
+      </Text>
+    </View>
+    <View
+      style={
+        [
+          {
+            "flexDirection": "row",
+            "gap": 16,
+            "marginBottom": 16,
+          },
+          {
+            "marginTop": 16,
+          },
+        ]
+      }
+    >
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#7E6A56",
+              },
+            ]
+          }
+        >
+          ☆ Favourite
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FCEBD5",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#7E6A56",
+              },
+            ]
+          }
+        >
+          Edit
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FBE3D6",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#B03D14",
+              },
+            ]
+          }
+        >
+          Copy & tweak
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "gap": 16,
+          "marginBottom": 16,
+        }
+      }
+    >
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#FDEDD3",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#9A6410",
+              },
+            ]
+          }
+        >
+          Not tonight
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#F8DCD7",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#C0392B",
+              },
+            ]
+          }
+        >
+          Never again
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#F8DCD7",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#C0392B",
+              },
+            ]
+          }
+        >
+          Delete
+        </Text>
+      </View>
+    </View>
+  </View>
+</RCTScrollView>
+`;

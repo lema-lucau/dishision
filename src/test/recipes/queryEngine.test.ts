@@ -181,10 +181,16 @@ describe('search (§5.4)', () => {
     expect(result.items.map((i) => i.recipe.id)).toEqual([byDescription.id]);
   });
 
-  it('labels a note-only match distinctly', () => {
+  it('labels a note-only match distinctly, with the matching snippet', () => {
     const noteMatch = recipe({ logNotes: ['too salty this time'] });
     const result = runRecipeQuery([noteMatch], { chips: [], sort: 'name', search: 'too salty' });
-    expect(result.items[0].matchedInNotes).toBe(true);
+    expect(result.items[0].matchedNote).toBe('too salty this time');
+  });
+
+  it('a name/description/ingredient match carries no note snippet', () => {
+    const byName = recipe({ name: 'Thai Green Curry' });
+    const result = runRecipeQuery([byName], { chips: [], sort: 'name', search: 'thai' });
+    expect(result.items[0].matchedNote).toBeNull();
   });
 });
 

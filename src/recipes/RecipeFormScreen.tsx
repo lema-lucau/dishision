@@ -20,9 +20,8 @@ import { theme } from '../theme/tokens';
 import { createUserIngredient, searchCanonicalIngredients, type CanonicalIngredientOption } from './ingredientSearch';
 import type { RecipeDraft, RecipeIngredientDraft, RecipeStepDraft } from './recipeSave';
 import type { BaseUnit, Effort, Phase, RecipeUnit, TimelineMode } from '../seed/types';
-import { EmojiTile } from './EmojiTile';
+import { EmojiPicker } from './EmojiPicker';
 
-const QUICK_EMOJI = ['🍝', '🍛', '🍲', '🍜', '🥘', '🍗', '🐟', '🌮', '🍳', '🥧', '🍤', '🥗'];
 const UNIT_OPTIONS: RecipeUnit[] = ['g', 'ml', 'tsp', 'tbsp', 'cup', 'unit'];
 const TAG_SUGGESTIONS = ['chicken', 'beef', 'pork', 'fish', 'lamb', 'veg', 'healthy', 'comfort', 'hob', 'oven', 'one-pot', 'traybake'];
 
@@ -180,16 +179,7 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
       </TouchableOpacity>
       <Text style={styles.title}>{title}</Text>
 
-      <View style={styles.emojiRow}>
-        <EmojiTile emoji={draft.photoEmoji || '🍽️'} size={56} emojiSize={32} />
-        <View style={styles.emojiPicks}>
-          {QUICK_EMOJI.map((e) => (
-            <TouchableOpacity key={e} onPress={() => update({ photoEmoji: e })} style={styles.emojiPick}>
-              <Text style={styles.emojiPickText}>{e}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+      <EmojiPicker value={draft.photoEmoji || '🍽️'} onChange={(e) => update({ photoEmoji: e })} />
 
       <Text style={styles.label}>Name</Text>
       <TextInput style={styles.input} value={draft.name} onChangeText={(v) => update({ name: v })} placeholder="Thai Green Curry" />
@@ -460,15 +450,6 @@ const styles = StyleSheet.create({
   content: { padding: theme.spacing.base, gap: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
   back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
   title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
-  emojiRow: { flexDirection: 'row', gap: theme.spacing.base, alignItems: 'center' },
-  emojiPicks: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', flex: 1, gap: theme.spacing.xs },
-  emojiPick: {
-    alignSelf: 'flex-start',
-    padding: theme.spacing.sm,
-    backgroundColor: theme.colors.chipBg,
-    borderRadius: theme.radius.card,
-  },
-  emojiPickText: { fontSize: theme.fontSize.md, lineHeight: theme.fontSize.md + 2 },
   label: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2, marginBottom: theme.spacing.xs },
   input: {
     borderWidth: 1,

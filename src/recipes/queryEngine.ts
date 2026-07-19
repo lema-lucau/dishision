@@ -152,22 +152,26 @@ export function computeChipAvailability(recipes: EnrichedRecipe[]): Record<ChipK
   };
 }
 
-function matchesSearch(recipe: EnrichedRecipe, search: string): { matched: boolean; matchedInNotes: boolean } {
+function matchesSearch(recipe: EnrichedRecipe, search: string): { matched: boolean; matchedNote: string | null } {
   const needle = search.trim().toLowerCase();
-  if (!needle) return { matched: true, matchedInNotes: false };
+  if (!needle) return { matched: true, matchedNote: null };
 
   const haystack = [recipe.name, recipe.description ?? '', ...recipe.ingredients.map((i) => i.displayName)]
     .join(' ')
     .toLowerCase();
-  if (haystack.includes(needle)) return { matched: true, matchedInNotes: false };
+  if (haystack.includes(needle)) return { matched: true, matchedNote: null };
 
-  const noteHit = recipe.logNotes.some((n) => n.toLowerCase().includes(needle));
-  return { matched: noteHit, matchedInNotes: noteHit };
+  // §5.4: a note-only hit is labelled with the matching snippet itself
+  // ("matched in your notes: 'too salty'") — a hit with no visible cause
+  // in the searched text otherwise reads as a bug.
+  const noteHit = recipe.logNotes.find((n) => n.toLowerCase().includes(needle)) ?? null;
+  return { matched: noteHit != null, matchedNote: noteHit };
 }
 
 export interface QueryResultItem {
   recipe: EnrichedRecipe;
-  matchedInNotes: boolean;
+  /** The matching log-note snippet when the hit came only from private notes (§5.4), else null. */
+  matchedNote: string | null;
 }
 
 export interface QueryResult {
@@ -260,10 +264,10 @@ export function runRecipeQuery(
     query.sort,
     query.direction ?? 'asc',
   );
-  const matchedInNotesById = new Map(resultSet.map((r) => [r.recipe.id, r.search.matchedInNotes]));
+  const matchedNoteById = new Map(resultSet.map((r) => [r.recipe.id, r.search.matchedNote]));
 
   return {
-    items: sorted.map((recipe) => ({ recipe, matchedInNotes: matchedInNotesById.get(recipe.id) ?? false })),
+    items: sorted.map((recipe) => ({ recipe, matchedNote: matchedNoteById.get(recipe.id) ?? null })),
     chipAvailability,
     relaxed,
   };

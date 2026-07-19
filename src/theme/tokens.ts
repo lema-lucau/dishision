@@ -41,6 +41,8 @@ export const categoryColors = {
   other: '#9B8264',
 } as const;
 
+export type CategoryKey = keyof typeof categoryColors;
+
 // Typographic roles (§4.3). Font family names match the keys @expo-google-fonts
 // exposes via useFonts — see src/theme/useAppFonts.ts.
 export const fonts = {
