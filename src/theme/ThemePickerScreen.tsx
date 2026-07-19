@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RecipeDetailScreen } from '../recipes/RecipeDetailScreen';
 import { ThemeProvider, useTheme, useThemeControls, type AppTheme } from './ThemeContext';
 import { SAMPLE_RECIPE } from './sampleRecipe';
-import { THEME_ORDER, themes, type ThemeId } from './themes';
+import { DARK_THEME_IDS, LIGHT_THEME_IDS, themes, type ThemeId } from './themes';
 
 interface ThemePickerScreenProps {
   onClose: () => void;
@@ -58,10 +58,20 @@ function ThemeGrid({
         <Text style={styles.headerTitle}>Theme</Text>
         <View style={styles.headerSpacer} />
       </View>
-      <ScrollView contentContainerStyle={styles.grid}>
-        {THEME_ORDER.map((id) => (
-          <ThemeCard key={id} id={id} active={id === activeId} onPress={() => onPick(id)} />
-        ))}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.sectionLabel}>LIGHT</Text>
+        <View style={styles.grid}>
+          {LIGHT_THEME_IDS.map((id) => (
+            <ThemeCard key={id} id={id} active={id === activeId} onPress={() => onPick(id)} />
+          ))}
+        </View>
+
+        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>DARK</Text>
+        <View style={styles.grid}>
+          {DARK_THEME_IDS.map((id) => (
+            <ThemeCard key={id} id={id} active={id === activeId} onPress={() => onPick(id)} />
+          ))}
+        </View>
       </ScrollView>
     </View>
   );
@@ -160,12 +170,24 @@ const makeStyles = (theme: AppTheme) =>
     },
     headerSpacer: { width: 48 },
     back: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.accentText, width: 48 },
+    scrollContent: {
+      padding: theme.spacing.base,
+    },
+    sectionLabel: {
+      fontFamily: theme.fonts.body.semiBold,
+      fontSize: theme.fontSize.xs,
+      color: theme.colors.ink3,
+      letterSpacing: 1,
+      marginBottom: theme.spacing.md,
+    },
+    sectionLabelSpaced: {
+      marginTop: theme.spacing.xl,
+    },
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'space-between',
       gap: theme.spacing.md,
-      padding: theme.spacing.base,
     },
     card: {
       width: '47%',

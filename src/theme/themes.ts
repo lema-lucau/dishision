@@ -11,13 +11,25 @@
 import type { CategoryKey } from './tokens';
 
 export type ThemeId =
+  // Light
   | 'hearth'
   | 'ember'
   | 'seaglass'
   | 'clay'
   | 'risograph'
+  | 'matcha'
+  | 'blossom'
+  | 'citrus'
+  | 'lavender'
+  | 'newsprint'
+  // Dark
   | 'midnightKitchen'
-  | 'dusk';
+  | 'dusk'
+  | 'synthwave'
+  | 'terminal'
+  | 'bordeaux'
+  | 'abyss'
+  | 'espresso';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -283,6 +295,217 @@ const risograph: Theme = {
   tabBarBg: '#FFFFFF',
 };
 
+// ── Matcha — light ─────────────────────────────────────────────────────────
+// Green-tea calm: pale green-cream ground, matcha accent, toasted-honey amber.
+const matcha: Theme = {
+  id: 'matcha',
+  name: 'Matcha',
+  mode: 'light',
+  colors: {
+    bg: '#F4F6EE',
+    surface: '#FFFFFF',
+    surfaceWarm: '#E9EFDD',
+    chipBg: '#E4EBD6',
+    border: '#DFE6D0',
+    borderStrong: '#E4EBD6',
+    accent: '#4C7A34',
+    accentText: '#3B6128',
+    accentFg: '#F3F8EC',
+    accentTint: '#DEEBCD',
+    amber: '#C98A2B',
+    amberText: '#8A5C12',
+    amberTint: '#F0E4CD',
+    green: '#4C7A34',
+    greenTint: '#DEEBCD',
+    red: '#B23A2A',
+    redTint: '#F1D8D2',
+    ink: '#26301E',
+    ink2: '#5E6B52',
+    ink3: '#8C977F',
+    ink4: '#A6AF9B',
+    scrim: 'rgba(38,48,30,0.35)',
+  },
+  categoryColors: {
+    chicken: '#C98A2B',
+    beef: '#B23A2A',
+    pork: '#CE8878',
+    fish: '#3E7E86',
+    veg: '#4C7A34',
+    lamb: '#9A5266',
+    other: '#8C8266',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Blossom — light ────────────────────────────────────────────────────────
+// Soft rose and sage — spring cherry blossom, gentle and warm.
+const blossom: Theme = {
+  id: 'blossom',
+  name: 'Blossom',
+  mode: 'light',
+  colors: {
+    bg: '#FDF4F5',
+    surface: '#FFFFFF',
+    surfaceWarm: '#F9E7EB',
+    chipBg: '#F6E1E6',
+    border: '#F0D9DE',
+    borderStrong: '#F3DEE3',
+    accent: '#C24B6E',
+    accentText: '#A23557',
+    accentFg: '#FFF3F6',
+    accentTint: '#F6DCE4',
+    amber: '#C6803B',
+    amberText: '#8F551A',
+    amberTint: '#F3E3CF',
+    green: '#6E9464',
+    greenTint: '#E2ECDC',
+    red: '#C0392B',
+    redTint: '#F6DAD5',
+    ink: '#331F26',
+    ink2: '#7A6068',
+    ink3: '#A88F97',
+    ink4: '#C0A9B0',
+    scrim: 'rgba(51,31,38,0.33)',
+  },
+  categoryColors: {
+    chicken: '#C6803B',
+    beef: '#B23F3A',
+    pork: '#D98AA0',
+    fish: '#4B87A0',
+    veg: '#6E9464',
+    lamb: '#9A5273',
+    other: '#9A8288',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Citrus — light ─────────────────────────────────────────────────────────
+// Bright and zesty: tangerine accent over lime — a wake-up palette. The
+// "amber" slot holds lime (semantic, not literal — §4.1).
+const citrus: Theme = {
+  id: 'citrus',
+  name: 'Citrus',
+  mode: 'light',
+  colors: {
+    bg: '#FEFCF0',
+    surface: '#FFFFFF',
+    surfaceWarm: '#FBF3D6',
+    chipBg: '#FAEFCB',
+    border: '#F0E7C4',
+    borderStrong: '#F4ECCF',
+    accent: '#E08A0B',
+    accentText: '#9E5E00',
+    accentFg: '#FFF8EC',
+    accentTint: '#FBE7C2',
+    amber: '#6F9A1E',
+    amberText: '#4E6E12',
+    amberTint: '#E9F0CE',
+    green: '#4E8A2E',
+    greenTint: '#DEEBCB',
+    red: '#C63D22',
+    redTint: '#F6D9CF',
+    ink: '#33290F',
+    ink2: '#766A45',
+    ink3: '#A2966B',
+    ink4: '#BBB088',
+    scrim: 'rgba(51,41,15,0.32)',
+  },
+  categoryColors: {
+    chicken: '#E0A50B',
+    beef: '#C63D22',
+    pork: '#E09A6A',
+    fish: '#2E8AA0',
+    veg: '#6F9A1E',
+    lamb: '#9A5A3C',
+    other: '#9A8C5A',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Lavender — light ───────────────────────────────────────────────────────
+// Provence violet with a honey counterpoint — floral but grown-up.
+const lavender: Theme = {
+  id: 'lavender',
+  name: 'Lavender',
+  mode: 'light',
+  colors: {
+    bg: '#F6F4FB',
+    surface: '#FFFFFF',
+    surfaceWarm: '#ECE7F6',
+    chipBg: '#E7E1F3',
+    border: '#E1DAF0',
+    borderStrong: '#E7E1F3',
+    accent: '#6E4FB0',
+    accentText: '#573C93',
+    accentFg: '#F4F0FC',
+    accentTint: '#E3DAF3',
+    amber: '#B07A2E',
+    amberText: '#855610',
+    amberTint: '#EEE3CD',
+    green: '#5E9469',
+    greenTint: '#DFEBDF',
+    red: '#B3384A',
+    redTint: '#F3D9DD',
+    ink: '#241E33',
+    ink2: '#655C7A',
+    ink3: '#948BA8',
+    ink4: '#ACA3BF',
+    scrim: 'rgba(36,30,51,0.35)',
+  },
+  categoryColors: {
+    chicken: '#C89A2E',
+    beef: '#B3384A',
+    pork: '#C888B0',
+    fish: '#4B7BB0',
+    veg: '#5E9469',
+    lamb: '#8A5A9E',
+    other: '#8C86A0',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Newsprint — light ──────────────────────────────────────────────────────
+// Editorial cool-grey with ink-red and steel-blue — like a broadsheet.
+const newsprint: Theme = {
+  id: 'newsprint',
+  name: 'Newsprint',
+  mode: 'light',
+  colors: {
+    bg: '#F4F5F6',
+    surface: '#FFFFFF',
+    surfaceWarm: '#E9EBED',
+    chipBg: '#E5E8EA',
+    border: '#DEE2E5',
+    borderStrong: '#E4E7EA',
+    accent: '#B5342B',
+    accentText: '#97281F',
+    accentFg: '#FBF0EF',
+    accentTint: '#F1D9D6',
+    amber: '#35618C',
+    amberText: '#2A4E72',
+    amberTint: '#D9E2ED',
+    green: '#3E7D4F',
+    greenTint: '#DCE9DF',
+    red: '#B5342B',
+    redTint: '#F1D9D6',
+    ink: '#1D2126',
+    ink2: '#596069',
+    ink3: '#8A9099',
+    ink4: '#A6ABB2',
+    scrim: 'rgba(29,33,38,0.4)',
+  },
+  categoryColors: {
+    chicken: '#C08427',
+    beef: '#B5342B',
+    pork: '#C77E78',
+    fish: '#35618C',
+    veg: '#3E7D4F',
+    lamb: '#8A4A5C',
+    other: '#6E7680',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
 // ── Midnight Kitchen — dark (§4.3) ─────────────────────────────────────────
 // Tab bar steps one shade darker than `surface` for separation. The "red" slot
 // is an amber-toned warning to avoid two competing alarms on the dark ground.
@@ -367,23 +590,262 @@ const dusk: Theme = {
   tabBarBg: '#151419',
 };
 
+// ── Synthwave — dark ───────────────────────────────────────────────────────
+// Retro-future neon: magenta accent, electric-cyan passive on deep indigo.
+// The "amber" slot holds cyan (semantic, not literal — §4.1).
+const synthwave: Theme = {
+  id: 'synthwave',
+  name: 'Synthwave',
+  mode: 'dark',
+  colors: {
+    bg: '#16121F',
+    surface: '#1E1830',
+    surfaceWarm: '#241C38',
+    chipBg: '#271E3E',
+    border: '#322850',
+    borderStrong: '#322850',
+    accent: '#FF4D8D',
+    accentText: '#FF6FA3',
+    accentFg: '#1A0512',
+    accentTint: '#33172A',
+    amber: '#22D3EE',
+    amberText: '#5FE0F2',
+    amberTint: '#103038',
+    green: '#34E0A1',
+    greenTint: '#123528',
+    red: '#FB7185',
+    redTint: '#35141C',
+    ink: '#EDE7FA',
+    ink2: '#A99FD0',
+    ink3: '#7B7099',
+    ink4: '#635A80',
+    scrim: 'rgba(0,0,0,0.62)',
+  },
+  categoryColors: {
+    chicken: '#F5C542',
+    beef: '#FB7185',
+    pork: '#FF9EC7',
+    fish: '#22D3EE',
+    veg: '#34E0A1',
+    lamb: '#C084FC',
+    other: '#A99FD0',
+  },
+  tabBarBg: '#100D18',
+};
+
+// ── Terminal — dark ────────────────────────────────────────────────────────
+// Phosphor-green on near-black — a CRT console. Amber slot is amber-CRT gold.
+const terminal: Theme = {
+  id: 'terminal',
+  name: 'Terminal',
+  mode: 'dark',
+  colors: {
+    bg: '#0C0F0C',
+    surface: '#121712',
+    surfaceWarm: '#141B14',
+    chipBg: '#172017',
+    border: '#1E2A1E',
+    borderStrong: '#1E2A1E',
+    accent: '#3BE86B',
+    accentText: '#4FDD77',
+    accentFg: '#04140A',
+    accentTint: '#122A17',
+    amber: '#C7B03A',
+    amberText: '#D8C566',
+    amberTint: '#2A2610',
+    green: '#3BE86B',
+    greenTint: '#122A17',
+    red: '#F0553D',
+    redTint: '#2E140F',
+    ink: '#D6F5D6',
+    ink2: '#7FA97F',
+    ink3: '#5E7E5E',
+    ink4: '#4A614A',
+    scrim: 'rgba(0,0,0,0.65)',
+  },
+  categoryColors: {
+    chicken: '#C7B03A',
+    beef: '#F0553D',
+    pork: '#E0908A',
+    fish: '#3AB0C7',
+    veg: '#3BE86B',
+    lamb: '#B07AD0',
+    other: '#7FA97F',
+  },
+  tabBarBg: '#080B08',
+};
+
+// ── Bordeaux — dark ────────────────────────────────────────────────────────
+// Deep wine with gold and rosé — candlelit, elegant.
+const bordeaux: Theme = {
+  id: 'bordeaux',
+  name: 'Bordeaux',
+  mode: 'dark',
+  colors: {
+    bg: '#1E1013',
+    surface: '#281619',
+    surfaceWarm: '#2E1A1E',
+    chipBg: '#331D21',
+    border: '#3B2328',
+    borderStrong: '#3B2328',
+    accent: '#E0A458',
+    accentText: '#E9B87A',
+    accentFg: '#2A1608',
+    accentTint: '#3A2416',
+    amber: '#C25E7A',
+    amberText: '#D98BA0',
+    amberTint: '#331A22',
+    green: '#8FA96B',
+    greenTint: '#23301C',
+    red: '#E8646A',
+    redTint: '#331A1C',
+    ink: '#F3E6E1',
+    ink2: '#C0A29C',
+    ink3: '#94756F',
+    ink4: '#7A5C57',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#E0A458',
+    beef: '#E8646A',
+    pork: '#D98BA0',
+    fish: '#5B9AB0',
+    veg: '#8FA96B',
+    lamb: '#C57AA0',
+    other: '#C0A29C',
+  },
+  tabBarBg: '#160B0E',
+};
+
+// ── Abyss — dark ───────────────────────────────────────────────────────────
+// Deep-sea navy with aqua and a warm buoy-orange — cold water, warm light.
+const abyss: Theme = {
+  id: 'abyss',
+  name: 'Abyss',
+  mode: 'dark',
+  colors: {
+    bg: '#0B1620',
+    surface: '#10202C',
+    surfaceWarm: '#12232F',
+    chipBg: '#162937',
+    border: '#1E3444',
+    borderStrong: '#1E3444',
+    accent: '#2DD4BF',
+    accentText: '#4EE0CD',
+    accentFg: '#04211D',
+    accentTint: '#0E2E2C',
+    amber: '#E0A34D',
+    amberText: '#EDB868',
+    amberTint: '#2E2413',
+    green: '#34D399',
+    greenTint: '#0E2E23',
+    red: '#F87171',
+    redTint: '#301518',
+    ink: '#E2EEF3',
+    ink2: '#9DB4C0',
+    ink3: '#6E8896',
+    ink4: '#566E7A',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#E0A34D',
+    beef: '#F87171',
+    pork: '#E29AA0',
+    fish: '#2DD4BF',
+    veg: '#34D399',
+    lamb: '#B08AD0',
+    other: '#9DB4C0',
+  },
+  tabBarBg: '#071018',
+};
+
+// ── Espresso — dark ────────────────────────────────────────────────────────
+// Warm roasted brown with caramel accent and pistachio passive — cosy.
+const espresso: Theme = {
+  id: 'espresso',
+  name: 'Espresso',
+  mode: 'dark',
+  colors: {
+    bg: '#1A1512',
+    surface: '#241C18',
+    surfaceWarm: '#2A211C',
+    chipBg: '#2F2620',
+    border: '#382D26',
+    borderStrong: '#382D26',
+    accent: '#D99A5B',
+    accentText: '#E6AE74',
+    accentFg: '#2A1808',
+    accentTint: '#37271A',
+    amber: '#9AA36B',
+    amberText: '#B6BE86',
+    amberTint: '#29301C',
+    green: '#8FB06B',
+    greenTint: '#25301C',
+    red: '#E27366',
+    redTint: '#331A16',
+    ink: '#F0E7DE',
+    ink2: '#BCA895',
+    ink3: '#8E7A67',
+    ink4: '#6E5C4C',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#D99A5B',
+    beef: '#E27366',
+    pork: '#D89A88',
+    fish: '#6BA3B0',
+    veg: '#9AA36B',
+    lamb: '#C58A70',
+    other: '#BCA895',
+  },
+  tabBarBg: '#120E0B',
+};
+
 export const themes: Record<ThemeId, Theme> = {
   hearth,
   ember,
   seaglass,
   clay,
   risograph,
+  matcha,
+  blossom,
+  citrus,
+  lavender,
+  newsprint,
   midnightKitchen,
   dusk,
+  synthwave,
+  terminal,
+  bordeaux,
+  abyss,
+  espresso,
 };
 
-// Picker grid order (§4.10 step 1): default first, then the rest.
+// Picker grid order (§4.10 step 1): default first, then the rest. Grouped by
+// mode so the picker can render "Light" / "Dark" sections without re-sorting.
 export const THEME_ORDER: ThemeId[] = [
+  // Light
   'hearth',
   'ember',
   'seaglass',
   'clay',
   'risograph',
+  'matcha',
+  'blossom',
+  'citrus',
+  'lavender',
+  'newsprint',
+  // Dark
   'midnightKitchen',
   'dusk',
+  'synthwave',
+  'terminal',
+  'bordeaux',
+  'abyss',
+  'espresso',
 ];
+
+// The picker renders these as labelled sections (§4.10). Order within each
+// follows THEME_ORDER.
+export const LIGHT_THEME_IDS: ThemeId[] = THEME_ORDER.filter((id) => themes[id].mode === 'light');
+export const DARK_THEME_IDS: ThemeId[] = THEME_ORDER.filter((id) => themes[id].mode === 'dark');

@@ -23,9 +23,16 @@ function isColour(value: string): boolean {
 }
 
 describe('theme token completeness (§11.2)', () => {
-  it('ships every theme in the roster', () => {
-    expect(themeList).toHaveLength(7);
+  it('ships every theme in the roster, and the picker order covers them all', () => {
+    expect(themeList.length).toBeGreaterThanOrEqual(7);
+    expect(THEME_ORDER).toHaveLength(themeList.length);
     expect(new Set(THEME_ORDER)).toEqual(new Set(Object.keys(themes)));
+  });
+
+  it('every theme id matches its record key (no copy-paste id mismatch)', () => {
+    for (const [key, theme] of Object.entries(themes)) {
+      expect(theme.id).toBe(key);
+    }
   });
 
   it.each(themeList.map((t): [string, Theme] => [t.name, t]))(
