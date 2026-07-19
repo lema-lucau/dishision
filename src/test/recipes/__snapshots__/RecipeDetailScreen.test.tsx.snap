@@ -11,7 +11,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
   }
   style={
     {
-      "backgroundColor": "#FFFAF2",
+      "backgroundColor": "#FDF8F3",
       "flex": 1,
     }
   }
@@ -54,7 +54,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       <Text
         style={
           {
-            "color": "#B03D14",
+            "color": "#A34A2A",
             "fontFamily": "PublicSans_600SemiBold",
           }
         }
@@ -76,7 +76,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           [
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "justifyContent": "center",
             },
             {
@@ -107,7 +107,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         <Text
           style={
             {
-              "color": "#2A1F17",
+              "color": "#2C2420",
               "fontFamily": "Fraunces_700Bold",
               "fontSize": 24,
             }
@@ -118,7 +118,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_400Regular",
               "fontSize": 14,
             }
@@ -142,7 +142,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         style={
           {
             "alignSelf": "flex-start",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
@@ -152,7 +152,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_500Medium",
               "fontSize": 11,
               "lineHeight": 13,
@@ -167,7 +167,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         style={
           {
             "alignSelf": "flex-start",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
@@ -177,7 +177,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_500Medium",
               "fontSize": 11,
               "lineHeight": 13,
@@ -191,7 +191,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         style={
           {
             "alignSelf": "flex-start",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
@@ -201,7 +201,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_500Medium",
               "fontSize": 11,
               "lineHeight": 13,
@@ -233,7 +233,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         <Text
           style={
             {
-              "color": "#B0906B",
+              "color": "#A0938A",
               "fontFamily": "PublicSans_600SemiBold",
               "fontSize": 11,
               "letterSpacing": 0.5,
@@ -245,7 +245,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         <Text
           style={
             {
-              "color": "#2A1F17",
+              "color": "#2C2420",
               "fontFamily": "IBMPlexMono_600SemiBold",
               "fontSize": 14,
             }
@@ -258,7 +258,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         style={
           [
             {
-              "backgroundColor": "#FCEBD5",
+              "backgroundColor": "#F3E9DF",
               "borderRadius": 6,
               "flexDirection": "row",
               "height": 8,
@@ -272,7 +272,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           style={
             [
               {
-                "backgroundColor": "#D94F1E",
+                "backgroundColor": "#C25E3A",
               },
               {
                 "flex": 0.21739130434782608,
@@ -284,7 +284,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           style={
             [
               {
-                "backgroundColor": "#F5A623",
+                "backgroundColor": "#E8A33D",
               },
               {
                 "flex": 0.782608695652174,
@@ -304,7 +304,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_400Regular",
               "fontSize": 11,
             }
@@ -313,7 +313,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#D94F1E",
+                "color": "#C25E3A",
               }
             }
           >
@@ -325,7 +325,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_400Regular",
               "fontSize": 11,
             }
@@ -334,7 +334,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#F5A623",
+                "color": "#E8A33D",
               }
             }
           >
@@ -357,7 +357,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       <Text
         style={
           {
-            "color": "#B0906B",
+            "color": "#A0938A",
             "fontFamily": "PublicSans_600SemiBold",
             "fontSize": 11,
             "letterSpacing": 0.5,
@@ -406,7 +406,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FCEBD5",
+              "backgroundColor": "#F3E9DF",
               "borderRadius": 6,
               "height": 28,
               "justifyContent": "center",
@@ -418,7 +418,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#B03D14",
+                "color": "#A34A2A",
                 "fontFamily": "PublicSans_700Bold",
                 "fontSize": 16,
               }
@@ -430,7 +430,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         <Text
           style={
             {
-              "color": "#2A1F17",
+              "color": "#2C2420",
               "fontFamily": "IBMPlexMono_600SemiBold",
               "fontSize": 14,
               "minWidth": 20,
@@ -471,7 +471,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FCEBD5",
+              "backgroundColor": "#F3E9DF",
               "borderRadius": 6,
               "height": 28,
               "justifyContent": "center",
@@ -483,7 +483,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#B03D14",
+                "color": "#A34A2A",
                 "fontFamily": "PublicSans_700Bold",
                 "fontSize": 16,
               }
@@ -497,7 +497,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
     <Text
       style={
         {
-          "color": "#7E6A56",
+          "color": "#7A6E64",
           "fontFamily": "PublicSans_400Regular",
           "fontSize": 12.5,
         }
@@ -512,7 +512,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       style={
         {
           "alignItems": "center",
-          "borderBottomColor": "#F6E9D8",
+          "borderBottomColor": "#EFE6DC",
           "borderBottomWidth": 1,
           "flexDirection": "row",
           "gap": 8,
@@ -523,7 +523,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       <Text
         style={
           {
-            "color": "#5C8A3C",
+            "color": "#6B8F5E",
             "width": 14,
           }
         }
@@ -534,7 +534,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         numberOfLines={1}
         style={
           {
-            "color": "#2A1F17",
+            "color": "#2C2420",
             "flex": 1,
             "fontFamily": "PublicSans_400Regular",
             "fontSize": 14,
@@ -546,7 +546,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       <Text
         style={
           {
-            "color": "#7E6A56",
+            "color": "#7A6E64",
             "fontFamily": "IBMPlexMono_500Medium",
             "fontSize": 12.5,
           }
@@ -561,7 +561,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       style={
         {
           "alignItems": "center",
-          "borderBottomColor": "#F6E9D8",
+          "borderBottomColor": "#EFE6DC",
           "borderBottomWidth": 1,
           "flexDirection": "row",
           "gap": 8,
@@ -572,7 +572,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       <Text
         style={
           {
-            "color": "#5C8A3C",
+            "color": "#6B8F5E",
             "width": 14,
           }
         }
@@ -583,7 +583,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         numberOfLines={1}
         style={
           {
-            "color": "#2A1F17",
+            "color": "#2C2420",
             "flex": 1,
             "fontFamily": "PublicSans_400Regular",
             "fontSize": 14,
@@ -595,7 +595,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       <Text
         style={
           {
-            "color": "#7E6A56",
+            "color": "#7A6E64",
             "fontFamily": "IBMPlexMono_500Medium",
             "fontSize": 12.5,
           }
@@ -625,7 +625,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -637,7 +637,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -648,7 +648,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -663,7 +663,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -675,7 +675,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -686,7 +686,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -701,7 +701,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -713,7 +713,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -724,7 +724,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -739,7 +739,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -751,7 +751,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -762,7 +762,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -778,7 +778,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
     <Text
       style={
         {
-          "color": "#7E6A56",
+          "color": "#7A6E64",
           "fontFamily": "PublicSans_400Regular",
           "fontSize": 12.5,
         }
@@ -800,7 +800,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       <Text
         style={
           {
-            "color": "#B0906B",
+            "color": "#A0938A",
             "fontFamily": "PublicSans_600SemiBold",
             "fontSize": 11,
             "letterSpacing": 0.5,
@@ -846,7 +846,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         <Text
           style={
             {
-              "color": "#B03D14",
+              "color": "#A34A2A",
               "fontFamily": "PublicSans_600SemiBold",
               "fontSize": 12.5,
             }
@@ -882,7 +882,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
                 "minWidth": 24,
               },
               {
-                "backgroundColor": "#D94F1E",
+                "backgroundColor": "#C25E3A",
                 "flex": 300,
               },
             ]
@@ -891,7 +891,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#FFF6EF",
+                "color": "#FFF6F0",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 11,
               }
@@ -910,7 +910,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
                 "minWidth": 24,
               },
               {
-                "backgroundColor": "#F5A623",
+                "backgroundColor": "#E8A33D",
                 "flex": 1080,
               },
             ]
@@ -919,7 +919,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "color": "#FFF6EF",
+                "color": "#FFF6F0",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 11,
               }
@@ -962,7 +962,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       style={
         {
           "alignItems": "center",
-          "backgroundColor": "#D94F1E",
+          "backgroundColor": "#C25E3A",
           "borderRadius": 13,
           "marginTop": 8,
           "opacity": 1,
@@ -973,7 +973,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       <Text
         style={
           {
-            "color": "#FFF6EF",
+            "color": "#FFF6F0",
             "fontFamily": "PublicSans_700Bold",
             "fontSize": 14,
           }
@@ -1013,7 +1013,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       style={
         {
           "alignItems": "center",
-          "backgroundColor": "#FCEBD5",
+          "backgroundColor": "#F3E9DF",
           "borderRadius": 13,
           "opacity": 1,
           "paddingVertical": 8,
@@ -1023,7 +1023,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       <Text
         style={
           {
-            "color": "#B03D14",
+            "color": "#A34A2A",
             "fontFamily": "PublicSans_600SemiBold",
             "fontSize": 12.5,
           }
@@ -1078,7 +1078,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -1097,7 +1097,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
                 "lineHeight": 14.5,
               },
               {
-                "color": "#7E6A56",
+                "color": "#7A6E64",
               },
             ]
           }
@@ -1137,7 +1137,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -1156,7 +1156,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
                 "lineHeight": 14.5,
               },
               {
-                "color": "#7E6A56",
+                "color": "#7A6E64",
               },
             ]
           }
@@ -1196,7 +1196,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FBE3D6",
+            "backgroundColor": "#F4E0D7",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -1215,7 +1215,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
                 "lineHeight": 14.5,
               },
               {
-                "color": "#B03D14",
+                "color": "#A34A2A",
               },
             ]
           }
@@ -1265,7 +1265,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FDEDD3",
+            "backgroundColor": "#FAEBD2",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -1284,7 +1284,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
                 "lineHeight": 14.5,
               },
               {
-                "color": "#9A6410",
+                "color": "#92620E",
               },
             ]
           }
@@ -1324,7 +1324,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#F8DCD7",
+            "backgroundColor": "#F5DAD7",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -1343,7 +1343,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
                 "lineHeight": 14.5,
               },
               {
-                "color": "#C0392B",
+                "color": "#B3261E",
               },
             ]
           }
@@ -1383,7 +1383,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#F8DCD7",
+            "backgroundColor": "#F5DAD7",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -1402,7 +1402,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
                 "lineHeight": 14.5,
               },
               {
-                "color": "#C0392B",
+                "color": "#B3261E",
               },
             ]
           }
@@ -1426,7 +1426,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
   }
   style={
     {
-      "backgroundColor": "#FFFAF2",
+      "backgroundColor": "#FDF8F3",
       "flex": 1,
     }
   }
@@ -1469,7 +1469,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       <Text
         style={
           {
-            "color": "#B03D14",
+            "color": "#A34A2A",
             "fontFamily": "PublicSans_600SemiBold",
           }
         }
@@ -1491,7 +1491,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           [
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "justifyContent": "center",
             },
             {
@@ -1522,7 +1522,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         <Text
           style={
             {
-              "color": "#2A1F17",
+              "color": "#2C2420",
               "fontFamily": "Fraunces_700Bold",
               "fontSize": 24,
             }
@@ -1533,7 +1533,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_400Regular",
               "fontSize": 14,
             }
@@ -1557,7 +1557,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         style={
           {
             "alignSelf": "flex-start",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
@@ -1567,7 +1567,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_500Medium",
               "fontSize": 11,
               "lineHeight": 13,
@@ -1582,7 +1582,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         style={
           {
             "alignSelf": "flex-start",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
@@ -1592,7 +1592,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_500Medium",
               "fontSize": 11,
               "lineHeight": 13,
@@ -1606,7 +1606,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         style={
           {
             "alignSelf": "flex-start",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
@@ -1616,7 +1616,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_500Medium",
               "fontSize": 11,
               "lineHeight": 13,
@@ -1648,7 +1648,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         <Text
           style={
             {
-              "color": "#B0906B",
+              "color": "#A0938A",
               "fontFamily": "PublicSans_600SemiBold",
               "fontSize": 11,
               "letterSpacing": 0.5,
@@ -1660,7 +1660,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         <Text
           style={
             {
-              "color": "#2A1F17",
+              "color": "#2C2420",
               "fontFamily": "IBMPlexMono_600SemiBold",
               "fontSize": 14,
             }
@@ -1673,7 +1673,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         style={
           [
             {
-              "backgroundColor": "#FCEBD5",
+              "backgroundColor": "#F3E9DF",
               "borderRadius": 6,
               "flexDirection": "row",
               "height": 8,
@@ -1687,7 +1687,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           style={
             [
               {
-                "backgroundColor": "#D94F1E",
+                "backgroundColor": "#C25E3A",
               },
               {
                 "flex": 0.21739130434782608,
@@ -1699,7 +1699,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           style={
             [
               {
-                "backgroundColor": "#F5A623",
+                "backgroundColor": "#E8A33D",
               },
               {
                 "flex": 0.782608695652174,
@@ -1719,7 +1719,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_400Regular",
               "fontSize": 11,
             }
@@ -1728,7 +1728,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#D94F1E",
+                "color": "#C25E3A",
               }
             }
           >
@@ -1740,7 +1740,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_400Regular",
               "fontSize": 11,
             }
@@ -1749,7 +1749,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#F5A623",
+                "color": "#E8A33D",
               }
             }
           >
@@ -1772,7 +1772,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       <Text
         style={
           {
-            "color": "#B0906B",
+            "color": "#A0938A",
             "fontFamily": "PublicSans_600SemiBold",
             "fontSize": 11,
             "letterSpacing": 0.5,
@@ -1821,7 +1821,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FCEBD5",
+              "backgroundColor": "#F3E9DF",
               "borderRadius": 6,
               "height": 28,
               "justifyContent": "center",
@@ -1833,7 +1833,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#B03D14",
+                "color": "#A34A2A",
                 "fontFamily": "PublicSans_700Bold",
                 "fontSize": 16,
               }
@@ -1845,7 +1845,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         <Text
           style={
             {
-              "color": "#2A1F17",
+              "color": "#2C2420",
               "fontFamily": "IBMPlexMono_600SemiBold",
               "fontSize": 14,
               "minWidth": 20,
@@ -1886,7 +1886,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FCEBD5",
+              "backgroundColor": "#F3E9DF",
               "borderRadius": 6,
               "height": 28,
               "justifyContent": "center",
@@ -1898,7 +1898,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#B03D14",
+                "color": "#A34A2A",
                 "fontFamily": "PublicSans_700Bold",
                 "fontSize": 16,
               }
@@ -1912,7 +1912,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
     <Text
       style={
         {
-          "color": "#7E6A56",
+          "color": "#7A6E64",
           "fontFamily": "PublicSans_400Regular",
           "fontSize": 12.5,
         }
@@ -1927,7 +1927,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       style={
         {
           "alignItems": "center",
-          "borderBottomColor": "#F6E9D8",
+          "borderBottomColor": "#EFE6DC",
           "borderBottomWidth": 1,
           "flexDirection": "row",
           "gap": 8,
@@ -1938,7 +1938,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       <Text
         style={
           {
-            "color": "#5C8A3C",
+            "color": "#6B8F5E",
             "width": 14,
           }
         }
@@ -1949,7 +1949,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         numberOfLines={1}
         style={
           {
-            "color": "#2A1F17",
+            "color": "#2C2420",
             "flex": 1,
             "fontFamily": "PublicSans_400Regular",
             "fontSize": 14,
@@ -1961,7 +1961,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       <Text
         style={
           {
-            "color": "#7E6A56",
+            "color": "#7A6E64",
             "fontFamily": "IBMPlexMono_500Medium",
             "fontSize": 12.5,
           }
@@ -1976,7 +1976,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       style={
         {
           "alignItems": "center",
-          "borderBottomColor": "#F6E9D8",
+          "borderBottomColor": "#EFE6DC",
           "borderBottomWidth": 1,
           "flexDirection": "row",
           "gap": 8,
@@ -1987,7 +1987,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       <Text
         style={
           {
-            "color": "#5C8A3C",
+            "color": "#6B8F5E",
             "width": 14,
           }
         }
@@ -1998,7 +1998,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         numberOfLines={1}
         style={
           {
-            "color": "#2A1F17",
+            "color": "#2C2420",
             "flex": 1,
             "fontFamily": "PublicSans_400Regular",
             "fontSize": 14,
@@ -2010,7 +2010,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       <Text
         style={
           {
-            "color": "#7E6A56",
+            "color": "#7A6E64",
             "fontFamily": "IBMPlexMono_500Medium",
             "fontSize": 12.5,
           }
@@ -2040,7 +2040,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -2052,7 +2052,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -2063,7 +2063,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -2078,7 +2078,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -2090,7 +2090,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -2101,7 +2101,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -2116,7 +2116,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -2128,7 +2128,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -2139,7 +2139,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -2154,7 +2154,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -2166,7 +2166,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -2177,7 +2177,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -2193,7 +2193,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
     <Text
       style={
         {
-          "color": "#9A6410",
+          "color": "#92620E",
           "fontFamily": "PublicSans_400Regular",
           "fontSize": 11,
         }
@@ -2217,7 +2217,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       <Text
         style={
           {
-            "color": "#B0906B",
+            "color": "#A0938A",
             "fontFamily": "PublicSans_600SemiBold",
             "fontSize": 11,
             "letterSpacing": 0.5,
@@ -2263,7 +2263,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         <Text
           style={
             {
-              "color": "#B03D14",
+              "color": "#A34A2A",
               "fontFamily": "PublicSans_600SemiBold",
               "fontSize": 12.5,
             }
@@ -2299,7 +2299,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
                 "minWidth": 24,
               },
               {
-                "backgroundColor": "#D94F1E",
+                "backgroundColor": "#C25E3A",
                 "flex": 300,
               },
             ]
@@ -2308,7 +2308,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#FFF6EF",
+                "color": "#FFF6F0",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 11,
               }
@@ -2327,7 +2327,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
                 "minWidth": 24,
               },
               {
-                "backgroundColor": "#F5A623",
+                "backgroundColor": "#E8A33D",
                 "flex": 1080,
               },
             ]
@@ -2336,7 +2336,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "color": "#FFF6EF",
+                "color": "#FFF6F0",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 11,
               }
@@ -2379,7 +2379,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       style={
         {
           "alignItems": "center",
-          "backgroundColor": "#D94F1E",
+          "backgroundColor": "#C25E3A",
           "borderRadius": 13,
           "marginTop": 8,
           "opacity": 1,
@@ -2390,7 +2390,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       <Text
         style={
           {
-            "color": "#FFF6EF",
+            "color": "#FFF6F0",
             "fontFamily": "PublicSans_700Bold",
             "fontSize": 14,
           }
@@ -2430,7 +2430,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       style={
         {
           "alignItems": "center",
-          "backgroundColor": "#FCEBD5",
+          "backgroundColor": "#F3E9DF",
           "borderRadius": 13,
           "opacity": 1,
           "paddingVertical": 8,
@@ -2440,7 +2440,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       <Text
         style={
           {
-            "color": "#B03D14",
+            "color": "#A34A2A",
             "fontFamily": "PublicSans_600SemiBold",
             "fontSize": 12.5,
           }
@@ -2495,7 +2495,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -2514,7 +2514,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
                 "lineHeight": 14.5,
               },
               {
-                "color": "#7E6A56",
+                "color": "#7A6E64",
               },
             ]
           }
@@ -2554,7 +2554,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -2573,7 +2573,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
                 "lineHeight": 14.5,
               },
               {
-                "color": "#7E6A56",
+                "color": "#7A6E64",
               },
             ]
           }
@@ -2613,7 +2613,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FBE3D6",
+            "backgroundColor": "#F4E0D7",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -2632,7 +2632,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
                 "lineHeight": 14.5,
               },
               {
-                "color": "#B03D14",
+                "color": "#A34A2A",
               },
             ]
           }
@@ -2682,7 +2682,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FDEDD3",
+            "backgroundColor": "#FAEBD2",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -2701,7 +2701,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
                 "lineHeight": 14.5,
               },
               {
-                "color": "#9A6410",
+                "color": "#92620E",
               },
             ]
           }
@@ -2741,7 +2741,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#F8DCD7",
+            "backgroundColor": "#F5DAD7",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -2760,7 +2760,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
                 "lineHeight": 14.5,
               },
               {
-                "color": "#C0392B",
+                "color": "#B3261E",
               },
             ]
           }
@@ -2800,7 +2800,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#F8DCD7",
+            "backgroundColor": "#F5DAD7",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -2819,7 +2819,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
                 "lineHeight": 14.5,
               },
               {
-                "color": "#C0392B",
+                "color": "#B3261E",
               },
             ]
           }
@@ -2843,7 +2843,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
   }
   style={
     {
-      "backgroundColor": "#FFFAF2",
+      "backgroundColor": "#FDF8F3",
       "flex": 1,
     }
   }
@@ -2886,7 +2886,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       <Text
         style={
           {
-            "color": "#B03D14",
+            "color": "#A34A2A",
             "fontFamily": "PublicSans_600SemiBold",
           }
         }
@@ -2908,7 +2908,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           [
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "justifyContent": "center",
             },
             {
@@ -2939,7 +2939,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         <Text
           style={
             {
-              "color": "#2A1F17",
+              "color": "#2C2420",
               "fontFamily": "Fraunces_700Bold",
               "fontSize": 24,
             }
@@ -2950,7 +2950,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_400Regular",
               "fontSize": 14,
             }
@@ -2974,7 +2974,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         style={
           {
             "alignSelf": "flex-start",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
@@ -2984,7 +2984,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_500Medium",
               "fontSize": 11,
               "lineHeight": 13,
@@ -2999,7 +2999,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         style={
           {
             "alignSelf": "flex-start",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
@@ -3009,7 +3009,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_500Medium",
               "fontSize": 11,
               "lineHeight": 13,
@@ -3023,7 +3023,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         style={
           {
             "alignSelf": "flex-start",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
@@ -3033,7 +3033,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_500Medium",
               "fontSize": 11,
               "lineHeight": 13,
@@ -3065,7 +3065,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         <Text
           style={
             {
-              "color": "#B0906B",
+              "color": "#A0938A",
               "fontFamily": "PublicSans_600SemiBold",
               "fontSize": 11,
               "letterSpacing": 0.5,
@@ -3077,7 +3077,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         <Text
           style={
             {
-              "color": "#2A1F17",
+              "color": "#2C2420",
               "fontFamily": "IBMPlexMono_600SemiBold",
               "fontSize": 14,
             }
@@ -3090,7 +3090,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         style={
           [
             {
-              "backgroundColor": "#FCEBD5",
+              "backgroundColor": "#F3E9DF",
               "borderRadius": 6,
               "flexDirection": "row",
               "height": 8,
@@ -3104,7 +3104,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           style={
             [
               {
-                "backgroundColor": "#D94F1E",
+                "backgroundColor": "#C25E3A",
               },
               {
                 "flex": 0.21739130434782608,
@@ -3116,7 +3116,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           style={
             [
               {
-                "backgroundColor": "#F5A623",
+                "backgroundColor": "#E8A33D",
               },
               {
                 "flex": 0.782608695652174,
@@ -3136,7 +3136,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_400Regular",
               "fontSize": 11,
             }
@@ -3145,7 +3145,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#D94F1E",
+                "color": "#C25E3A",
               }
             }
           >
@@ -3157,7 +3157,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         <Text
           style={
             {
-              "color": "#7E6A56",
+              "color": "#7A6E64",
               "fontFamily": "PublicSans_400Regular",
               "fontSize": 11,
             }
@@ -3166,7 +3166,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#F5A623",
+                "color": "#E8A33D",
               }
             }
           >
@@ -3189,7 +3189,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       <Text
         style={
           {
-            "color": "#B0906B",
+            "color": "#A0938A",
             "fontFamily": "PublicSans_600SemiBold",
             "fontSize": 11,
             "letterSpacing": 0.5,
@@ -3238,7 +3238,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FCEBD5",
+              "backgroundColor": "#F3E9DF",
               "borderRadius": 6,
               "height": 28,
               "justifyContent": "center",
@@ -3250,7 +3250,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#B03D14",
+                "color": "#A34A2A",
                 "fontFamily": "PublicSans_700Bold",
                 "fontSize": 16,
               }
@@ -3262,7 +3262,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         <Text
           style={
             {
-              "color": "#2A1F17",
+              "color": "#2C2420",
               "fontFamily": "IBMPlexMono_600SemiBold",
               "fontSize": 14,
               "minWidth": 20,
@@ -3303,7 +3303,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FCEBD5",
+              "backgroundColor": "#F3E9DF",
               "borderRadius": 6,
               "height": 28,
               "justifyContent": "center",
@@ -3315,7 +3315,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#B03D14",
+                "color": "#A34A2A",
                 "fontFamily": "PublicSans_700Bold",
                 "fontSize": 16,
               }
@@ -3329,7 +3329,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
     <Text
       style={
         {
-          "color": "#7E6A56",
+          "color": "#7A6E64",
           "fontFamily": "PublicSans_400Regular",
           "fontSize": 12.5,
         }
@@ -3344,7 +3344,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       style={
         {
           "alignItems": "center",
-          "borderBottomColor": "#F6E9D8",
+          "borderBottomColor": "#EFE6DC",
           "borderBottomWidth": 1,
           "flexDirection": "row",
           "gap": 8,
@@ -3355,7 +3355,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       <Text
         style={
           {
-            "color": "#5C8A3C",
+            "color": "#6B8F5E",
             "width": 14,
           }
         }
@@ -3366,7 +3366,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         numberOfLines={1}
         style={
           {
-            "color": "#2A1F17",
+            "color": "#2C2420",
             "flex": 1,
             "fontFamily": "PublicSans_400Regular",
             "fontSize": 14,
@@ -3378,7 +3378,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       <Text
         style={
           {
-            "color": "#7E6A56",
+            "color": "#7A6E64",
             "fontFamily": "IBMPlexMono_500Medium",
             "fontSize": 12.5,
           }
@@ -3393,7 +3393,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       style={
         {
           "alignItems": "center",
-          "borderBottomColor": "#F6E9D8",
+          "borderBottomColor": "#EFE6DC",
           "borderBottomWidth": 1,
           "flexDirection": "row",
           "gap": 8,
@@ -3404,7 +3404,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       <Text
         style={
           {
-            "color": "#5C8A3C",
+            "color": "#6B8F5E",
             "width": 14,
           }
         }
@@ -3415,7 +3415,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         numberOfLines={1}
         style={
           {
-            "color": "#2A1F17",
+            "color": "#2C2420",
             "flex": 1,
             "fontFamily": "PublicSans_400Regular",
             "fontSize": 14,
@@ -3427,7 +3427,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       <Text
         style={
           {
-            "color": "#7E6A56",
+            "color": "#7A6E64",
             "fontFamily": "IBMPlexMono_500Medium",
             "fontSize": 12.5,
           }
@@ -3457,7 +3457,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -3469,7 +3469,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -3480,7 +3480,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -3495,7 +3495,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -3507,7 +3507,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -3518,7 +3518,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -3533,7 +3533,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -3545,7 +3545,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -3556,7 +3556,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -3571,7 +3571,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#FDF1E1",
+              "backgroundColor": "#F5EDE5",
               "borderRadius": 10,
               "flex": 1,
               "gap": 2,
@@ -3583,7 +3583,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#2A1F17",
+                "color": "#2C2420",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 20,
               }
@@ -3594,7 +3594,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#B0906B",
+                "color": "#A0938A",
                 "fontFamily": "PublicSans_500Medium",
                 "fontSize": 11,
                 "letterSpacing": 0.5,
@@ -3610,7 +3610,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
     <Text
       style={
         {
-          "color": "#7E6A56",
+          "color": "#7A6E64",
           "fontFamily": "PublicSans_400Regular",
           "fontSize": 12.5,
         }
@@ -3632,7 +3632,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       <Text
         style={
           {
-            "color": "#B0906B",
+            "color": "#A0938A",
             "fontFamily": "PublicSans_600SemiBold",
             "fontSize": 11,
             "letterSpacing": 0.5,
@@ -3678,7 +3678,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         <Text
           style={
             {
-              "color": "#B03D14",
+              "color": "#A34A2A",
               "fontFamily": "PublicSans_600SemiBold",
               "fontSize": 12.5,
             }
@@ -3714,7 +3714,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
                 "minWidth": 24,
               },
               {
-                "backgroundColor": "#D94F1E",
+                "backgroundColor": "#C25E3A",
                 "flex": 300,
               },
             ]
@@ -3723,7 +3723,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#FFF6EF",
+                "color": "#FFF6F0",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 11,
               }
@@ -3742,7 +3742,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
                 "minWidth": 24,
               },
               {
-                "backgroundColor": "#F5A623",
+                "backgroundColor": "#E8A33D",
                 "flex": 1080,
               },
             ]
@@ -3751,7 +3751,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "color": "#FFF6EF",
+                "color": "#FFF6F0",
                 "fontFamily": "IBMPlexMono_600SemiBold",
                 "fontSize": 11,
               }
@@ -3794,7 +3794,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       style={
         {
           "alignItems": "center",
-          "backgroundColor": "#D94F1E",
+          "backgroundColor": "#C25E3A",
           "borderRadius": 13,
           "marginTop": 8,
           "opacity": 1,
@@ -3805,7 +3805,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       <Text
         style={
           {
-            "color": "#FFF6EF",
+            "color": "#FFF6F0",
             "fontFamily": "PublicSans_700Bold",
             "fontSize": 14,
           }
@@ -3845,7 +3845,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       style={
         {
           "alignItems": "center",
-          "backgroundColor": "#FCEBD5",
+          "backgroundColor": "#F3E9DF",
           "borderRadius": 13,
           "opacity": 1,
           "paddingVertical": 8,
@@ -3855,7 +3855,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       <Text
         style={
           {
-            "color": "#B03D14",
+            "color": "#A34A2A",
             "fontFamily": "PublicSans_600SemiBold",
             "fontSize": 12.5,
           }
@@ -3910,7 +3910,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -3929,7 +3929,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
                 "lineHeight": 14.5,
               },
               {
-                "color": "#7E6A56",
+                "color": "#7A6E64",
               },
             ]
           }
@@ -3969,7 +3969,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FCEBD5",
+            "backgroundColor": "#F3E9DF",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -3988,7 +3988,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
                 "lineHeight": 14.5,
               },
               {
-                "color": "#7E6A56",
+                "color": "#7A6E64",
               },
             ]
           }
@@ -4028,7 +4028,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FBE3D6",
+            "backgroundColor": "#F4E0D7",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -4047,7 +4047,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
                 "lineHeight": 14.5,
               },
               {
-                "color": "#B03D14",
+                "color": "#A34A2A",
               },
             ]
           }
@@ -4097,7 +4097,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#FDEDD3",
+            "backgroundColor": "#FAEBD2",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -4116,7 +4116,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
                 "lineHeight": 14.5,
               },
               {
-                "color": "#9A6410",
+                "color": "#92620E",
               },
             ]
           }
@@ -4156,7 +4156,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#F8DCD7",
+            "backgroundColor": "#F5DAD7",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -4175,7 +4175,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
                 "lineHeight": 14.5,
               },
               {
-                "color": "#C0392B",
+                "color": "#B3261E",
               },
             ]
           }
@@ -4215,7 +4215,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           {
             "alignItems": "center",
             "alignSelf": "stretch",
-            "backgroundColor": "#F8DCD7",
+            "backgroundColor": "#F5DAD7",
             "borderRadius": 20,
             "flex": 1,
             "opacity": 1,
@@ -4234,7 +4234,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
                 "lineHeight": 14.5,
               },
               {
-                "color": "#C0392B",
+                "color": "#B3261E",
               },
             ]
           }

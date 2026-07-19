@@ -1,6 +1,7 @@
 // §5.4 exclusions view: Never again (permanent) and Not tonight (expiring).
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { EnrichedRecipe } from './loadRecipes';
 import { EmojiTile } from './EmojiTile';
 
@@ -11,6 +12,8 @@ interface ExclusionsScreenProps {
 }
 
 export function ExclusionsScreen({ recipes, onUnexclude, onBack }: ExclusionsScreenProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const neverAgain = recipes.filter((r) => r.exclusion?.kind === 'never_again');
   const notTonight = recipes.filter((r) => r.exclusion?.kind === 'not_tonight');
 
@@ -53,7 +56,8 @@ export function ExclusionsScreen({ recipes, onUnexclude, onBack }: ExclusionsScr
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   content: { padding: theme.spacing.base, gap: theme.spacing.sm },
   back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText, marginBottom: theme.spacing.sm },

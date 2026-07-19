@@ -2,7 +2,7 @@
 // copy-and-tweak. No routing library on the allowlist (§15.1) — this screen
 // is its own small stack via local state, same pattern as the Debug screen
 // toggle in TabShell.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDb } from '../db/DbContext';
 import { CookCompleteScreen } from '../recipes/CookCompleteScreen';
@@ -21,7 +21,7 @@ import { runRecipeQuery } from '../recipes/queryEngine';
 import { createManualRecipe, updateManualRecipe, type RecipeDraft } from '../recipes/recipeSave';
 import { getCurrencySymbol } from '../settings/getSetting';
 import { SORT_LABELS, SortMenu } from '../recipes/SortMenu';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
 
@@ -34,8 +34,17 @@ type ViewState =
   | { mode: 'cookComplete'; recipeId: number; retroactive: boolean }
   | { mode: 'cookingMode'; recipeId: number };
 
-export function RecipesScreen() {
+interface RecipesScreenProps {
+  /** Set when arriving from the Profile page's "View all" favourites link (§5.10). */
+  initialFavouritesOnly?: boolean;
+  onFavouritesConsumed?: () => void;
+}
+
+export function RecipesScreen({ initialFavouritesOnly = false, onFavouritesConsumed }: RecipesScreenProps = {}) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
+  const [favouritesOnly, setFavouritesOnly] = useState(initialFavouritesOnly);
   const [recipes, setRecipes] = useState<EnrichedRecipe[] | null>(null);
   const [currencySymbol, setCurrencySymbol] = useState('€');
   const [view, setView] = useState<ViewState>({ mode: 'list' });
@@ -80,6 +89,15 @@ export function RecipesScreen() {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  // Turn the favourites scope on when navigated in from Profile, then clear the
+  // parent's one-shot flag so it doesn't re-arm on the next render.
+  useEffect(() => {
+    if (initialFavouritesOnly) {
+      setFavouritesOnly(true);
+      onFavouritesConsumed?.();
+    }
+  }, [initialFavouritesOnly, onFavouritesConsumed]);
 
   useEffect(() => {
     getCurrencySymbol(db).then(setCurrencySymbol);
@@ -215,7 +233,8 @@ export function RecipesScreen() {
     );
   }
 
-  const result = runRecipeQuery(recipes, { search, chips, sort, direction });
+  const scopedRecipes = favouritesOnly ? recipes.filter((r) => r.isFavourite) : recipes;
+  const result = runRecipeQuery(scopedRecipes, { search, chips, sort, direction });
 
   const itemsByMealType = new Map<MealType, QueryResultItem[]>();
   for (const item of result.items) {
@@ -244,6 +263,13 @@ export function RecipesScreen() {
           placeholderTextColor={theme.colors.ink3}
         />
       </View>
+
+      {favouritesOnly && (
+        <TouchableOpacity style={styles.favBanner} onPress={() => setFavouritesOnly(false)}>
+          <Text style={styles.favBannerText}>♥ Favourites only</Text>
+          <Text style={styles.favBannerClear}>✕ Clear</Text>
+        </TouchableOpacity>
+      )}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <TouchableOpacity
@@ -333,12 +359,24 @@ export function RecipesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1, padding: theme.spacing.base, gap: theme.spacing.md },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
   addLink: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
+  favBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.colors.accentTint,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+  },
+  favBannerText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+  favBannerClear: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',

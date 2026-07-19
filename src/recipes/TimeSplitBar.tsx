@@ -1,9 +1,10 @@
 // The signature element (§4.5): a two-tone bar splitting total time into
 // hands-on (accent) and passive (amber), with a plain-language key beneath.
 // Used on the recipe detail screen, list rows, and (later) Cooking Mode.
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { formatDuration } from '../lib/formatDuration';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 interface TimeSplitBarProps {
   activeSeconds: number;
@@ -12,6 +13,8 @@ interface TimeSplitBarProps {
 }
 
 export function TimeSplitBar({ activeSeconds, passiveSeconds, compact }: TimeSplitBarProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const total = activeSeconds + passiveSeconds;
   const activeFraction = total > 0 ? activeSeconds / total : 0;
 
@@ -55,7 +58,8 @@ export function TimeSplitBar({ activeSeconds, passiveSeconds, compact }: TimeSpl
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { gap: theme.spacing.xs },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   headerLabel: {

@@ -3,9 +3,9 @@
 // onto multiple lines rather than scrolling horizontally, so every chip is
 // visible at once. Chicken/beef/pork/lamb/fish collapse under one
 // expandable "Protein" chip to keep the bar short; veg stays top-level.
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { PROTEIN_GROUP_CHIPS, type ChipAvailability, type ChipKey } from './queryEngine';
 
 const CHIP_LABELS: Record<ChipKey, string> = {
@@ -44,6 +44,8 @@ interface FilterChipBarProps {
 }
 
 export function FilterChipBar({ selected, availability, onToggle }: FilterChipBarProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [proteinExpanded, setProteinExpanded] = useState(false);
   const selectedProteinCount = PROTEIN_GROUP_CHIPS.filter((c) => selected.includes(c)).length;
 
@@ -84,7 +86,8 @@ export function FilterChipBar({ selected, availability, onToggle }: FilterChipBa
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   stack: { gap: theme.spacing.xs },
   row: {
     flexDirection: 'row',

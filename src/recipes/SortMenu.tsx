@@ -1,8 +1,9 @@
 // Every sort option from §5.4. Tap a field to select it; a single
 // ascending/descending toggle sits on the header row, far right — one
 // control for direction, not one per option.
+import { useMemo } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { SortDirection, SortKey } from './queryEngine';
 
 export const SORT_LABELS: Record<SortKey, string> = {
@@ -38,6 +39,8 @@ interface SortMenuProps {
 }
 
 export function SortMenu({ visible, sort, direction, onChange, onClose }: SortMenuProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
@@ -74,8 +77,9 @@ export function SortMenu({ visible, sort, direction, onChange, onClose }: SortMe
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(42,31,23,0.3)', justifyContent: 'flex-end' },
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: theme.colors.scrim, justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.radius.card,

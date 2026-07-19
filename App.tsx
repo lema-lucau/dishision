@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DbProvider } from './src/db/DbContext';
 import { openDatabase } from './src/db/openDatabase';
@@ -7,11 +8,13 @@ import { logger } from './src/debug/logStore';
 import { TabShell } from './src/navigation/TabShell';
 import { ensureProfile, type Profile } from './src/profile/ensureProfile';
 import { runSeed } from './src/seed/seedRunner';
-import { theme } from './src/theme/tokens';
+import { ThemeProvider, useTheme, type AppTheme } from './src/theme/ThemeContext';
 import { useAppFonts } from './src/theme/useAppFonts';
 import type { DbClient } from './src/db/DbClient';
 
 function LoadingScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.center}>
       <ActivityIndicator color={theme.colors.accent} />
@@ -20,11 +23,25 @@ function LoadingScreen() {
 }
 
 function ErrorScreen({ message }: { message: string }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.center}>
       <Text style={styles.errorTitle}>Couldn't start Preppie</Text>
       <Text style={styles.errorMessage}>{message}</Text>
     </View>
+  );
+}
+
+// Renders inside the ThemeProvider so the status bar can track the active
+// theme's mode (§4.1 — light/dark drives the status bar).
+function ThemedRoot({ profile }: { profile: Profile }) {
+  const theme = useTheme();
+  return (
+    <>
+      <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
+      <TabShell profile={profile} />
+    </>
   );
 }
 
@@ -56,42 +73,57 @@ export default function App() {
   }, []);
 
   if (fontsError) {
-    return <ErrorScreen message={String(fontsError)} />;
+    return (
+      <SafeAreaProvider>
+        <ErrorScreen message={String(fontsError)} />
+      </SafeAreaProvider>
+    );
   }
   if (initError) {
-    return <ErrorScreen message={initError} />;
+    return (
+      <SafeAreaProvider>
+        <ErrorScreen message={initError} />
+      </SafeAreaProvider>
+    );
   }
   if (!fontsLoaded || !db || !profile) {
-    return <LoadingScreen />;
+    return (
+      <SafeAreaProvider>
+        <LoadingScreen />
+      </SafeAreaProvider>
+    );
   }
 
   return (
     <SafeAreaProvider>
       <DbProvider db={db}>
-        <TabShell profile={profile} />
+        <ThemeProvider db={db}>
+          <ThemedRoot profile={profile} />
+        </ThemeProvider>
       </DbProvider>
     </SafeAreaProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-    padding: theme.spacing.xl,
-  },
-  errorTitle: {
-    fontFamily: theme.fonts.display.bold,
-    fontSize: theme.fontSize.lg,
-    color: theme.colors.ink,
-  },
-  errorMessage: {
-    fontFamily: theme.fonts.body.regular,
-    fontSize: theme.fontSize.base,
-    color: theme.colors.ink2,
-    textAlign: 'center',
-  },
-});
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    center: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.sm,
+      padding: theme.spacing.xl,
+    },
+    errorTitle: {
+      fontFamily: theme.fonts.display.bold,
+      fontSize: theme.fontSize.lg,
+      color: theme.colors.ink,
+    },
+    errorMessage: {
+      fontFamily: theme.fonts.body.regular,
+      fontSize: theme.fontSize.base,
+      color: theme.colors.ink2,
+      textAlign: 'center',
+    },
+  });

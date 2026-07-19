@@ -1,8 +1,9 @@
 // A quick year-stepper + month-grid picker, shared by the Plan calendar's
 // "jump to" control and the day-picker below it — much faster than tapping
 // ‹ › a dozen times to get back to March.
+import { useMemo } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -14,6 +15,8 @@ interface MonthYearJumpModalProps {
 }
 
 export function MonthYearJumpModal({ visible, year, onSelect, onClose }: MonthYearJumpModalProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
@@ -43,8 +46,9 @@ export function MonthYearJumpModal({ visible, year, onSelect, onClose }: MonthYe
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(42,31,23,0.4)', alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl },
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: theme.colors.scrim, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl },
   sheet: {
     width: '100%',
     maxWidth: 340,

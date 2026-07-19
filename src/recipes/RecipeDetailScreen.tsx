@@ -6,7 +6,7 @@ import { capitalize } from '../lib/capitalize';
 import { formatCurrency } from '../lib/currency';
 import { formatDuration } from '../lib/formatDuration';
 import { formatScaledQuantity, scaleQuantity } from '../lib/scaling';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { ActionButton } from './ActionButton';
 import { EmojiTile } from './EmojiTile';
 import type { EnrichedRecipe } from './loadRecipes';
@@ -40,6 +40,8 @@ export function RecipeDetailScreen({
   onStartCooking,
   onAlreadyCookedThis,
 }: RecipeDetailScreenProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [servings, setServings] = useState(recipe.baseServings);
   const [stepsExpanded, setStepsExpanded] = useState(false);
   const { modal, confirm } = useConfirmModal();
@@ -236,7 +238,8 @@ export function RecipeDetailScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   content: { padding: theme.spacing.base, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
   back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },

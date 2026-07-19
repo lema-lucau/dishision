@@ -1,9 +1,9 @@
 // A tappable day-grid calendar for picking a single date — used by the Cook
 // Log from/to filters so nobody has to hand-type YYYY-MM-DD. Long-press-free
 // on purpose: tap a day, done.
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { MonthYearJumpModal } from './MonthYearJumpModal';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -25,6 +25,8 @@ interface DatePickerModalProps {
 }
 
 export function DatePickerModal({ visible, value, onSelect, onClose }: DatePickerModalProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const initial = value ? new Date(value) : new Date();
   const [year, setYear] = useState(initial.getFullYear());
   const [month, setMonth] = useState(initial.getMonth() + 1);
@@ -109,8 +111,9 @@ export function DatePickerModal({ visible, value, onSelect, onClose }: DatePicke
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(42,31,23,0.4)', alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl },
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: theme.colors.scrim, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl },
   sheet: {
     width: '100%',
     maxWidth: 360,

@@ -1,5 +1,6 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { EnrichedRecipe } from './loadRecipes';
 import { TimeSplitBar } from './TimeSplitBar';
 import { EmojiTile } from './EmojiTile';
@@ -11,6 +12,8 @@ interface RecipeListItemProps {
 }
 
 export function RecipeListItem({ recipe, matchedNote, onPress }: RecipeListItemProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       <EmojiTile emoji={recipe.photoEmoji} />
@@ -38,7 +41,8 @@ export function RecipeListItem({ recipe, matchedNote, onPress }: RecipeListItemP
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: theme.spacing.md,

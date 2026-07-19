@@ -12,7 +12,7 @@ import { previewCook, type CookPreview } from '../cooking/previewCook';
 import { useDb } from '../db/DbContext';
 import { dateInputToIso, formatShortDate, toDateInputValue } from '../lib/formatDate';
 import { getAutoAddShortfalls } from '../settings/getSetting';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { EnrichedRecipe } from './loadRecipes';
 
 const QUICK_TAGS = ['too salty', 'perfect', 'too slow', 'too bland', 'would repeat', 'too much effort'];
@@ -26,6 +26,8 @@ interface CookCompleteScreenProps {
 }
 
 export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: CookCompleteScreenProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
   const [cookedAtDate, setCookedAtDate] = useState(() => toDateInputValue(new Date().toISOString()));
   const [madeServings, setMadeServings] = useState(recipe.baseServings);
@@ -251,6 +253,8 @@ function ordinalSuffix(n: number): string {
 }
 
 function ServingStepper({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.stepperGroup}>
       <Text style={styles.stepperLabel}>{label}</Text>
@@ -267,7 +271,8 @@ function ServingStepper({ label, value, onChange }: { label: string; value: numb
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   content: { padding: theme.spacing.xl, gap: theme.spacing.xxl, paddingBottom: theme.spacing.xxl * 1.5 },
   title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },

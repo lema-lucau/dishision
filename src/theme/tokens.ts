@@ -1,49 +1,14 @@
-// Ember palette (§4.1) — the only place colour hex values may appear.
-// Components read from `theme`, never a literal hex (§15).
-export const colors = {
-  bg: '#FFFAF2',
-  surface: '#FFFFFF',
-  surfaceWarm: '#FDF1E1',
-  chipBg: '#FCEBD5',
-  border: '#F6E4CD',
-  borderStrong: '#F6E9D8',
+// Non-themed design tokens (§4.5–4.6). Type, scale, spacing, and radius are
+// fixed across every theme — only colour is themed (see themes.ts). Colour now
+// comes exclusively from `useTheme()` (src/theme/ThemeContext.tsx); there is no
+// static colour export here any more, by design (§15 — a stray hex literal is a
+// bug that only surfaces when someone switches theme).
 
-  accent: '#D94F1E',
-  accentText: '#B03D14',
-  accentFg: '#FFF6EF',
-  accentTint: '#FBE3D6',
+// The seven meal/protein categories used by calendar dots and protein tags
+// (§4.4). The key set is fixed here; the values are per-theme (themes.ts).
+export type CategoryKey = 'chicken' | 'beef' | 'pork' | 'fish' | 'veg' | 'lamb' | 'other';
 
-  amber: '#F5A623',
-  amberText: '#9A6410',
-  amberTint: '#FDEDD3',
-
-  green: '#5C8A3C',
-  greenTint: '#E6EFDD',
-
-  red: '#C0392B',
-  redTint: '#F8DCD7',
-
-  ink: '#2A1F17',
-  ink2: '#7E6A56',
-  ink3: '#B0906B',
-  ink4: '#C4A883',
-} as const;
-
-// Category colours (§4.2) — calendar dots, protein tags. Chosen for
-// distinctness at small sizes, not realism.
-export const categoryColors = {
-  chicken: '#E8A33D',
-  beef: '#A33B2A',
-  pork: '#D6837E',
-  fish: '#4A8CA8',
-  veg: '#5C8A3C',
-  lamb: '#8B4A5C',
-  other: '#9B8264',
-} as const;
-
-export type CategoryKey = keyof typeof categoryColors;
-
-// Typographic roles (§4.3). Font family names match the keys @expo-google-fonts
+// Typographic roles (§4.5). Font family names match the keys @expo-google-fonts
 // exposes via useFonts — see src/theme/useAppFonts.ts.
 export const fonts = {
   display: {
@@ -62,7 +27,7 @@ export const fonts = {
   },
 } as const;
 
-// Type scale (§4.4). Cooking Mode uses the 44 size for the dominant
+// Type scale (§4.6). Cooking Mode uses the 44 size for the dominant
 // instruction line.
 export const fontSize = {
   xs: 11,
@@ -92,13 +57,7 @@ export const radius = {
   pill: 20,
 } as const;
 
-export const theme = {
-  colors,
-  categoryColors,
-  fonts,
-  fontSize,
-  spacing,
-  radius,
-} as const;
-
-export type Theme = typeof theme;
+export type Fonts = typeof fonts;
+export type FontSize = typeof fontSize;
+export type Spacing = typeof spacing;
+export type Radius = typeof radius;

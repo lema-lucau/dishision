@@ -1,7 +1,8 @@
 // Evenly-spaced macro tiles: big number on top, unit label beneath. One box
 // per macro (kcal/protein/carbs/fat), each taking an equal share of the row.
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 interface MacroBoxProps {
   value: number | null;
@@ -9,6 +10,8 @@ interface MacroBoxProps {
 }
 
 export function MacroBox({ value, label }: MacroBoxProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.box}>
       <Text style={styles.value}>{value != null ? Math.round(value) : '—'}</Text>
@@ -17,7 +20,8 @@ export function MacroBox({ value, label }: MacroBoxProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   box: {
     flex: 1,
     alignItems: 'center',

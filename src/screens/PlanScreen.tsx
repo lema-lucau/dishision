@@ -1,13 +1,13 @@
 // §5.8 calendar — cooked layer only for now. Filled dots per day, coloured
 // by category (§4.4). The planned-meal outline layer, shopping list, and
 // pantry are S11/S12 and remain out of scope here.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MonthYearJumpModal } from '../components/MonthYearJumpModal';
 import { useDb } from '../db/DbContext';
 import { loadCookedMonth, type CookedDayEntry } from '../plan/loadCookedMonth';
 import { EmojiTile } from '../recipes/EmojiTile';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_LABELS = [
@@ -24,6 +24,8 @@ interface PlanScreenProps {
 }
 
 export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -173,7 +175,8 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1, padding: theme.spacing.base, gap: theme.spacing.md },
   title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
   monthNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.lg },
@@ -198,7 +201,7 @@ const styles = StyleSheet.create({
   dotsRow: { flexDirection: 'row', gap: 2, height: 8, alignItems: 'center' },
   dot: { width: 6, height: 6, borderRadius: 3 },
   hint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, fontStyle: 'italic' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(42,31,23,0.3)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: theme.colors.scrim, justifyContent: 'flex-end' },
   sheet: {
     maxHeight: '60%',
     backgroundColor: theme.colors.surface,
