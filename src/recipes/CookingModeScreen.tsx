@@ -43,7 +43,7 @@ import { useDb } from '../db/DbContext';
 import { formatClock, formatDuration } from '../lib/formatDuration';
 import { useUiChromeStore } from '../navigation/uiChromeStore';
 import { getSettingWithDefault } from '../settings/getSetting';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { EnrichedRecipe, EnrichedStep } from './loadRecipes';
 
 interface CookingModeScreenProps {
@@ -63,6 +63,8 @@ function toTiming(step: EnrichedStep): RecipeStepTiming {
 }
 
 export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScreenProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   useKeepAwake();
   const db = useDb();
   const insets = useSafeAreaInsets();
@@ -497,6 +499,8 @@ function StepListModal({
   currentStepId: number | null;
   onClose: () => void;
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   if (!visible) return null;
   return (
     <View style={styles.stepListBackdrop}>
@@ -519,7 +523,8 @@ function StepListModal({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg, padding: theme.spacing.base, gap: theme.spacing.base },
   loadingText: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink2, textAlign: 'center', marginTop: theme.spacing.xxl },
   title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink, flexShrink: 1 },
@@ -595,7 +600,7 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
   stepListBackdrop: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl },
-  stepListBackdropTouchable: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(42,31,23,0.4)' },
+  stepListBackdropTouchable: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.colors.scrim },
   stepListSheet: {
     width: '100%',
     maxWidth: 420,

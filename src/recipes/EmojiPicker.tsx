@@ -1,9 +1,9 @@
 // §5.5 emoji picker for photo_emoji. Searchable by dish/ingredient keyword
 // (§9.1) rather than a bare 12-icon quick-pick, with the current selection
 // always shown as a tile up top (§4.8).
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { EmojiTile } from './EmojiTile';
 import { searchEmoji } from './emojiOptions';
 
@@ -13,6 +13,8 @@ interface EmojiPickerProps {
 }
 
 export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [query, setQuery] = useState('');
   const results = searchEmoji(query);
 
@@ -46,7 +48,8 @@ export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   row: { flexDirection: 'row', gap: theme.spacing.base, alignItems: 'center' },
   pickerColumn: { flex: 1, gap: theme.spacing.xs },
   search: {

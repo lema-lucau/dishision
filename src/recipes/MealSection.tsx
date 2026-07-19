@@ -1,8 +1,9 @@
 // A collapsible Breakfast/Lunch/Dinner/Dessert section on the Recipes tab.
 // Renders whichever item component the current layout (list/grid) calls
 // for, paginated per the page size chosen at the top of the screen.
+import { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { EnrichedRecipe } from './loadRecipes';
 import type { QueryResultItem } from './queryEngine';
 import { RecipeGridItem } from './RecipeGridItem';
@@ -31,6 +32,8 @@ export function MealSection({
   pageSize,
   onPageChange,
 }: MealSectionProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const clampedPage = Math.min(page, totalPages);
   const pageItems = items.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
@@ -92,7 +95,8 @@ export function MealSection({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { gap: theme.spacing.sm },
   header: {
     flexDirection: 'row',

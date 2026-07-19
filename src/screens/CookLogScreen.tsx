@@ -2,7 +2,7 @@
 // pagination, multi-select tag filters, long-press or multi-select delete,
 // and a log editor (stars, quick tags, free-text fields — photos and
 // substitutions with promote-to-recipe are explicitly S10 per spec).
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { DatePickerModal } from '../components/DatePickerModal';
 import { useConfirmModal } from '../components/useConfirmModal';
@@ -10,7 +10,7 @@ import { deleteCookLog, loadCookLogs, updateCookLog, type CookLogDraft, type Coo
 import { useDb } from '../db/DbContext';
 import { formatShortDate } from '../lib/formatDate';
 import { EmojiTile } from '../recipes/EmojiTile';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 const QUICK_TAGS = ['too salty', 'perfect', 'too slow', 'too bland', 'would repeat', 'too much effort'];
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
@@ -23,6 +23,8 @@ interface CookLogScreenProps {
 }
 
 export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
   const [logs, setLogs] = useState<CookLogRow[] | null>(null);
   const [search, setSearch] = useState('');
@@ -389,6 +391,8 @@ function DeleteConfirm({
   onConfirm: () => void;
   singleButton?: boolean;
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.confirmBackdrop}>
       <TouchableOpacity style={styles.confirmBackdropTouchable} activeOpacity={1} onPress={onCancel} />
@@ -423,6 +427,8 @@ function CookLogListItem({
   onPress: () => void;
   onLongPress: () => void;
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} onLongPress={onLongPress} activeOpacity={0.7}>
       {selectMode && <Text style={styles.selectCheck}>{selected ? '☑' : '☐'}</Text>}
@@ -454,6 +460,8 @@ function CookLogGridItem({
   onPress: () => void;
   onLongPress: () => void;
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <TouchableOpacity style={[styles.card, selected && styles.cardSelected]} onPress={onPress} onLongPress={onLongPress} activeOpacity={0.7}>
       {selectMode && <Text style={styles.selectCheck}>{selected ? '☑' : '☐'}</Text>}
@@ -485,6 +493,8 @@ function CookLogEditor({
   onSaved: () => void;
   onDeleted: () => void;
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
   const [stars, setStars] = useState<number | null>(log.stars);
   const [quickTags, setQuickTags] = useState<string[]>(log.quickTags);
@@ -577,7 +587,8 @@ function CookLogEditor({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1, padding: theme.spacing.base, gap: theme.spacing.md },
   center: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.xxl },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -729,7 +740,7 @@ const styles = StyleSheet.create({
   deleteButton: { backgroundColor: theme.colors.redTint, borderRadius: theme.radius.card, paddingVertical: theme.spacing.sm, alignItems: 'center' },
   deleteButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.red },
   confirmBackdrop: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl },
-  confirmBackdropTouchable: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(42,31,23,0.4)' },
+  confirmBackdropTouchable: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.colors.scrim },
   confirmCard: { width: '100%', maxWidth: 360, backgroundColor: theme.colors.surface, borderRadius: theme.radius.card, padding: theme.spacing.lg, gap: theme.spacing.md },
   confirmTitle: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.lg, color: theme.colors.ink },
   confirmMessage: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink2 },

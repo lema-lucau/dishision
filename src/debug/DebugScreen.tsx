@@ -3,6 +3,7 @@ import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Sharing from 'expo-sharing';
 import { Directory, File, Paths } from 'expo-file-system';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { JsonViewer } from './JsonViewer';
 import { useLogStore } from './logStore';
 import { formatLogEntries } from './formatLogEntry';
@@ -26,6 +27,8 @@ async function exportLogs(entries: LogEntry[]) {
 }
 
 function LogRow({ entry }: { entry: LogEntry }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [open, setOpen] = useState(false);
   const time = entry.ts.slice(11, 19);
 
@@ -46,6 +49,8 @@ function LogRow({ entry }: { entry: LogEntry }) {
 }
 
 export function DebugScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const entries = useLogStore((s) => s.entries);
   const clear = useLogStore((s) => s.clear);
   const [categories, setCategories] = useState<LogCategory[]>([]);
@@ -116,41 +121,42 @@ export function DebugScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFAF2', padding: 16 },
-  title: { fontSize: 16, fontWeight: '700', color: '#2A1F17', marginBottom: 8 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: '#FCEBD5',
-  },
-  chipActive: { backgroundColor: '#D94F1E' },
-  chipText: { fontSize: 11, color: '#7E6A56' },
-  chipTextActive: { color: '#FFF6EF' },
-  list: { flex: 1, marginTop: 8 },
-  row: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F6E4CD',
-  },
-  rowHead: { fontFamily: 'monospace', fontSize: 11, color: '#7E6A56' },
-  category: { color: '#B03D14' },
-  level: { fontWeight: '700' },
-  level_debug: { color: '#B0906B' },
-  level_info: { color: '#5C8A3C' },
-  level_warn: { color: '#9A6410' },
-  level_error: { color: '#C0392B' },
-  message: { fontSize: 13, color: '#2A1F17', marginTop: 2 },
-  footer: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  button: {
-    flex: 1,
-    backgroundColor: '#D94F1E',
-    paddingVertical: 10,
-    borderRadius: 13,
-    alignItems: 'center',
-  },
-  buttonDanger: { backgroundColor: '#C0392B' },
-  buttonText: { color: '#FFF6EF', fontWeight: '600' },
-});
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.bg, padding: 16 },
+    title: { fontSize: 16, fontWeight: '700', color: theme.colors.ink, marginBottom: 8 },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 },
+    chip: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 6,
+      backgroundColor: theme.colors.chipBg,
+    },
+    chipActive: { backgroundColor: theme.colors.accent },
+    chipText: { fontSize: 11, color: theme.colors.ink2 },
+    chipTextActive: { color: theme.colors.accentFg },
+    list: { flex: 1, marginTop: 8 },
+    row: {
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    rowHead: { fontFamily: 'monospace', fontSize: 11, color: theme.colors.ink2 },
+    category: { color: theme.colors.accentText },
+    level: { fontWeight: '700' },
+    level_debug: { color: theme.colors.ink3 },
+    level_info: { color: theme.colors.green },
+    level_warn: { color: theme.colors.amberText },
+    level_error: { color: theme.colors.red },
+    message: { fontSize: 13, color: theme.colors.ink, marginTop: 2 },
+    footer: { flexDirection: 'row', gap: 12, marginTop: 8 },
+    button: {
+      flex: 1,
+      backgroundColor: theme.colors.accent,
+      paddingVertical: 10,
+      borderRadius: 13,
+      alignItems: 'center',
+    },
+    buttonDanger: { backgroundColor: theme.colors.red },
+    buttonText: { color: theme.colors.accentFg, fontWeight: '600' },
+  });

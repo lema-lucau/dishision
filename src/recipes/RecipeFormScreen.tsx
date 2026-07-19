@@ -16,7 +16,7 @@ import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { capitalize } from '../lib/capitalize';
 import { formatDuration } from '../lib/formatDuration';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { createUserIngredient, searchCanonicalIngredients, type CanonicalIngredientOption } from './ingredientSearch';
 import type { RecipeDraft, RecipeIngredientDraft, RecipeStepDraft } from './recipeSave';
 import type { BaseUnit, Effort, Phase, RecipeUnit, TimelineMode } from '../seed/types';
@@ -50,6 +50,8 @@ function deriveSequentialOffsets(steps: RecipeStepDraft[]): number[] {
 }
 
 export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: RecipeFormScreenProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
   const [draft, setDraft] = useState<RecipeDraft>(initialDraft);
   const [ingredientQuery, setIngredientQuery] = useState('');
@@ -445,7 +447,8 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   content: { padding: theme.spacing.base, gap: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
   back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },

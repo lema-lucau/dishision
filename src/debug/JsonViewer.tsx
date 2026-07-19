@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 interface JsonViewerProps {
   data: unknown;
@@ -16,6 +17,8 @@ function summarize(value: Record<string, unknown> | unknown[]): string {
 }
 
 function JsonNode({ label, value, depth }: { label: string; value: unknown; depth: number }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [expanded, setExpanded] = useState(depth < 1);
 
   if (!isExpandable(value)) {
@@ -49,6 +52,8 @@ function JsonNode({ label, value, depth }: { label: string; value: unknown; dept
 }
 
 export function JsonViewer({ data }: JsonViewerProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.container}>
       <JsonNode label="root" value={data} depth={0} />
@@ -56,32 +61,33 @@ export function JsonViewer({ data }: JsonViewerProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 4,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 2,
-  },
-  toggle: {
-    width: 14,
-    fontFamily: 'monospace',
-    color: '#7E6A56',
-  },
-  key: {
-    fontFamily: 'monospace',
-    color: '#2A1F17',
-    fontWeight: '600',
-  },
-  value: {
-    fontFamily: 'monospace',
-    color: '#B03D14',
-    flexShrink: 1,
-  },
-  summary: {
-    fontFamily: 'monospace',
-    color: '#7E6A56',
-  },
-});
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      paddingVertical: 4,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingVertical: 2,
+    },
+    toggle: {
+      width: 14,
+      fontFamily: 'monospace',
+      color: theme.colors.ink2,
+    },
+    key: {
+      fontFamily: 'monospace',
+      color: theme.colors.ink,
+      fontWeight: '600',
+    },
+    value: {
+      fontFamily: 'monospace',
+      color: theme.colors.accentText,
+      flexShrink: 1,
+    },
+    summary: {
+      fontFamily: 'monospace',
+      color: theme.colors.ink2,
+    },
+  });

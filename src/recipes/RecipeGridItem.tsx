@@ -1,8 +1,9 @@
 // Two-up grid card: picture, name, description, time + macros + calories.
 // Sits alongside RecipeListItem as an alternate density for the same data.
+import { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { formatDurationCompact } from '../lib/formatDuration';
-import { theme } from '../theme/tokens';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { EmojiTile } from './EmojiTile';
 import type { EnrichedRecipe } from './loadRecipes';
 
@@ -12,6 +13,8 @@ interface RecipeGridItemProps {
 }
 
 export function RecipeGridItem({ recipe, onPress }: RecipeGridItemProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <EmojiTile emoji={recipe.photoEmoji} size={72} emojiSize={40} />
@@ -40,7 +43,8 @@ export function RecipeGridItem({ recipe, onPress }: RecipeGridItemProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   card: {
     width: '48%',
     gap: 4,

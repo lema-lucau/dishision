@@ -1,6 +1,6 @@
 // The five-tab shell (§5.1). No routing library — the allowlist (§15.1)
 // doesn't include one, and a flat bottom tab bar doesn't need one.
-export type TabKey = 'home' | 'recipes' | 'plan' | 'cookLog' | 'me';
+export type TabKey = 'home' | 'recipes' | 'plan' | 'cookLog' | 'profile';
 
 export interface TabDef {
   key: TabKey;
@@ -15,5 +15,5 @@ export const TABS: TabDef[] = [
   { key: 'recipes', label: 'Recipes', icon: '🍳' },
   { key: 'plan', label: 'Plan', icon: '🛒' },
   { key: 'cookLog', label: 'Cook Log', icon: '🍽️' },
-  { key: 'me', label: 'Me', icon: '🙂' },
+  { key: 'profile', label: 'Profile', icon: '🙂' },
 ];
