@@ -26,6 +26,8 @@ export function TabShell({ profile }: TabShellProps) {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const [cookLogFocusId, setCookLogFocusId] = useState<number | null>(null);
   const [recipesFavouritesOnly, setRecipesFavouritesOnly] = useState(false);
+  const [recipesInitialRecipeId, setRecipesInitialRecipeId] = useState<number | null>(null);
+  const [recipesInitialStartCooking, setRecipesInitialStartCooking] = useState(false);
   const debugModeEnabled = useSettingsStore((s) => s.debugMode);
   const toggleDebugMode = useSettingsStore((s) => s.toggleDebugMode);
   const tabBarHidden = useUiChromeStore((s) => s.tabBarHidden);
@@ -52,11 +54,22 @@ export function TabShell({ profile }: TabShellProps) {
   return (
     <View style={styles.container}>
       <View style={[styles.content, { paddingTop: insets.top }]}>
-        {activeTab === 'home' && <HomeScreen />}
+        {activeTab === 'home' && (
+          <HomeScreen
+            onOpenRecipe={(recipeId, opts) => {
+              setRecipesInitialRecipeId(recipeId);
+              setRecipesInitialStartCooking(opts?.startCooking ?? false);
+              setActiveTab('recipes');
+            }}
+          />
+        )}
         {activeTab === 'recipes' && (
           <RecipesScreen
             initialFavouritesOnly={recipesFavouritesOnly}
             onFavouritesConsumed={() => setRecipesFavouritesOnly(false)}
+            initialRecipeId={recipesInitialRecipeId}
+            initialStartCooking={recipesInitialStartCooking}
+            onInitialRecipeConsumed={() => setRecipesInitialRecipeId(null)}
           />
         )}
         {activeTab === 'plan' && (

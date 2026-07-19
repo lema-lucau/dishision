@@ -8,7 +8,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { PROTEIN_GROUP_CHIPS, type ChipAvailability, type ChipKey } from './queryEngine';
 
-const CHIP_LABELS: Record<ChipKey, string> = {
+export const CHIP_LABELS: Record<ChipKey, string> = {
   quick: 'Quick',
   healthy: 'Healthy',
   comfort: 'Comfort',

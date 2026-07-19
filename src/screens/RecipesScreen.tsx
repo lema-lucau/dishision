@@ -38,9 +38,20 @@ interface RecipesScreenProps {
   /** Set when arriving from the Profile page's "View all" favourites link (§5.10). */
   initialFavouritesOnly?: boolean;
   onFavouritesConsumed?: () => void;
+  /** Set when arriving from Home's plan card or a recommendation card (§5.2) — jumps straight to that recipe. */
+  initialRecipeId?: number | null;
+  /** When true alongside initialRecipeId, jumps straight into Cooking Mode rather than the detail screen. */
+  initialStartCooking?: boolean;
+  onInitialRecipeConsumed?: () => void;
 }
 
-export function RecipesScreen({ initialFavouritesOnly = false, onFavouritesConsumed }: RecipesScreenProps = {}) {
+export function RecipesScreen({
+  initialFavouritesOnly = false,
+  onFavouritesConsumed,
+  initialRecipeId = null,
+  initialStartCooking = false,
+  onInitialRecipeConsumed,
+}: RecipesScreenProps = {}) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
@@ -98,6 +109,13 @@ export function RecipesScreen({ initialFavouritesOnly = false, onFavouritesConsu
       onFavouritesConsumed?.();
     }
   }, [initialFavouritesOnly, onFavouritesConsumed]);
+
+  useEffect(() => {
+    if (initialRecipeId != null) {
+      setView(initialStartCooking ? { mode: 'cookingMode', recipeId: initialRecipeId } : { mode: 'detail', recipeId: initialRecipeId });
+      onInitialRecipeConsumed?.();
+    }
+  }, [initialRecipeId, initialStartCooking, onInitialRecipeConsumed]);
 
   useEffect(() => {
     getCurrencySymbol(db).then(setCurrencySymbol);

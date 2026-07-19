@@ -89,6 +89,7 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
           whatWentWell,
           whatToChange,
           quickTags,
+          photos: [],
           viaCookingMode: !retroactive,
         };
         await updateCookLog(db, result.cookLogId, draft);

@@ -20,3 +20,12 @@ export function dateInputToIso(dateInput: string, now: Date = new Date()): strin
   const combined = new Date(year, (month ?? 1) - 1, day ?? 1, now.getHours(), now.getMinutes(), now.getSeconds());
   return combined.toISOString();
 }
+
+// The device's local calendar day as YYYY-MM-DD — distinct from slicing an
+// ISO instant (which is UTC and drifts a day near midnight in non-UTC
+// timezones). Used anywhere "today" needs to key a cache or a query by local
+// date: the daily recommendation cache (§6.1) and today's planned_meal (§5.2).
+export function localDateKey(now: number = Date.now()): string {
+  const d = new Date(now);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}

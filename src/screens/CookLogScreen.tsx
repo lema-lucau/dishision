@@ -3,14 +3,27 @@
 // and a log editor (stars, quick tags, free-text fields — photos and
 // substitutions with promote-to-recipe are explicitly S10 per spec).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { DatePickerModal } from '../components/DatePickerModal';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { deleteCookLog, loadCookLogs, updateCookLog, type CookLogDraft, type CookLogRow } from '../cooking/cookLog';
+import {
+  createSubstitution,
+  deleteSubstitution,
+  loadRecipeIngredientOptions,
+  loadSubstitutionsForLog,
+  promoteSubstitution,
+  updateSubstitution,
+  type SubstitutionRow,
+  type SubstitutionVerdict,
+} from '../cooking/substitutions';
 import { useDb } from '../db/DbContext';
 import { formatShortDate } from '../lib/formatDate';
+import { pickAndCompressPhoto } from '../photos/pickAndCompressPhoto';
 import { EmojiTile } from '../recipes/EmojiTile';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+
+const VERDICTS: SubstitutionVerdict[] = ['better', 'same', 'worse'];
 
 const QUICK_TAGS = ['too salty', 'perfect', 'too slow', 'too bland', 'would repeat', 'too much effort'];
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
@@ -501,11 +514,97 @@ function CookLogEditor({
   const [whatWentWell, setWhatWentWell] = useState(log.whatWentWell ?? '');
   const [whatToChange, setWhatToChange] = useState(log.whatToChange ?? '');
   const [notes, setNotes] = useState(log.notes ?? '');
+  const [photos, setPhotos] = useState<string[]>(log.photos);
+  const [addingPhoto, setAddingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
-  const { modal, confirm } = useConfirmModal();
+  const { modal, confirm, notice } = useConfirmModal();
+
+  const [substitutions, setSubstitutions] = useState<SubstitutionRow[]>([]);
+  const [ingredientOptions, setIngredientOptions] = useState<{ id: number; displayName: string }[]>([]);
+  const [addingSub, setAddingSub] = useState(false);
+  const [newSubIngredientId, setNewSubIngredientId] = useState<number | null>(null);
+  const [newSubOriginalText, setNewSubOriginalText] = useState('');
+  const [newSubReplacementText, setNewSubReplacementText] = useState('');
+  const [newSubVerdict, setNewSubVerdict] = useState<SubstitutionVerdict | null>(null);
+
+  const reloadSubstitutions = useCallback(async () => {
+    setSubstitutions(await loadSubstitutionsForLog(db, log.id));
+  }, [db, log.id]);
+
+  useEffect(() => {
+    reloadSubstitutions();
+    loadRecipeIngredientOptions(db, log.recipeId).then(setIngredientOptions);
+  }, [db, log.id, log.recipeId, reloadSubstitutions]);
 
   function toggleTag(tag: string) {
     setQuickTags((tags) => (tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag]));
+  }
+
+  async function handleAddPhoto() {
+    setAddingPhoto(true);
+    try {
+      const result = await pickAndCompressPhoto();
+      if (result) setPhotos((p) => [...p, result.uri]);
+    } finally {
+      setAddingPhoto(false);
+    }
+  }
+
+  function handleRemovePhoto(uri: string) {
+    setPhotos((p) => p.filter((u) => u !== uri));
+  }
+
+  function resetNewSubForm() {
+    setAddingSub(false);
+    setNewSubIngredientId(null);
+    setNewSubOriginalText('');
+    setNewSubReplacementText('');
+    setNewSubVerdict(null);
+  }
+
+  async function handleAddSubstitution() {
+    if (!newSubOriginalText.trim() || !newSubReplacementText.trim()) return;
+    await createSubstitution(db, {
+      cookLogId: log.id,
+      originalIngredientId: newSubIngredientId,
+      originalText: newSubOriginalText.trim(),
+      replacementText: newSubReplacementText.trim(),
+      verdict: newSubVerdict,
+    });
+    resetNewSubForm();
+    await reloadSubstitutions();
+  }
+
+  async function handleSubVerdict(sub: SubstitutionRow, verdict: SubstitutionVerdict) {
+    if (sub.promoted) return;
+    await updateSubstitution(db, sub.id, {
+      originalIngredientId: sub.originalIngredientId,
+      originalText: sub.originalText,
+      replacementText: sub.replacementText,
+      verdict: sub.verdict === verdict ? null : verdict,
+    });
+    await reloadSubstitutions();
+  }
+
+  async function handleDeleteSubstitution(sub: SubstitutionRow) {
+    await deleteSubstitution(db, sub.id);
+    await reloadSubstitutions();
+  }
+
+  function handlePromote(sub: SubstitutionRow) {
+    confirm(
+      'Promote to recipe',
+      `Rewrite this recipe's "${sub.originalText}" to "${sub.replacementText}"? This changes the recipe for every future cook.`,
+      'Promote',
+      async () => {
+        const result = await promoteSubstitution(db, sub.id);
+        if (!result.ok) {
+          notice('Can’t promote', 'That ingredient no longer exists on the recipe.');
+          return;
+        }
+        await reloadSubstitutions();
+      },
+    );
   }
 
   async function handleSave() {
@@ -521,6 +620,7 @@ function CookLogEditor({
         whatWentWell,
         whatToChange,
         quickTags,
+        photos,
         viaCookingMode: false,
       };
       await updateCookLog(db, log.id, draft);
@@ -567,6 +667,116 @@ function CookLogEditor({
       <TextInput style={styles.textArea} value={whatToChange} onChangeText={setWhatToChange} multiline />
       <Text style={styles.label}>Notes</Text>
       <TextInput style={styles.textArea} value={notes} onChangeText={setNotes} multiline />
+
+      <Text style={styles.label}>Photos</Text>
+      <View style={styles.photoRow}>
+        {photos.map((uri) => (
+          <TouchableOpacity key={uri} style={styles.photoThumbWrap} onPress={() => handleRemovePhoto(uri)} activeOpacity={0.8}>
+            <Image source={{ uri }} style={styles.photoThumb} />
+            <View style={styles.photoRemoveBadge}>
+              <Text style={styles.photoRemoveBadgeText}>✕</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+        <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhoto} disabled={addingPhoto}>
+          <Text style={styles.addPhotoButtonText}>{addingPhoto ? '…' : '+ Add'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.label}>Substitutions</Text>
+      {substitutions.map((sub) => (
+        <View key={sub.id} style={styles.subCard}>
+          <View style={styles.subCardHeader}>
+            <Text style={styles.subCardText} numberOfLines={2}>
+              {sub.originalText} → {sub.replacementText}
+            </Text>
+            {!sub.promoted && (
+              <TouchableOpacity onPress={() => handleDeleteSubstitution(sub)}>
+                <Text style={styles.subRemoveText}>Remove</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={styles.filterRow}>
+            {VERDICTS.map((v) => (
+              <TouchableOpacity
+                key={v}
+                disabled={sub.promoted}
+                onPress={() => handleSubVerdict(sub, v)}
+                style={[styles.chip, sub.verdict === v && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, sub.verdict === v && styles.chipTextActive]}>{v}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {sub.promoted ? (
+            <Text style={styles.subPromotedText}>✓ Promoted to recipe</Text>
+          ) : (
+            <TouchableOpacity
+              style={styles.subPromoteButton}
+              onPress={() => handlePromote(sub)}
+              disabled={sub.originalIngredientId == null}
+            >
+              <Text style={styles.subPromoteButtonText}>
+                {sub.originalIngredientId == null ? 'Not tied to an ingredient' : 'Promote to recipe'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ))}
+
+      {addingSub ? (
+        <View style={styles.subCard}>
+          <Text style={styles.subFormLabel}>Which ingredient?</Text>
+          <View style={styles.filterRow}>
+            <TouchableOpacity
+              onPress={() => setNewSubIngredientId(null)}
+              style={[styles.chip, newSubIngredientId === null && styles.chipActive]}
+            >
+              <Text style={[styles.chipText, newSubIngredientId === null && styles.chipTextActive]}>Free text</Text>
+            </TouchableOpacity>
+            {ingredientOptions.map((ing) => (
+              <TouchableOpacity
+                key={ing.id}
+                onPress={() => {
+                  setNewSubIngredientId(ing.id);
+                  if (!newSubOriginalText) setNewSubOriginalText(ing.displayName);
+                }}
+                style={[styles.chip, newSubIngredientId === ing.id && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, newSubIngredientId === ing.id && styles.chipTextActive]}>{ing.displayName}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={styles.subFormLabel}>Original</Text>
+          <TextInput style={styles.subInput} value={newSubOriginalText} onChangeText={setNewSubOriginalText} placeholder="chicken thigh" placeholderTextColor={theme.colors.ink3} />
+          <Text style={styles.subFormLabel}>Replaced with</Text>
+          <TextInput style={styles.subInput} value={newSubReplacementText} onChangeText={setNewSubReplacementText} placeholder="tofu" placeholderTextColor={theme.colors.ink3} />
+          <Text style={styles.subFormLabel}>Verdict</Text>
+          <View style={styles.filterRow}>
+            {VERDICTS.map((v) => (
+              <TouchableOpacity
+                key={v}
+                onPress={() => setNewSubVerdict(newSubVerdict === v ? null : v)}
+                style={[styles.chip, newSubVerdict === v && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, newSubVerdict === v && styles.chipTextActive]}>{v}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.subFormButtonRow}>
+            <TouchableOpacity style={styles.subFormCancelButton} onPress={resetNewSubForm}>
+              <Text style={styles.subFormCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.subFormAddButton} onPress={handleAddSubstitution}>
+              <Text style={styles.subFormAddText}>Add</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <TouchableOpacity style={styles.addSubButton} onPress={() => setAddingSub(true)}>
+          <Text style={styles.addSubButtonText}>+ Add substitution</Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
         <Text style={styles.saveButtonText}>{saving ? 'Saving…' : 'Save'}</Text>
@@ -735,6 +945,74 @@ const makeStyles = (theme: AppTheme) =>
     textAlignVertical: 'center',
     includeFontPadding: false,
   },
+  photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+  photoThumbWrap: { position: 'relative' },
+  photoThumb: { width: 72, height: 72, borderRadius: theme.radius.card, backgroundColor: theme.colors.surfaceWarm },
+  photoRemoveBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.redTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoRemoveBadgeText: { fontSize: theme.fontSize.xs, color: theme.colors.red },
+  addPhotoButton: {
+    width: 72,
+    height: 72,
+    borderRadius: theme.radius.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addPhotoButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+  subCard: {
+    gap: theme.spacing.xs,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceWarm,
+    borderRadius: theme.radius.card,
+  },
+  subCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm },
+  subCardText: { flex: 1, fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink },
+  subRemoveText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.red },
+  subPromotedText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.green },
+  subPromoteButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.accentTint,
+  },
+  subPromoteButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.accentText },
+  subFormLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+  subInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.card,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+    fontFamily: theme.fonts.body.regular,
+    fontSize: theme.fontSize.base,
+    color: theme.colors.ink,
+  },
+  subFormButtonRow: { flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'flex-end' },
+  subFormCancelButton: { paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+  subFormCancelText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  subFormAddButton: { paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm, borderRadius: theme.radius.pill, backgroundColor: theme.colors.accent },
+  subFormAddText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentFg },
+  addSubButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.chipBg,
+  },
+  addSubButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   saveButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.card, paddingVertical: theme.spacing.base, alignItems: 'center', marginTop: theme.spacing.base },
   saveButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
   deleteButton: { backgroundColor: theme.colors.redTint, borderRadius: theme.radius.card, paddingVertical: theme.spacing.sm, alignItems: 'center' },

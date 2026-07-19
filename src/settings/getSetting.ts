@@ -22,3 +22,34 @@ export async function getCurrencySymbol(db: DbClient): Promise<string> {
 export async function getAutoAddShortfalls(db: DbClient): Promise<boolean> {
   return (await getSettingWithDefault(db, 'auto_add_shortfalls', '1')) === '1';
 }
+
+// §6.2: days to exclude recently cooked recipes from recommendations.
+// 0-30, default 5; 0 disables the filter entirely.
+export async function getRecencyWindowDays(db: DbClient): Promise<number> {
+  return Number(await getSettingWithDefault(db, 'recency_window_days', '5'));
+}
+
+export interface RecommendationWeights {
+  wRecency: number;
+  wRating: number;
+  wFrequency: number;
+  wJitter: number;
+}
+
+// §6.1 default weights, tunable in settings (§5.10).
+export const DEFAULT_RECOMMENDATION_WEIGHTS: RecommendationWeights = {
+  wRecency: 0.35,
+  wRating: 0.3,
+  wFrequency: 0.2,
+  wJitter: 0.15,
+};
+
+export async function getRecommendationWeights(db: DbClient): Promise<RecommendationWeights> {
+  const raw = await getSetting(db, 'recommendation_weights');
+  if (raw == null) return DEFAULT_RECOMMENDATION_WEIGHTS;
+  try {
+    return { ...DEFAULT_RECOMMENDATION_WEIGHTS, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_RECOMMENDATION_WEIGHTS;
+  }
+}

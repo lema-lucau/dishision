@@ -15,6 +15,7 @@ function draft(overrides: Partial<CookLogDraft> = {}): CookLogDraft {
     whatWentWell: '',
     whatToChange: '',
     quickTags: ['perfect'],
+    photos: [],
     viaCookingMode: false,
     ...overrides,
   };
@@ -113,5 +114,24 @@ describe('cook_log CRUD (§5.9, §2.5)', () => {
 
     const result = await loadCookLogs(db, { logId: id });
     expect(result.map((r) => r.id)).toEqual([id]);
+  });
+
+  it('creates a log with photos and reads them back in sort order (§8, §5.9)', async () => {
+    const id = await createCookLog(db, draft({ recipeId, photos: ['file:///a.jpg', 'file:///b.jpg'] }));
+    const [log] = await loadCookLogs(db, { logId: id });
+    expect(log.photos).toEqual(['file:///a.jpg', 'file:///b.jpg']);
+  });
+
+  it('update replaces photos rather than accumulating them', async () => {
+    const id = await createCookLog(db, draft({ recipeId, photos: ['file:///a.jpg'] }));
+    await updateCookLog(db, id, draft({ recipeId, photos: ['file:///c.jpg', 'file:///d.jpg'] }));
+    const [log] = await loadCookLogs(db, { logId: id });
+    expect(log.photos).toEqual(['file:///c.jpg', 'file:///d.jpg']);
+  });
+
+  it('a log with no photos loads an empty array, not null/undefined', async () => {
+    const id = await createCookLog(db, draft({ recipeId, photos: [] }));
+    const [log] = await loadCookLogs(db, { logId: id });
+    expect(log.photos).toEqual([]);
   });
 });

@@ -27,7 +27,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Preppie uses your photos to attach a picture of what you cooked to a cook log."
+        }
+      ]
     ]
   }
 }

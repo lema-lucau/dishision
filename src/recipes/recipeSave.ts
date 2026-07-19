@@ -2,6 +2,7 @@
 // child-replacement strategy (delete + reinsert lanes/ingredients/steps/tags)
 // but keyed on recipe.id rather than seed_id, since manual recipes have none.
 import type { DbClient } from '../db/DbClient';
+import { invalidateMedianCostCache } from '../recommend/medianCostCache';
 import { uuidv4 } from '../utils/uuid';
 import type { Effort, Phase, RecipeUnit, TimelineMode } from '../seed/types';
 
@@ -104,6 +105,7 @@ export async function createManualRecipe(db: DbClient, draft: RecipeDraft): Prom
     const recipeId = result.lastInsertRowId;
     await writeChildren(db, recipeId, draft);
     await db.execAsync('COMMIT');
+    await invalidateMedianCostCache(db);
     return recipeId;
   } catch (error) {
     await db.execAsync('ROLLBACK');
@@ -123,6 +125,7 @@ export async function updateManualRecipe(db: DbClient, recipeId: number, draft: 
     );
     await writeChildren(db, recipeId, draft);
     await db.execAsync('COMMIT');
+    await invalidateMedianCostCache(db);
   } catch (error) {
     await db.execAsync('ROLLBACK');
     throw error;

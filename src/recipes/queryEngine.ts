@@ -52,6 +52,12 @@ export interface RecipeQuery {
    * zero), never silently padding the list with non-matches.
    */
   relax?: boolean;
+  /**
+   * Pre-computed §6.8 median, when the caller has one cached (setting table,
+   * see src/recommend/medianCostCache.ts). Falls back to a live recompute
+   * when omitted so existing callers are unaffected.
+   */
+  medianCostOverride?: number | null;
 }
 
 export interface ChipAvailability {
@@ -62,7 +68,9 @@ export interface ChipAvailability {
 const PROTEIN_CHIPS: ChipKey[] = ['chicken', 'beef', 'pork', 'lamb', 'fish', 'veg'];
 const DATA_GATED_THRESHOLD = 0.6;
 
-function isExcludedNow(recipe: EnrichedRecipe, now: number): boolean {
+// Exported for reuse by the recommendation engine's hard filters (§6.2),
+// which apply the same exclusion rule ahead of scoring.
+export function isExcludedNow(recipe: EnrichedRecipe, now: number): boolean {
   if (!recipe.exclusion) return false;
   if (recipe.exclusion.kind === 'never_again') return true;
   if (!recipe.exclusion.expiresAt) return false;
@@ -234,7 +242,7 @@ export function runRecipeQuery(
   now: number = Date.now(),
 ): QueryResult {
   const chipAvailability = computeChipAvailability(allRecipes);
-  const median = computeMedianCostPerServing(allRecipes);
+  const median = query.medianCostOverride !== undefined ? query.medianCostOverride : computeMedianCostPerServing(allRecipes);
   const applyExclusions = query.applyExclusions ?? true;
 
   const base = applyExclusions ? allRecipes.filter((r) => !isExcludedNow(r, now)) : allRecipes;

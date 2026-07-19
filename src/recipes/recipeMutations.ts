@@ -2,6 +2,7 @@
 // exclusions (§5.4, upsert rule per §2.3), and copy-and-tweak (§9.4).
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { invalidateMedianCostCache } from '../recommend/medianCostCache';
 import { uuidv4 } from '../utils/uuid';
 
 export async function toggleFavourite(db: DbClient, recipeId: number, isFavourite: boolean): Promise<void> {
@@ -44,6 +45,7 @@ export async function clearExclusion(db: DbClient, recipeId: number): Promise<vo
 
 export async function deleteRecipe(db: DbClient, recipeId: number): Promise<void> {
   await db.runAsync('DELETE FROM recipe WHERE id = ?', [recipeId]);
+  await invalidateMedianCostCache(db);
 }
 
 // Copy-and-tweak (§9.4): new row, source='manual', seed_id=NULL, fresh
@@ -132,5 +134,6 @@ export async function copyRecipe(db: DbClient, recipeId: number): Promise<number
   }
 
   logger.info('db', 'Copied recipe', { fromId: recipeId, toId: newRecipeId });
+  await invalidateMedianCostCache(db);
   return newRecipeId;
 }
