@@ -1003,6 +1003,8 @@ Risograph's card borders and offset shadows (§4.3) are additive to this scale, 
 
 This isn't a new token — it's a discipline about which existing tokens to reach for when a section has several kinds of content stacked together, so a themed screen doesn't need a second pass once it's built to stop reading as cluttered.
 
+**Keyboard avoidance, as a standing rule.** `KeyboardAvoidingView` does not behave reliably across this app's screen layouts and must not be used. Every screen with a `TextInput` instead uses `useKeyboardAwareScroll()` (`src/hooks/useKeyboardAwareScroll.ts`): wrap the screen's outer `ScrollView` with the hook's `scrollRef` and `onScroll`, and give each `TextInput` an `onFocus={() => scrollToInput(inputRef)}` (with its own `useRef<TextInput>`). The hook measures the focused input against the live keyboard height and scrolls just enough to clear it — no static padding, no layout shift when the keyboard is closed. Any new input added to the app needs this wiring before it ships.
+
 ### 4.7 Signature element — the time split bar
 
 The one thing no other recipe app shows. A two-tone bar directly under the recipe title, splitting total time into hands-on (`--accent`) and passive (`--amber`), with a plain-language key beneath.

@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../db/DbClient';
-import { loadPantry, removePantryItem, setPantryQuantity } from '../../plan/pantryMutations';
+import { loadPantry, removePantryItem, removePantryItems, setPantryQuantity, setPantryQuantityInUnit } from '../../plan/pantryMutations';
 import { addStaple } from '../../plan/staples';
 import { createTestDb } from '../support/testDb';
 
-async function insertIngredient(db: DbClient, name = 'Rice'): Promise<number> {
-  const result = await db.runAsync('INSERT INTO canonical_ingredient (name, base_unit, source) VALUES (?, ?, ?)', [name, 'g', 'seed']);
+async function insertIngredient(db: DbClient, name = 'Rice', packSize: number | null = null): Promise<number> {
+  const result = await db.runAsync('INSERT INTO canonical_ingredient (name, base_unit, pack_size, pack_label, source) VALUES (?, ?, ?, ?, ?)', [
+    name,
+    'g',
+    packSize,
+    packSize != null ? 'bag' : null,
+    'seed',
+  ]);
   return result.lastInsertRowId;
 }
 
@@ -57,5 +63,32 @@ describe('pantryMutations (§5.8)', () => {
     await addStaple(db, riceId);
     const [row] = await loadPantry(db);
     expect(row).toMatchObject({ canonicalId: riceId, quantity: 500, isStaple: true });
+  });
+
+  it('removePantryItems removes several rows at once', async () => {
+    const riceId = await insertIngredient(db, 'Rice');
+    const flourId = await insertIngredient(db, 'Flour');
+    await setPantryQuantity(db, riceId, 500);
+    await setPantryQuantity(db, flourId, 300);
+    await removePantryItems(db, [riceId, flourId]);
+    expect(await loadPantry(db)).toHaveLength(0);
+  });
+
+  it('setPantryQuantityInUnit converts a display-unit value to base units before writing', async () => {
+    const spinachId = await insertIngredient(db, 'Spinach', 200);
+    const ingredient = { canonicalId: spinachId, baseUnit: 'g' as const, packSize: 200, density: null };
+    const ok = await setPantryQuantityInUnit(db, ingredient, 2.5, 'pack');
+    expect(ok).toBe(true);
+    const row = await db.getFirstAsync<{ quantity: number }>('SELECT quantity FROM pantry_item WHERE canonical_id = ?', [spinachId]);
+    expect(row?.quantity).toBe(500);
+  });
+
+  it('setPantryQuantityInUnit returns false and writes nothing for an impossible conversion', async () => {
+    const eggsId = await insertIngredient(db, 'Eggs');
+    await db.runAsync('UPDATE canonical_ingredient SET base_unit = ? WHERE id = ?', ['unit', eggsId]);
+    const ingredient = { canonicalId: eggsId, baseUnit: 'unit' as const, packSize: null, density: null };
+    const ok = await setPantryQuantityInUnit(db, ingredient, 6, 'ml');
+    expect(ok).toBe(false);
+    expect(await db.getFirstAsync('SELECT * FROM pantry_item WHERE canonical_id = ?', [eggsId])).toBeNull();
   });
 });

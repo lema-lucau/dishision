@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../db/DbClient';
-import { createPlannedMeal, deletePlannedMeal, updatePlannedMeal } from '../../plan/planMutations';
+import { clearWeekPlan, createPlannedMeal, deletePlannedMeal, updatePlannedMeal } from '../../plan/planMutations';
 import { createTestDb } from '../support/testDb';
 
 async function insertRecipe(db: DbClient, name = 'Chilli'): Promise<number> {
@@ -53,5 +53,18 @@ describe('planMutations (§5.8 planned_meal CRUD)', () => {
     await db.runAsync('DELETE FROM recipe WHERE id = ?', [recipeId]);
     const row = await db.getFirstAsync('SELECT id FROM planned_meal WHERE id = ?', [id]);
     expect(row).toBeNull();
+  });
+
+  it('clears every planned meal within a week, leaving meals outside it untouched', async () => {
+    const recipeId = await insertRecipe(db);
+    const inWeekA = await createPlannedMeal(db, { recipeId, plannedDate: '2026-07-20', slot: 'dinner', plannedServings: 2 });
+    const inWeekB = await createPlannedMeal(db, { recipeId, plannedDate: '2026-07-24', slot: 'lunch', plannedServings: 2 });
+    const outsideWeek = await createPlannedMeal(db, { recipeId, plannedDate: '2026-07-27', slot: 'dinner', plannedServings: 2 });
+
+    const deleted = await clearWeekPlan(db, '2026-07-20', '2026-07-26');
+    expect(deleted).toBe(2);
+    expect(await db.getFirstAsync('SELECT id FROM planned_meal WHERE id = ?', [inWeekA])).toBeNull();
+    expect(await db.getFirstAsync('SELECT id FROM planned_meal WHERE id = ?', [inWeekB])).toBeNull();
+    expect(await db.getFirstAsync('SELECT id FROM planned_meal WHERE id = ?', [outsideWeek])).not.toBeNull();
   });
 });

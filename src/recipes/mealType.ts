@@ -4,6 +4,7 @@
 // a single section deterministically. No meal tag at all defaults to
 // 'dinner', since that's the app's core scope (§1).
 import type { EnrichedRecipe } from './loadRecipes';
+import { hasTag } from './queryEngine';
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'dessert';
 
@@ -18,7 +19,7 @@ export const MEAL_TYPE_LABELS: Record<MealType, string> = {
 
 export function recipeMealType(recipe: EnrichedRecipe): MealType {
   for (const mealType of MEAL_TYPES) {
-    if (recipe.tags.includes(mealType)) return mealType;
+    if (hasTag(recipe.tags, mealType)) return mealType;
   }
   return 'dinner';
 }

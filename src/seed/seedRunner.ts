@@ -7,6 +7,7 @@ import { uuidv4 } from '../utils/uuid';
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
 import { capitalize } from '../lib/capitalize';
+import { inferIngredientCategory } from '../lib/ingredientCategory';
 import { ingredients as seedIngredients } from './data/ingredients';
 import { recipes as seedRecipes } from './data/recipes';
 import { tags as seedTags } from './data/tags';
@@ -27,11 +28,12 @@ function slugify(name: string): string {
 }
 
 async function upsertIngredient(db: DbClient, ing: IngredientFixture): Promise<number> {
+  const category = ing.category ?? inferIngredientCategory(ing.name);
   await db.runAsync(
     `INSERT INTO canonical_ingredient
        (seed_id, name, base_unit, pack_size, pack_label, kcal_per_100, protein_per_100,
-        carbs_per_100, fat_per_100, cost_per_100, cost_updated_at, density, source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, 'seed')
+        carbs_per_100, fat_per_100, cost_per_100, cost_updated_at, density, category, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, 'seed')
      ON CONFLICT(seed_id) DO UPDATE SET
        name = excluded.name,
        base_unit = excluded.base_unit,
@@ -43,6 +45,7 @@ async function upsertIngredient(db: DbClient, ing: IngredientFixture): Promise<n
        fat_per_100 = excluded.fat_per_100,
        cost_per_100 = excluded.cost_per_100,
        density = excluded.density,
+       category = excluded.category,
        updated_at = datetime('now')`,
     [
       ing.seedId,
@@ -56,6 +59,7 @@ async function upsertIngredient(db: DbClient, ing: IngredientFixture): Promise<n
       ing.fatPer100 ?? null,
       ing.costPer100 ?? null,
       ing.density ?? null,
+      category,
     ],
   );
   const row = await db.getFirstAsync<{ id: number }>(

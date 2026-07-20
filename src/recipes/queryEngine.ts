@@ -70,6 +70,13 @@ export interface ChipAvailability {
 const PROTEIN_CHIPS: ChipKey[] = ['chicken', 'beef', 'pork', 'lamb', 'fish', 'veg'];
 const DATA_GATED_THRESHOLD = 0.6;
 
+// Tags are stored capitalized ("Chicken") but chip/protein literals are
+// lowercase — every tag comparison must go through this so casing can never
+// silently break a match again.
+export function hasTag(tags: string[], needle: string): boolean {
+  return tags.some((t) => t.toLowerCase() === needle);
+}
+
 // Exported for reuse by the recommendation engine's hard filters (§6.2),
 // which apply the same exclusion rule ahead of scoring.
 export function isExcludedNow(recipe: EnrichedRecipe, now: number): boolean {
@@ -87,9 +94,9 @@ function chipMatches(recipe: EnrichedRecipe, chip: ChipKey, median: number | nul
     case 'lowEffort':
       return recipe.activeSeconds < 15 * 60;
     case 'healthy':
-      return recipe.tags.includes('healthy');
+      return hasTag(recipe.tags, 'healthy');
     case 'comfort':
-      return recipe.tags.includes('comfort');
+      return hasTag(recipe.tags, 'comfort');
     case 'highProtein':
       return recipe.proteinPerServing != null && recipe.proteinPerServing >= 30;
     case 'lowKcal':
@@ -100,7 +107,7 @@ function chipMatches(recipe: EnrichedRecipe, chip: ChipKey, median: number | nul
     case 'lamb':
     case 'fish':
     case 'veg':
-      return recipe.tags.includes(chip);
+      return hasTag(recipe.tags, chip);
     case 'cheap':
       return recipe.costPerServing != null && median != null && recipe.costPerServing < median;
     case 'usesWhatIHave':
@@ -250,7 +257,7 @@ export function runRecipeQuery(
   const base = applyExclusions ? allRecipes.filter((r) => !isExcludedNow(r, now)) : allRecipes;
 
   const withTags = query.tagNames?.length
-    ? base.filter((r) => query.tagNames!.every((t) => r.tags.includes(t)))
+    ? base.filter((r) => query.tagNames!.every((t) => hasTag(r.tags, t.toLowerCase())))
     : base;
 
   const searched = withTags
@@ -285,5 +292,5 @@ export function runRecipeQuery(
 }
 
 export function primaryProteinTag(tags: string[]): string | null {
-  return PROTEIN_CHIPS.find((chip) => tags.includes(chip)) ?? null;
+  return PROTEIN_CHIPS.find((chip) => hasTag(tags, chip)) ?? null;
 }

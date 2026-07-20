@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../db/DbClient';
 import {
   addManualShoppingListItem,
+  checkAllShoppingListItems,
   checkShoppingListItem,
   deleteShoppingListItem,
-  reorderShoppingListItem,
+  reorderShoppingListSection,
+  uncheckAllShoppingListItems,
   uncheckShoppingListItem,
   updateShoppingListItem,
 } from '../../plan/shoppingListMutations';
@@ -117,12 +119,48 @@ describe('shoppingListMutations (§5.8)', () => {
     expect(await db.getFirstAsync('SELECT id FROM shopping_list_item WHERE id = ?', [itemId])).toBeNull();
   });
 
-  it('reorders items via swap-with-neighbour', async () => {
+  it('reorders a section by reassigning its own sort_order slots to the new id order', async () => {
     const listId = await makeList(db);
     const a = await addManualShoppingListItem(db, listId, { displayName: 'A', quantity: 1, unit: 'unit' });
     const b = await addManualShoppingListItem(db, listId, { displayName: 'B', quantity: 1, unit: 'unit' });
-    await reorderShoppingListItem(db, listId, b, -1);
+    const c = await addManualShoppingListItem(db, listId, { displayName: 'C', quantity: 1, unit: 'unit' });
+    await reorderShoppingListSection(db, [c, a, b]);
     const rows = await db.getAllAsync<{ id: number }>('SELECT id FROM shopping_list_item WHERE list_id = ? ORDER BY sort_order', [listId]);
-    expect(rows.map((r) => r.id)).toEqual([b, a]);
+    expect(rows.map((r) => r.id)).toEqual([c, a, b]);
+  });
+
+  it('checking off an item with buy_count > 1 adds quantity x buy_count to the pantry', async () => {
+    const chickenId = await insertIngredient(db, 'Chicken breast');
+    const listId = await makeList(db);
+    const itemId = await addManualShoppingListItem(db, listId, {
+      displayName: 'Chicken breast',
+      quantity: 400,
+      unit: 'g',
+      buyCount: 3,
+      canonicalId: chickenId,
+    });
+    await checkShoppingListItem(db, itemId);
+    const pantry = await db.getFirstAsync<{ quantity: number }>('SELECT quantity FROM pantry_item WHERE canonical_id = ?', [chickenId]);
+    expect(pantry?.quantity).toBe(1200);
+
+    await uncheckShoppingListItem(db, itemId);
+    expect(await db.getFirstAsync('SELECT quantity FROM pantry_item WHERE canonical_id = ?', [chickenId])).toBeNull();
+  });
+
+  it('mark-all-checked and mark-all-unchecked toggle every item and its pantry effect', async () => {
+    const onionId = await insertIngredient(db, 'Onion');
+    const listId = await makeList(db);
+    await addManualShoppingListItem(db, listId, { displayName: 'Onion', quantity: 100, unit: 'g', canonicalId: onionId });
+    await addManualShoppingListItem(db, listId, { displayName: 'Other', quantity: 1, unit: 'unit' });
+
+    await checkAllShoppingListItems(db, listId);
+    const afterCheck = await db.getAllAsync<{ checked: number }>('SELECT checked FROM shopping_list_item WHERE list_id = ?', [listId]);
+    expect(afterCheck.every((r) => r.checked === 1)).toBe(true);
+    expect((await db.getFirstAsync<{ quantity: number }>('SELECT quantity FROM pantry_item WHERE canonical_id = ?', [onionId]))?.quantity).toBe(100);
+
+    await uncheckAllShoppingListItems(db, listId);
+    const afterUncheck = await db.getAllAsync<{ checked: number }>('SELECT checked FROM shopping_list_item WHERE list_id = ?', [listId]);
+    expect(afterUncheck.every((r) => r.checked === 0)).toBe(true);
+    expect(await db.getFirstAsync('SELECT quantity FROM pantry_item WHERE canonical_id = ?', [onionId])).toBeNull();
   });
 });

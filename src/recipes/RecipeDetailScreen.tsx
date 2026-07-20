@@ -6,6 +6,7 @@ import { capitalize } from '../lib/capitalize';
 import { formatCurrency } from '../lib/currency';
 import { formatDuration } from '../lib/formatDuration';
 import { formatScaledQuantity, scaleQuantity } from '../lib/scaling';
+import { pluralizeUnit } from '../lib/unitLabels';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { laneColor, phaseColor, timeTagColor } from '../theme/stepColors';
 import { ActionButton } from './ActionButton';
@@ -26,6 +27,8 @@ interface RecipeDetailScreenProps {
   onClearExclusion: () => void;
   onStartCooking: () => void;
   onAlreadyCookedThis: () => void;
+  /** Adds the recipe (at the currently selected serving count) to today's plan and the open shopping list. */
+  onAddToShoppingList: (servings: number) => Promise<void>;
 }
 
 export function RecipeDetailScreen({
@@ -40,18 +43,32 @@ export function RecipeDetailScreen({
   onClearExclusion,
   onStartCooking,
   onAlreadyCookedThis,
+  onAddToShoppingList,
 }: RecipeDetailScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [servings, setServings] = useState(recipe.baseServings);
   const [stepsExpanded, setStepsExpanded] = useState(false);
+  const [addingToList, setAddingToList] = useState(false);
+  const [addedToList, setAddedToList] = useState(false);
   const { modal, confirm } = useConfirmModal();
+
+  async function handleAddToShoppingList() {
+    setAddingToList(true);
+    try {
+      await onAddToShoppingList(servings);
+      setAddedToList(true);
+      setTimeout(() => setAddedToList(false), 2000);
+    } finally {
+      setAddingToList(false);
+    }
+  }
 
   const scaledIngredients = useMemo(
     () =>
       recipe.ingredients.map((ing) => {
         const scaled = scaleQuantity(ing.quantity, ing.scalable, recipe.baseServings, servings);
-        return { ...ing, scaledDisplay: formatScaledQuantity(scaled, ing.unit) };
+        return { ...ing, scaledValue: scaled, scaledDisplay: formatScaledQuantity(scaled, ing.unit) };
       }),
     [recipe.ingredients, recipe.baseServings, servings],
   );
@@ -117,7 +134,7 @@ export function RecipeDetailScreen({
             {ing.optional ? ' (optional)' : ''}
           </Text>
           <Text style={styles.ingredientQty}>
-            {ing.scaledDisplay} {ing.unit}
+            {ing.scaledDisplay} {pluralizeUnit(ing.scaledValue, ing.unit)}
           </Text>
         </View>
       ))}
@@ -208,6 +225,15 @@ export function RecipeDetailScreen({
       </TouchableOpacity>
       <TouchableOpacity style={styles.secondaryButton} onPress={onAlreadyCookedThis}>
         <Text style={styles.secondaryButtonText}>I already cooked this</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.secondaryButton} onPress={handleAddToShoppingList} disabled={addingToList}>
+        <Text style={styles.secondaryButtonText}>
+          {addedToList
+            ? `✓ Added to today's plan & shopping list`
+            : addingToList
+              ? 'Adding…'
+              : `+ Add to shopping list (${servings} serving${servings === 1 ? '' : 's'})`}
+        </Text>
       </TouchableOpacity>
 
       <View style={[styles.actionsRow, styles.actionsRowFirst]}>

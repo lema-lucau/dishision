@@ -1,42 +1,81 @@
-// §5.8 shopping list: generation from a date range, and a fully editable
-// list thereafter (edit qty/unit/name, delete, reorder, add manual).
-// Checking a row off adds its purchase quantity to the pantry.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+// §5.8 shopping list: generation from a date range, sectioned by recipe
+// (plus a cross-recipe "Common" section and an "Other" section for manual
+// additions), fully editable (name/qty/unit dropdown/buy-count, delete,
+// drag-reorder within a section, add manual with autocomplete), search,
+// mark-all-checked/unchecked, and check-off -> pantry.
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { DatePickerModal } from '../components/DatePickerModal';
+import { UnitPickerModal } from '../components/UnitPickerModal';
+import { pluralizeUnit } from '../lib/unitLabels';
+import type { DisplayUnit } from '../lib/displayUnit';
 import { useDb } from '../db/DbContext';
+import { useKeyboardAwareScroll } from '../hooks/useKeyboardAwareScroll';
+import { formatDMY } from '../lib/formatDate';
+import { createUserIngredient, searchCanonicalIngredients, type CanonicalIngredientOption } from '../recipes/ingredientSearch';
+import { DraggableShoppingSection } from './DraggableShoppingSection';
 import {
   addManualShoppingListItem,
+  checkAllShoppingListItems,
   checkShoppingListItem,
   deleteShoppingListItem,
-  reorderShoppingListItem,
+  reorderShoppingListSection,
+  uncheckAllShoppingListItems,
   uncheckShoppingListItem,
   updateShoppingListItem,
 } from './shoppingListMutations';
 import { generateShoppingList } from './shoppingListGeneration';
-import { loadLatestShoppingList, type ShoppingListItemRow, type ShoppingListSummary } from './loadShoppingList';
+import {
+  groupShoppingListItems,
+  loadLatestShoppingList,
+  type ShoppingListItemRow,
+  type ShoppingListSummary,
+} from './loadShoppingList';
 import type { RecipeUnit } from '../seed/types';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 interface ShoppingListScreenProps {
   defaultRangeStart: string;
   defaultRangeEnd: string;
+  onOpenRecipe?: (recipeId: number) => void;
 }
 
-export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd }: ShoppingListScreenProps) {
+export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenRecipe }: ShoppingListScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
+  const { scrollRef, scrollToInput, onScroll } = useKeyboardAwareScroll();
+  const searchInputRef = useRef<TextInput>(null);
+  const newNameInputRef = useRef<TextInput>(null);
+  const newQtyInputRef = useRef<TextInput>(null);
+  const newBuyCountInputRef = useRef<TextInput>(null);
   const [list, setList] = useState<ShoppingListSummary | null | undefined>(undefined);
   const [rangeStart, setRangeStart] = useState(defaultRangeStart);
   const [rangeEnd, setRangeEnd] = useState(defaultRangeEnd);
   const [pickerOpen, setPickerOpen] = useState<'start' | 'end' | null>(null);
   const [rangePickerVisible, setRangePickerVisible] = useState(false);
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemQty, setNewItemQty] = useState('');
-  const [newItemUnit, setNewItemUnit] = useState('unit');
+  const [search, setSearch] = useState('');
+  const [unitPickerFor, setUnitPickerFor] = useState<number | 'new' | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  const [newName, setNewName] = useState('');
+  const [newSuggestions, setNewSuggestions] = useState<CanonicalIngredientOption[]>([]);
+  const [newCanonicalId, setNewCanonicalId] = useState<number | null>(null);
+  const [newQty, setNewQty] = useState('');
+  const [newUnit, setNewUnit] = useState<RecipeUnit>('unit');
+  const [newBuyCount, setNewBuyCount] = useState('1');
+
   const { modal, confirm } = useConfirmModal();
+
+  function toggleSectionCollapsed(key: string) {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   const reload = useCallback(async () => {
     setList(await loadLatestShoppingList(db));
@@ -65,110 +104,245 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd }: Shopp
     }, true);
   }
 
-  async function handleReorder(item: ShoppingListItemRow, delta: number) {
-    if (!list) return;
-    await reorderShoppingListItem(db, list.id, item.id, delta);
-    await reload();
-  }
-
-  async function handleFieldChange(item: ShoppingListItemRow, patch: { displayName?: string; quantity?: number; unit?: string }) {
+  async function handleFieldChange(item: ShoppingListItemRow, patch: { displayName?: string; quantity?: number; unit?: string; buyCount?: number }) {
     await updateShoppingListItem(db, item.id, { ...patch, unit: patch.unit as RecipeUnit | undefined });
     await reload();
   }
 
+  function handleReorder(sectionKey: string, orderedIds: number[]) {
+    if (!list) return;
+    const byId = new Map(list.items.map((i) => [i.id, i]));
+    const orderedItems = orderedIds.map((id) => byId.get(id)!);
+    let cursor = 0;
+    const idSet = new Set(orderedIds);
+    const nextItems = list.items.map((item) => (idSet.has(item.id) ? orderedItems[cursor++] : item));
+    setList({ ...list, items: nextItems });
+    reorderShoppingListSection(db, orderedIds);
+  }
+
+  async function handleMarkAll(checked: boolean) {
+    if (!list) return;
+    if (checked) await checkAllShoppingListItems(db, list.id);
+    else await uncheckAllShoppingListItems(db, list.id);
+    await reload();
+  }
+
+  async function runIngredientSearch(text: string) {
+    setNewName(text);
+    setNewCanonicalId(null);
+    if (text.trim().length < 2) {
+      setNewSuggestions([]);
+      return;
+    }
+    setNewSuggestions(await searchCanonicalIngredients(db, text));
+  }
+
+  function selectSuggestion(option: CanonicalIngredientOption) {
+    setNewName(option.name);
+    setNewCanonicalId(option.id);
+    setNewUnit(option.baseUnit === 'unit' ? 'unit' : (option.baseUnit as RecipeUnit));
+    setNewSuggestions([]);
+  }
+
   async function handleAddManual() {
-    if (!list || !newItemName.trim() || !newItemQty.trim()) return;
+    if (!list || !newName.trim() || !newQty.trim()) return;
+    let canonicalId = newCanonicalId;
+    // Typed something that doesn't match anything in the database -> it
+    // becomes a new canonical ingredient, same as the recipe form's
+    // "add this ingredient" flow.
+    if (canonicalId == null) {
+      const created = await createUserIngredient(db, newName.trim(), newUnit === 'unit' ? 'unit' : 'g');
+      canonicalId = created.id;
+    }
     await addManualShoppingListItem(db, list.id, {
-      displayName: newItemName.trim(),
-      quantity: Number(newItemQty),
-      unit: newItemUnit as RecipeUnit,
+      displayName: newName.trim(),
+      quantity: Number(newQty),
+      unit: newUnit,
+      buyCount: Number(newBuyCount) || 1,
+      canonicalId,
     });
-    setNewItemName('');
-    setNewItemQty('');
+    setNewName('');
+    setNewQty('');
+    setNewBuyCount('1');
+    setNewCanonicalId(null);
+    setNewSuggestions([]);
     await reload();
   }
 
   if (list === undefined) return null;
 
-  const items = list?.items ?? [];
-  const unchecked = items.filter((i) => !i.checked);
-  const checked = items.filter((i) => i.checked);
+  const allSections = list ? groupShoppingListItems(list.items) : [];
+  const needle = search.trim().toLowerCase();
+  const sections = needle
+    ? allSections
+        .map((s) => ({ ...s, items: s.items.filter((i) => i.displayName.toLowerCase().includes(needle)) }))
+        .filter((s) => s.items.length > 0)
+    : allSections;
+  const isFiltering = needle.length > 0;
+  const anyChecked = list?.items.some((i) => i.checked) ?? false;
+  const anyUnchecked = list?.items.some((i) => !i.checked) ?? false;
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Shopping list</Text>
+        <Text style={styles.title}>Shopping List</Text>
         <TouchableOpacity style={styles.generateButton} onPress={() => setRangePickerVisible(true)}>
           <Text style={styles.generateButtonText}>{list ? 'Regenerate' : 'Generate'}</Text>
         </TouchableOpacity>
       </View>
       {list?.rangeStart && (
         <Text style={styles.rangeLabel}>
-          {list.rangeStart} → {list.rangeEnd}
+          {formatDMY(list.rangeStart)} → {list.rangeEnd ? formatDMY(list.rangeEnd) : ''}
         </Text>
       )}
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      {list && (
+        <View style={styles.toolsRow}>
+          <View style={styles.searchRow}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              ref={searchInputRef}
+              style={styles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              onFocus={() => scrollToInput(searchInputRef)}
+              placeholder="Search this list…"
+              placeholderTextColor={theme.colors.ink3}
+            />
+          </View>
+          <View style={styles.markAllRow}>
+            <TouchableOpacity style={styles.markAllButton} disabled={!anyUnchecked} onPress={() => handleMarkAll(true)}>
+              <Text style={[styles.markAllButtonText, !anyUnchecked && styles.markAllButtonTextDisabled]}>Mark all checked</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.markAllButton} disabled={!anyChecked} onPress={() => handleMarkAll(false)}>
+              <Text style={[styles.markAllButtonText, !anyChecked && styles.markAllButtonTextDisabled]}>Mark all unchecked</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {!list && <Text style={styles.empty}>No shopping list yet — generate one from your planned meals.</Text>}
+        {list && sections.length === 0 && <Text style={styles.empty}>{isFiltering ? 'Nothing matches.' : 'The list is empty.'}</Text>}
 
-        {unchecked.map((item, index) => (
-          <ItemRow
-            key={item.id}
-            item={item}
-            isFirst={index === 0}
-            isLast={index === unchecked.length - 1}
-            onToggle={() => handleToggle(item)}
-            onDelete={() => handleDelete(item)}
-            onMove={(d) => handleReorder(item, d)}
-            onChange={(patch) => handleFieldChange(item, patch)}
-          />
-        ))}
+        {sections.map((section) => {
+          const unchecked = section.items.filter((i) => !i.checked);
+          const checked = section.items.filter((i) => i.checked);
+          const sectionRecipeId = section.items[0]?.recipeId ?? null;
+          const isCollapsed = collapsedSections.has(section.key);
+          return (
+            <View key={section.key} style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <TouchableOpacity
+                  style={styles.sectionHeaderMain}
+                  disabled={!(sectionRecipeId != null && onOpenRecipe)}
+                  onPress={() => sectionRecipeId != null && onOpenRecipe?.(sectionRecipeId)}
+                >
+                  {section.emoji && <Text style={styles.sectionEmoji}>{section.emoji}</Text>}
+                  <Text style={styles.sectionLabel}>{section.label.toUpperCase()}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => toggleSectionCollapsed(section.key)} hitSlop={8} style={styles.sectionCollapseButton}>
+                  <Text style={styles.sectionCollapseIcon}>{isCollapsed ? '▸' : '▾'}</Text>
+                </TouchableOpacity>
+              </View>
 
-        {checked.length > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>CHECKED OFF</Text>
-            {checked.map((item) => (
-              <ItemRow
-                key={item.id}
-                item={item}
-                isFirst
-                isLast
-                onToggle={() => handleToggle(item)}
-                onDelete={() => handleDelete(item)}
-                onMove={() => {}}
-                onChange={(patch) => handleFieldChange(item, patch)}
-              />
-            ))}
-          </>
-        )}
+              {!isCollapsed && unchecked.length > 0 &&
+                (isFiltering ? (
+                  <View>
+                    {unchecked.map((item) => (
+                      <View key={item.id} style={styles.staticRowWrap}>
+                        <ItemRow
+                          item={item}
+                          onToggle={() => handleToggle(item)}
+                          onDelete={() => handleDelete(item)}
+                          onChange={(patch) => handleFieldChange(item, patch)}
+                          onOpenUnitPicker={() => setUnitPickerFor(item.id)}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <DraggableShoppingSection
+                    items={unchecked}
+                    onReorder={(ids) => handleReorder(section.key, ids)}
+                    renderRow={(item) => (
+                      <ItemRow
+                        item={item}
+                        onToggle={() => handleToggle(item)}
+                        onDelete={() => handleDelete(item)}
+                        onChange={(patch) => handleFieldChange(item, patch)}
+                        onOpenUnitPicker={() => setUnitPickerFor(item.id)}
+                      />
+                    )}
+                  />
+                ))}
+
+              {!isCollapsed &&
+                checked.map((item) => (
+                  <View key={item.id} style={styles.staticRowWrap}>
+                    <ItemRow
+                      item={item}
+                      onToggle={() => handleToggle(item)}
+                      onDelete={() => handleDelete(item)}
+                      onChange={(patch) => handleFieldChange(item, patch)}
+                      onOpenUnitPicker={() => setUnitPickerFor(item.id)}
+                    />
+                  </View>
+                ))}
+            </View>
+          );
+        })}
 
         {list && (
-          <View style={styles.addRow}>
-            <TextInput
-              style={[styles.addInput, styles.addInputName]}
-              placeholder="Add item"
-              placeholderTextColor={theme.colors.ink3}
-              value={newItemName}
-              onChangeText={setNewItemName}
-            />
-            <TextInput
-              style={[styles.addInput, styles.addInputQty]}
-              placeholder="Qty"
-              placeholderTextColor={theme.colors.ink3}
-              keyboardType="numeric"
-              value={newItemQty}
-              onChangeText={setNewItemQty}
-            />
-            <TextInput
-              style={[styles.addInput, styles.addInputUnit]}
-              placeholder="unit"
-              placeholderTextColor={theme.colors.ink3}
-              value={newItemUnit}
-              onChangeText={setNewItemUnit}
-            />
-            <TouchableOpacity style={styles.addButton} onPress={handleAddManual}>
-              <Text style={styles.addButtonText}>+</Text>
-            </TouchableOpacity>
+          <View style={styles.addSection}>
+            <Text style={styles.sectionLabel}>ADD ITEM</Text>
+            <View style={styles.addRow}>
+              <TextInput
+                ref={newNameInputRef}
+                style={[styles.addInput, styles.addInputName]}
+                placeholder="Ingredient"
+                placeholderTextColor={theme.colors.ink3}
+                value={newName}
+                onChangeText={runIngredientSearch}
+                onFocus={() => scrollToInput(newNameInputRef)}
+              />
+              <TextInput
+                ref={newQtyInputRef}
+                style={[styles.addInput, styles.addInputQty]}
+                placeholder="Qty"
+                placeholderTextColor={theme.colors.ink3}
+                keyboardType="numeric"
+                value={newQty}
+                onChangeText={setNewQty}
+                onFocus={() => scrollToInput(newQtyInputRef)}
+              />
+              <TouchableOpacity style={styles.unitButton} onPress={() => setUnitPickerFor('new')}>
+                <Text style={styles.unitButtonText}>{pluralizeUnit(Number(newQty) || 1, newUnit)}</Text>
+              </TouchableOpacity>
+            </View>
+            {newSuggestions.length > 0 && (
+              <View style={styles.suggestions}>
+                {newSuggestions.map((s) => (
+                  <TouchableOpacity key={s.id} style={styles.suggestionRow} onPress={() => selectSuggestion(s)}>
+                    <Text style={styles.suggestionText}>{s.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            <View style={styles.buyCountRow}>
+              <Text style={styles.buyCountLabel}>How many to buy</Text>
+              <View style={styles.buyCountControls}>
+                <Stepper
+                  value={Number(newBuyCount) || 1}
+                  onChange={(v) => setNewBuyCount(String(v))}
+                  inputRef={newBuyCountInputRef}
+                  onFocusInput={() => scrollToInput(newBuyCountInputRef)}
+                />
+                <TouchableOpacity style={styles.addButton} onPress={handleAddManual}>
+                  <Text style={styles.addButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -180,11 +354,11 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd }: Shopp
             <View style={styles.rangeRow}>
               <TouchableOpacity style={styles.rangeField} onPress={() => setPickerOpen('start')}>
                 <Text style={styles.rangeFieldLabel}>From</Text>
-                <Text style={styles.rangeFieldValue}>{rangeStart}</Text>
+                <Text style={styles.rangeFieldValue}>{formatDMY(rangeStart)}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.rangeField} onPress={() => setPickerOpen('end')}>
                 <Text style={styles.rangeFieldLabel}>To</Text>
-                <Text style={styles.rangeFieldValue}>{rangeEnd}</Text>
+                <Text style={styles.rangeFieldValue}>{formatDMY(rangeEnd)}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.rangeActions}>
@@ -218,31 +392,90 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd }: Shopp
         onClose={() => setPickerOpen(null)}
       />
 
+      <UnitPickerModal
+        visible={unitPickerFor != null}
+        value={unitPickerFor === 'new' ? newUnit : (list?.items.find((i) => i.id === unitPickerFor)?.unit as string) ?? 'unit'}
+        onSelect={(unit) => {
+          if (unitPickerFor === 'new') {
+            setNewUnit(unit);
+          } else if (unitPickerFor != null) {
+            const item = list?.items.find((i) => i.id === unitPickerFor);
+            if (item) handleFieldChange(item, { unit });
+          }
+        }}
+        onClose={() => setUnitPickerFor(null)}
+      />
+
       {modal}
+    </View>
+  );
+}
+
+function Stepper({
+  value,
+  onChange,
+  min = 1,
+  inputRef,
+  onFocusInput,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  inputRef?: React.RefObject<TextInput | null>;
+  onFocusInput?: () => void;
+}) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const [text, setText] = useState(String(value));
+
+  useEffect(() => {
+    setText(String(value));
+  }, [value]);
+
+  function commit() {
+    const parsed = Math.max(min, Math.round(Number(text)) || min);
+    setText(String(parsed));
+    onChange(parsed);
+  }
+
+  return (
+    <View style={styles.stepper}>
+      <TouchableOpacity style={styles.stepperButton} onPress={() => onChange(Math.max(min, value - 1))} hitSlop={6}>
+        <Text style={styles.stepperButtonText}>−</Text>
+      </TouchableOpacity>
+      <TextInput
+        ref={inputRef}
+        style={styles.stepperInput}
+        value={text}
+        onChangeText={setText}
+        onEndEditing={commit}
+        onFocus={onFocusInput}
+        keyboardType="numeric"
+      />
+      <TouchableOpacity style={styles.stepperButton} onPress={() => onChange(value + 1)} hitSlop={6}>
+        <Text style={styles.stepperButtonText}>+</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 function ItemRow({
   item,
-  isFirst,
-  isLast,
   onToggle,
   onDelete,
-  onMove,
   onChange,
+  onOpenUnitPicker,
 }: {
   item: ShoppingListItemRow;
-  isFirst: boolean;
-  isLast: boolean;
   onToggle: () => void;
   onDelete: () => void;
-  onMove: (delta: number) => void;
-  onChange: (patch: { displayName?: string; quantity?: number; unit?: string }) => void;
+  onChange: (patch: { displayName?: string; quantity?: number; buyCount?: number }) => void;
+  onOpenUnitPicker: () => void;
 }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [qtyText, setQtyText] = useState(String(item.quantity));
+  const [buyCountText, setBuyCountText] = useState(String(item.buyCount));
 
   return (
     <View style={styles.row}>
@@ -263,23 +496,20 @@ function ItemRow({
         keyboardType="numeric"
         editable={!item.checked}
       />
-      <TextInput
-        style={[styles.rowUnit, item.checked && styles.rowTextChecked]}
-        value={item.unit}
-        onChangeText={(v) => onChange({ unit: v })}
-        editable={!item.checked}
-      />
-      {!item.checked && (
-        <View style={styles.rowActions}>
-          <TouchableOpacity onPress={() => onMove(-1)} disabled={isFirst} hitSlop={6}>
-            <Text style={[styles.reorderLink, isFirst && styles.reorderLinkDisabled]}>↑</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => onMove(1)} disabled={isLast} hitSlop={6}>
-            <Text style={[styles.reorderLink, isLast && styles.reorderLinkDisabled]}>↓</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      <TouchableOpacity onPress={onDelete} hitSlop={6}>
+      <TouchableOpacity style={styles.unitButtonSmall} disabled={item.checked} onPress={onOpenUnitPicker}>
+        <Text style={styles.unitButtonSmallText}>{pluralizeUnit(item.quantity, item.unit as DisplayUnit)}</Text>
+      </TouchableOpacity>
+      {item.buyCount > 1 || item.isCommon ? (
+        <TextInput
+          style={[styles.rowBuyCount, item.checked && styles.rowTextChecked]}
+          value={buyCountText}
+          onChangeText={setBuyCountText}
+          onEndEditing={() => onChange({ buyCount: Math.max(1, Number(buyCountText) || 1) })}
+          keyboardType="numeric"
+          editable={!item.checked}
+        />
+      ) : null}
+      <TouchableOpacity style={styles.removeButton} onPress={onDelete} hitSlop={6}>
         <Text style={styles.removeLink}>✕</Text>
       </TouchableOpacity>
     </View>
@@ -294,10 +524,44 @@ const makeStyles = (theme: AppTheme) =>
     generateButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs },
     generateButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentFg },
     rangeLabel: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+
+    toolsRow: { gap: theme.spacing.base, marginTop: theme.spacing.xs },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: theme.radius.tile,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.sm,
+    },
+    searchIcon: { fontSize: theme.fontSize.sm },
+    searchInput: { flex: 1, fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink },
+    markAllRow: { flexDirection: 'row', gap: theme.spacing.sm },
+    markAllButton: { flex: 1, alignItems: 'center', paddingVertical: theme.spacing.xs, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+    markAllButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+    markAllButtonTextDisabled: { color: theme.colors.ink4 },
+
     scroll: { flex: 1 },
-    scrollContent: { gap: theme.spacing.xs, paddingBottom: theme.spacing.xxl },
+    scrollContent: { gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
     empty: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic', paddingVertical: theme.spacing.xl, textAlign: 'center' },
-    sectionLabel: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.6, marginTop: theme.spacing.md },
+
+    section: { gap: theme.spacing.xs },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing.xs,
+      marginTop: theme.spacing.md,
+    },
+    sectionHeaderMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    sectionEmoji: { fontSize: theme.fontSize.base },
+    sectionLabel: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.6 },
+    sectionCollapseButton: { paddingHorizontal: theme.spacing.xs, paddingVertical: 2 },
+    sectionCollapseIcon: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.ink3 },
+    staticRowWrap: { marginBottom: theme.spacing.xs },
 
     row: {
       flexDirection: 'row',
@@ -308,6 +572,7 @@ const makeStyles = (theme: AppTheme) =>
       padding: theme.spacing.sm,
       borderWidth: 1,
       borderColor: theme.colors.border,
+      marginBottom: theme.spacing.xs,
     },
     checkbox: {
       width: 22,
@@ -321,15 +586,17 @@ const makeStyles = (theme: AppTheme) =>
     checkboxChecked: { backgroundColor: theme.colors.green, borderColor: theme.colors.green },
     checkboxMark: { color: theme.colors.accentFg, fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm },
     rowName: { flex: 1, fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.base, color: theme.colors.ink, paddingVertical: 2 },
-    rowQty: { width: 48, fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink, textAlign: 'right' },
-    rowUnit: { width: 44, fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+    rowQty: { width: 44, fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink, textAlign: 'right' },
+    rowBuyCount: { width: 34, fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText, textAlign: 'center', backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.chip },
     rowTextChecked: { color: theme.colors.ink4, textDecorationLine: 'line-through' },
-    rowActions: { gap: 2 },
-    reorderLink: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
-    reorderLinkDisabled: { color: theme.colors.ink4 },
-    removeLink: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.red, paddingHorizontal: 4 },
+    removeButton: { marginLeft: theme.spacing.xs, paddingHorizontal: 4 },
+    removeLink: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.red },
 
-    addRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.sm },
+    unitButtonSmall: { paddingHorizontal: theme.spacing.sm, paddingVertical: 4, borderRadius: theme.radius.chip, backgroundColor: theme.colors.chipBg },
+    unitButtonSmallText: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+
+    addSection: { gap: theme.spacing.sm, marginTop: theme.spacing.lg },
+    addRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginBottom: theme.spacing.sm },
     addInput: {
       fontFamily: theme.fonts.body.regular,
       fontSize: theme.fontSize.sm,
@@ -343,9 +610,36 @@ const makeStyles = (theme: AppTheme) =>
     },
     addInputName: { flex: 1 },
     addInputQty: { width: 56 },
-    addInputUnit: { width: 56 },
+    unitButton: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, borderRadius: theme.radius.tile, backgroundColor: theme.colors.chipBg },
+    unitButtonText: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+    buyCountRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, marginTop: theme.spacing.sm },
+    buyCountLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink2 },
+    buyCountControls: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
     addButton: { backgroundColor: theme.colors.accent, width: 36, height: 36, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center' },
     addButtonText: { color: theme.colors.accentFg, fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.lg },
+
+    stepper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.bg,
+      borderWidth: 1,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: theme.radius.tile,
+    },
+    stepperButton: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm },
+    stepperButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.md, color: theme.colors.accentText },
+    stepperInput: {
+      minWidth: 40,
+      textAlign: 'center',
+      fontFamily: theme.fonts.data.semiBold,
+      fontSize: theme.fontSize.base,
+      color: theme.colors.ink,
+      paddingVertical: theme.spacing.sm,
+    },
+
+    suggestions: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.tile, borderWidth: 1, borderColor: theme.colors.border, maxHeight: 140 },
+    suggestionRow: { paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+    suggestionText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.base, color: theme.colors.ink },
 
     rangeSheet: { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, backgroundColor: theme.colors.scrim, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl },
     rangeSheetInner: { width: '100%', maxWidth: 360, backgroundColor: theme.colors.surface, borderRadius: theme.radius.card, padding: theme.spacing.lg, gap: theme.spacing.base },

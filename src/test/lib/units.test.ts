@@ -33,4 +33,14 @@ describe('convertToBaseUnit (§3.2)', () => {
     expect(convertToBaseUnit({ baseUnit: 'g' }, 2, 'tbsp')).toEqual({ value: 30, measured: true });
     expect(convertToBaseUnit({ baseUnit: 'g', density: 1.4 }, 1, 'tbsp')).toEqual({ value: 21, measured: true });
   });
+
+  it('converts kg to g and l to ml', () => {
+    expect(convertToBaseUnit({ baseUnit: 'g' }, 1.5, 'kg')).toEqual({ value: 1500, measured: true });
+    expect(convertToBaseUnit({ baseUnit: 'ml' }, 1.5, 'l')).toEqual({ value: 1500, measured: true });
+  });
+
+  it('converts kg through to ml via density, and l through to g via density', () => {
+    expect(convertToBaseUnit({ baseUnit: 'ml', density: 0.5 }, 1, 'kg')).toEqual({ value: 2000, measured: true });
+    expect(convertToBaseUnit({ baseUnit: 'g', density: 0.5 }, 1, 'l')).toEqual({ value: 500, measured: true });
+  });
 });

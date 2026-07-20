@@ -53,3 +53,15 @@ export async function deletePlannedMeal(db: DbClient, id: number): Promise<void>
   await db.runAsync('DELETE FROM planned_meal WHERE id = ?', [id]);
   logger.info('db', 'Planned meal deleted', { plannedMealId: id });
 }
+
+// Bulk-clears every planned meal in a date range (the weekly planner's
+// "Clear week" button) — same scope as deletePlannedMeal, just for a whole
+// week at once instead of one row.
+export async function clearWeekPlan(db: DbClient, weekStartKey: string, weekEndKey: string): Promise<number> {
+  const result = await db.runAsync('DELETE FROM planned_meal WHERE planned_date >= ? AND planned_date <= ?', [
+    weekStartKey,
+    weekEndKey,
+  ]);
+  logger.info('db', 'Week plan cleared', { weekStartKey, weekEndKey, deleted: result.changes });
+  return result.changes;
+}

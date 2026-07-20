@@ -2,7 +2,7 @@
 // pagination, multi-select tag filters, long-press or multi-select delete,
 // and a log editor (stars, quick tags, free-text fields — photos and
 // substitutions with promote-to-recipe are explicitly S10 per spec).
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { DatePickerModal } from '../components/DatePickerModal';
 import { useConfirmModal } from '../components/useConfirmModal';
@@ -19,8 +19,9 @@ import {
 } from '../cooking/substitutions';
 import { addCustomQuickTag, BUILT_IN_QUICK_TAGS, loadCustomQuickTags, removeCustomQuickTag } from '../cooking/quickTags';
 import { useDb } from '../db/DbContext';
+import { useKeyboardAwareScroll } from '../hooks/useKeyboardAwareScroll';
 import { capitalize } from '../lib/capitalize';
-import { formatShortDate } from '../lib/formatDate';
+import { formatDMY, formatShortDate } from '../lib/formatDate';
 import { PhotoViewer } from '../photos/PhotoViewer';
 import { pickAndCompressPhotos } from '../photos/pickAndCompressPhoto';
 import { EmojiTile } from '../recipes/EmojiTile';
@@ -41,6 +42,8 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
+  const { scrollRef, scrollToInput, onScroll } = useKeyboardAwareScroll();
+  const searchInputRef = useRef<TextInput>(null);
   const [logs, setLogs] = useState<CookLogRow[] | null>(null);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('date');
@@ -228,15 +231,17 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
       <View style={styles.searchRow}>
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
+          ref={searchInputRef}
           style={styles.searchInput}
           value={search}
           onChangeText={setSearch}
+          onFocus={() => scrollToInput(searchInputRef)}
           placeholder="Search logs, notes…"
           placeholderTextColor={theme.colors.ink3}
         />
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <TouchableOpacity style={styles.filtersToggle} onPress={() => setFiltersExpanded((e) => !e)}>
           <Text style={styles.filtersToggleText}>
             {filtersExpanded ? '▾' : '▸'} Filters
@@ -272,11 +277,11 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
             <View style={styles.dateRangeRow}>
               <TouchableOpacity style={styles.dateButton} onPress={() => setShowFromPicker(true)}>
                 <Text style={styles.dateButtonLabel}>From</Text>
-                <Text style={styles.dateButtonValue}>{dateFrom ?? 'Any'}</Text>
+                <Text style={styles.dateButtonValue}>{dateFrom ? formatDMY(dateFrom) : 'Any'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dateButton} onPress={() => setShowToPicker(true)}>
                 <Text style={styles.dateButtonLabel}>To</Text>
-                <Text style={styles.dateButtonValue}>{dateTo ?? 'Any'}</Text>
+                <Text style={styles.dateButtonValue}>{dateTo ? formatDMY(dateTo) : 'Any'}</Text>
               </TouchableOpacity>
               {(dateFrom || dateTo) && (
                 <TouchableOpacity
@@ -562,6 +567,13 @@ function CookLogEditor({
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
+  const { scrollRef, scrollToInput, onScroll } = useKeyboardAwareScroll();
+  const newTagInputRef = useRef<TextInput>(null);
+  const whatWentWellInputRef = useRef<TextInput>(null);
+  const whatToChangeInputRef = useRef<TextInput>(null);
+  const notesInputRef = useRef<TextInput>(null);
+  const newSubOriginalInputRef = useRef<TextInput>(null);
+  const newSubReplacementInputRef = useRef<TextInput>(null);
   const [stars, setStars] = useState<number | null>(log.stars);
   const [quickTags, setQuickTags] = useState<string[]>(log.quickTags);
   const [addingTag, setAddingTag] = useState(false);
@@ -744,7 +756,7 @@ function CookLogEditor({
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.editorContent}>
+    <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} style={styles.container} contentContainerStyle={styles.editorContent}>
       <TouchableOpacity style={styles.backButton} onPress={onCancel}>
         <Text style={styles.back}>← Cancel</Text>
       </TouchableOpacity>
@@ -780,9 +792,11 @@ function CookLogEditor({
         {addingTag ? (
           <View style={styles.newTagRow}>
             <TextInput
+              ref={newTagInputRef}
               style={styles.newTagInput}
               value={newTagText}
               onChangeText={setNewTagText}
+              onFocus={() => scrollToInput(newTagInputRef)}
               placeholder="new tag"
               placeholderTextColor={theme.colors.ink3}
               autoFocus
@@ -800,11 +814,32 @@ function CookLogEditor({
       </View>
 
       <Text style={styles.label}>What went well</Text>
-      <TextInput style={styles.textArea} value={whatWentWell} onChangeText={setWhatWentWell} multiline />
+      <TextInput
+        ref={whatWentWellInputRef}
+        style={styles.textArea}
+        value={whatWentWell}
+        onChangeText={setWhatWentWell}
+        onFocus={() => scrollToInput(whatWentWellInputRef)}
+        multiline
+      />
       <Text style={styles.label}>What to change</Text>
-      <TextInput style={styles.textArea} value={whatToChange} onChangeText={setWhatToChange} multiline />
+      <TextInput
+        ref={whatToChangeInputRef}
+        style={styles.textArea}
+        value={whatToChange}
+        onChangeText={setWhatToChange}
+        onFocus={() => scrollToInput(whatToChangeInputRef)}
+        multiline
+      />
       <Text style={styles.label}>Notes</Text>
-      <TextInput style={styles.textArea} value={notes} onChangeText={setNotes} multiline />
+      <TextInput
+        ref={notesInputRef}
+        style={styles.textArea}
+        value={notes}
+        onChangeText={setNotes}
+        onFocus={() => scrollToInput(notesInputRef)}
+        multiline
+      />
 
       <Text style={styles.label}>Substitutions</Text>
       {substitutions.map((sub) => (
@@ -875,9 +910,25 @@ function CookLogEditor({
             ))}
           </View>
           <Text style={styles.subFormLabel}>Original</Text>
-          <TextInput style={styles.subInput} value={newSubOriginalText} onChangeText={setNewSubOriginalText} placeholder="chicken thigh" placeholderTextColor={theme.colors.ink3} />
+          <TextInput
+            ref={newSubOriginalInputRef}
+            style={styles.subInput}
+            value={newSubOriginalText}
+            onChangeText={setNewSubOriginalText}
+            onFocus={() => scrollToInput(newSubOriginalInputRef)}
+            placeholder="chicken thigh"
+            placeholderTextColor={theme.colors.ink3}
+          />
           <Text style={styles.subFormLabel}>Replaced with</Text>
-          <TextInput style={styles.subInput} value={newSubReplacementText} onChangeText={setNewSubReplacementText} placeholder="tofu" placeholderTextColor={theme.colors.ink3} />
+          <TextInput
+            ref={newSubReplacementInputRef}
+            style={styles.subInput}
+            value={newSubReplacementText}
+            onChangeText={setNewSubReplacementText}
+            onFocus={() => scrollToInput(newSubReplacementInputRef)}
+            placeholder="tofu"
+            placeholderTextColor={theme.colors.ink3}
+          />
           <Text style={styles.subFormLabel}>Verdict</Text>
           <View style={styles.filterRow}>
             {VERDICTS.map((v) => (

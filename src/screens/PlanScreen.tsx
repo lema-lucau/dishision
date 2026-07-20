@@ -1,13 +1,17 @@
 // §5.8 Plan tab: calendar (cooked + planned layers, independent), a week
 // strip for meal planning, and — behind the top segmented control —
-// shopping list and pantry/staples (S12).
+// shopping list and pantry/staples (S12). Week starts Monday, ends Sunday
+// (house convention — both of this app's users are Irish). The week strip
+// and the month calendar share one `referenceDate` so navigating either one
+// keeps the other in sync (a "new month entered" in one updates the other).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MonthYearJumpModal } from '../components/MonthYearJumpModal';
 import { RecipePickerModal } from '../components/RecipePickerModal';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
-import { createPlannedMeal, deletePlannedMeal, updatePlannedMeal } from '../plan/planMutations';
+import { formatDayHeading } from '../lib/formatDate';
+import { clearWeekPlan, createPlannedMeal, deletePlannedMeal, updatePlannedMeal } from '../plan/planMutations';
 import { loadPlannedMonth, type PlannedDayEntry } from '../plan/loadPlannedMonth';
 import { loadPlannedRange, type PlannedMealEntry } from '../plan/loadPlannedRange';
 import { PantryScreen } from '../plan/PantryScreen';
@@ -17,7 +21,9 @@ import { EmojiTile } from '../recipes/EmojiTile';
 import { loadEnrichedRecipes, type EnrichedRecipe } from '../recipes/loadRecipes';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// Monday-first (house convention — the calendar and week strip both start
+// the week on Monday and end on Sunday).
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTH_LABELS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -32,16 +38,21 @@ function dateKey(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-// Sunday-anchored week containing `anchor` — matches WEEKDAY_LABELS order.
-function weekRange(anchor: Date): { start: Date; days: Date[] } {
+// Monday index: JS getDay() is 0=Sunday..6=Saturday; shift so Monday=0..Sunday=6.
+function mondayIndex(d: Date): number {
+  return (d.getDay() + 6) % 7;
+}
+
+// Monday-anchored week containing `anchor`.
+function weekRange(anchor: Date): { days: Date[] } {
   const start = new Date(anchor);
-  start.setDate(start.getDate() - start.getDay());
+  start.setDate(start.getDate() - mondayIndex(start));
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(start);
     d.setDate(d.getDate() + i);
     return d;
   });
-  return { start, days };
+  return { days };
 }
 
 type TopSection = 'calendar' | 'shopping' | 'pantry';
@@ -57,18 +68,19 @@ interface MealFormState {
 
 interface PlanScreenProps {
   onOpenCookLog: (cookLogId: number) => void;
+  onOpenRecipe?: (recipeId: number) => void;
 }
 
-export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
+export function PlanScreen({ onOpenCookLog, onOpenRecipe }: PlanScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
   const today = new Date();
 
   const [topSection, setTopSection] = useState<TopSection>('calendar');
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth() + 1); // 1-indexed
-  const [weekAnchor, setWeekAnchor] = useState(today);
+  // Single source of truth for both the week strip and the month calendar —
+  // moving one moves the other (§ calendar "week/month sync" requirement).
+  const [referenceDate, setReferenceDate] = useState(today);
   const [cookedEntries, setCookedEntries] = useState<CookedDayEntry[]>([]);
   const [plannedMonthEntries, setPlannedMonthEntries] = useState<PlannedDayEntry[]>([]);
   const [weekEntries, setWeekEntries] = useState<PlannedMealEntry[]>([]);
@@ -79,7 +91,9 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
   const [recipePickerOpen, setRecipePickerOpen] = useState(false);
   const { modal, confirm } = useConfirmModal();
 
-  const { days: weekDays } = weekRange(weekAnchor);
+  const year = referenceDate.getFullYear();
+  const month = referenceDate.getMonth() + 1; // 1-indexed
+  const { days: weekDays } = weekRange(referenceDate);
   const weekStartKey = dateKey(weekDays[0]);
   const weekEndKey = dateKey(weekDays[6]);
 
@@ -101,23 +115,19 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
   }, [reload]);
 
   function goToMonth(delta: number) {
-    let nextMonth = month + delta;
-    let nextYear = year;
-    if (nextMonth < 1) {
-      nextMonth = 12;
-      nextYear -= 1;
-    } else if (nextMonth > 12) {
-      nextMonth = 1;
-      nextYear += 1;
-    }
-    setMonth(nextMonth);
-    setYear(nextYear);
+    // Landing on the 1st keeps the week strip in step with the new month
+    // rather than showing a week that spans two different displayed months.
+    setReferenceDate(new Date(year, month - 1 + delta, 1));
   }
 
   function goToWeek(delta: number) {
-    const next = new Date(weekAnchor);
+    const next = new Date(referenceDate);
     next.setDate(next.getDate() + delta * 7);
-    setWeekAnchor(next);
+    setReferenceDate(next);
+  }
+
+  function jumpToToday() {
+    setReferenceDate(new Date());
   }
 
   function openCreateForm(date: string) {
@@ -154,18 +164,32 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
   function deleteMealForm() {
     if (!mealForm?.id) return;
     const id = mealForm.id;
-    confirm('Remove planned meal?', undefined, 'Remove', async () => {
+    const mealName = mealForm.recipe?.name ?? 'this meal';
+    confirm('Remove planned meal?', `Remove ${mealName} from the plan?`, 'Remove', async () => {
       await deletePlannedMeal(db, id);
       setMealForm(null);
       await reload();
     }, true);
   }
 
+  function handleClearWeek() {
+    confirm(
+      'Clear this week\'s plan?',
+      'This removes every planned meal in this week. This can\'t be undone.',
+      'Clear week',
+      async () => {
+        await clearWeekPlan(db, weekStartKey, weekEndKey);
+        await reload();
+      },
+      true,
+    );
+  }
+
   if (topSection === 'shopping') {
     return (
       <View style={styles.container}>
         <TopNav section={topSection} onChange={setTopSection} theme={theme} />
-        <ShoppingListScreen defaultRangeStart={weekStartKey} defaultRangeEnd={weekEndKey} />
+        <ShoppingListScreen defaultRangeStart={weekStartKey} defaultRangeEnd={weekEndKey} onOpenRecipe={onOpenRecipe} />
       </View>
     );
   }
@@ -200,7 +224,7 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
 
   const firstOfMonth = new Date(year, month - 1, 1);
   const daysInMonth = new Date(year, month, 0).getDate();
-  const leadingBlanks = firstOfMonth.getDay();
+  const leadingBlanks = mondayIndex(firstOfMonth);
   const cells: (number | null)[] = [...Array(leadingBlanks).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   const todayKey = dateKey(today);
@@ -233,7 +257,7 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
             <View key={key} style={styles.weekDayRow}>
               <View style={styles.weekDayHeader}>
                 <Text style={[styles.weekDayLabel, isToday && styles.weekDayLabelToday]}>
-                  {WEEKDAY_LABELS[day.getDay()]} {day.getDate()}
+                  {WEEKDAY_LABELS[mondayIndex(day)]} {day.getDate()}
                 </Text>
                 <TouchableOpacity onPress={() => openCreateForm(key)} hitSlop={8}>
                   <Text style={styles.addLink}>+ Add</Text>
@@ -260,6 +284,12 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
           );
         })}
 
+        {weekEntries.length > 0 && (
+          <TouchableOpacity style={styles.clearWeekButton} onPress={handleClearWeek}>
+            <Text style={styles.clearWeekButtonText}>Clear week plan</Text>
+          </TouchableOpacity>
+        )}
+
         <Text style={styles.sectionLabel}>CALENDAR</Text>
         <View style={styles.monthNav}>
           <TouchableOpacity onPress={() => goToMonth(-1)} style={styles.navButton}>
@@ -274,13 +304,7 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
             <Text style={styles.navButtonText}>›</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.todayLink}
-          onPress={() => {
-            setYear(today.getFullYear());
-            setMonth(today.getMonth() + 1);
-          }}
-        >
+        <TouchableOpacity style={styles.todayLink} onPress={jumpToToday}>
           <Text style={styles.todayLinkText}>Jump to today</Text>
         </TouchableOpacity>
 
@@ -308,14 +332,8 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
             const dayCooked = cookedByDate.get(key) ?? [];
             const dayPlanned = plannedByDate.get(key) ?? [];
             const isToday = key === todayKey;
-            const hasAny = dayCooked.length > 0 || dayPlanned.length > 0;
             return (
-              <TouchableOpacity
-                key={key}
-                style={[styles.cell, isToday && styles.cellToday]}
-                disabled={!hasAny}
-                onPress={() => setSelectedDate(key)}
-              >
+              <TouchableOpacity key={key} style={[styles.cell, isToday && styles.cellToday]} onPress={() => setSelectedDate(key)}>
                 <Text style={[styles.dayNumber, isToday && styles.dayNumberToday]}>{day}</Text>
                 <View style={styles.dotsRow}>
                   {dayPlanned.slice(0, 3).map((entry) => (
@@ -333,14 +351,18 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
           })}
         </View>
 
-        <Text style={styles.hint}>Outlined dots are planned, filled dots are cooked — the two never link.</Text>
+        <Text style={styles.hint}>Outlined dots are planned, filled dots are cooked — the two never link. Tap any day to plan or review it.</Text>
       </ScrollView>
 
       <Modal visible={selectedDate != null} transparent animationType="fade" onRequestClose={() => setSelectedDate(null)}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setSelectedDate(null)}>
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{selectedDate}</Text>
+            <Text style={styles.sheetTitle}>{selectedDate ? formatDayHeading(selectedDate) : ''}</Text>
             <ScrollView>
+              {selectedPlanned.length === 0 && selectedCooked.length === 0 && (
+                <Text style={styles.sheetEmpty}>Nothing planned or cooked this day yet.</Text>
+              )}
+
               {selectedPlanned.length > 0 && <Text style={styles.sheetSectionLabel}>PLANNED</Text>}
               {selectedPlanned.map((entry) => (
                 <TouchableOpacity
@@ -389,7 +411,7 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
                 openCreateForm(date);
               }}
             >
-              <Text style={styles.sheetAddButtonText}>+ Plan a meal here</Text>
+              <Text style={styles.sheetAddButtonText}>+ Plan a meal</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -399,10 +421,11 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
         visible={jumpOpen}
         year={year}
         onSelect={(y, m) => {
-          setYear(y);
           if (m > 0) {
-            setMonth(m);
+            setReferenceDate(new Date(y, m - 1, 1));
             setJumpOpen(false);
+          } else {
+            setReferenceDate(new Date(y, referenceDate.getMonth(), 1));
           }
         }}
         onClose={() => setJumpOpen(false)}
@@ -438,7 +461,7 @@ export function PlanScreen({ onOpenCookLog }: PlanScreenProps) {
             </TouchableOpacity>
 
             <Text style={styles.formLabel}>Date</Text>
-            <Text style={styles.formValue}>{mealForm?.date}</Text>
+            <Text style={styles.formValue}>{mealForm ? formatDayHeading(mealForm.date) : ''}</Text>
 
             <Text style={styles.formLabel}>Slot</Text>
             <View style={styles.slotRow}>
@@ -532,6 +555,14 @@ const makeStyles = (theme: AppTheme) =>
 
   scrollContent: { gap: theme.spacing.sm, paddingBottom: theme.spacing.xxl },
   sectionLabel: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.6, marginTop: theme.spacing.md },
+  clearWeekButton: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+    marginTop: theme.spacing.base,
+    backgroundColor: theme.colors.chipBg,
+    borderRadius: theme.radius.tile,
+  },
+  clearWeekButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.red },
 
   weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.lg },
   weekLabel: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink, minWidth: 180, textAlign: 'center' },
@@ -557,15 +588,15 @@ const makeStyles = (theme: AppTheme) =>
   navButton: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
   navButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.lg, color: theme.colors.accentText },
   monthLabel: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.md, color: theme.colors.ink, minWidth: 160, textAlign: 'center' },
-  todayLink: { alignSelf: 'center' },
+  todayLink: { alignSelf: 'center', marginTop: theme.spacing.xs },
   todayLinkText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
 
-  legendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, justifyContent: 'center' },
+  legendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, justifyContent: 'center', marginTop: theme.spacing.lg },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 7, height: 7, borderRadius: 3.5 },
   legendLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, textTransform: 'capitalize' },
 
-  weekdayRow: { flexDirection: 'row' },
+  weekdayRow: { flexDirection: 'row', marginTop: theme.spacing.sm },
   weekdayHeaderLabel: { flex: 1, textAlign: 'center', fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: {
@@ -593,6 +624,7 @@ const makeStyles = (theme: AppTheme) =>
     gap: theme.spacing.sm,
   },
   sheetTitle: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.lg, color: theme.colors.ink },
+  sheetEmpty: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic', paddingVertical: theme.spacing.md },
   sheetSectionLabel: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.6, marginTop: theme.spacing.sm },
   sheetRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.xs },
   sheetRowText: { flex: 1, fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink },
