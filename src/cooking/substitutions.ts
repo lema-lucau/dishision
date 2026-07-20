@@ -1,6 +1,7 @@
 // §5.9 substitutions: CRUD against cook_log_substitution, plus promote-to-recipe.
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { capitalize } from '../lib/capitalize';
 
 export type SubstitutionVerdict = 'better' | 'same' | 'worse';
 
@@ -28,7 +29,7 @@ export async function createSubstitution(db: DbClient, draft: SubstitutionDraft)
   const result = await db.runAsync(
     `INSERT INTO cook_log_substitution (cook_log_id, original_ingredient_id, original_text, replacement_text, verdict)
      VALUES (?, ?, ?, ?, ?)`,
-    [draft.cookLogId, draft.originalIngredientId, draft.originalText, draft.replacementText, draft.verdict],
+    [draft.cookLogId, draft.originalIngredientId, capitalize(draft.originalText.trim()), capitalize(draft.replacementText.trim()), draft.verdict],
   );
   return result.lastInsertRowId;
 }
@@ -54,7 +55,7 @@ export async function updateSubstitution(
     `UPDATE cook_log_substitution
      SET original_ingredient_id = ?, original_text = ?, replacement_text = ?, verdict = ?
      WHERE id = ?`,
-    [draft.originalIngredientId, draft.originalText, draft.replacementText, draft.verdict, substitutionId],
+    [draft.originalIngredientId, capitalize(draft.originalText.trim()), capitalize(draft.replacementText.trim()), draft.verdict, substitutionId],
   );
 }
 

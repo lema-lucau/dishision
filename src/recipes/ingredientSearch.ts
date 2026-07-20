@@ -3,6 +3,7 @@
 // user-sourced one when nothing matches ("Add this ingredient").
 import type { DbClient } from '../db/DbClient';
 import type { BaseUnit } from '../seed/types';
+import { capitalize } from '../lib/capitalize';
 
 export interface CanonicalIngredientOption {
   id: number;
@@ -34,9 +35,10 @@ export async function searchCanonicalIngredients(db: DbClient, query: string): P
 // macro/cost derivation and counts against the partial-data flag until
 // someone fills them in (§3.2, §2.5).
 export async function createUserIngredient(db: DbClient, name: string, baseUnit: BaseUnit): Promise<CanonicalIngredientOption> {
+  const capitalized = capitalize(name.trim());
   const result = await db.runAsync(
     `INSERT INTO canonical_ingredient (name, base_unit, source) VALUES (?, ?, 'user')`,
-    [name, baseUnit],
+    [capitalized, baseUnit],
   );
-  return { id: result.lastInsertRowId, name, baseUnit };
+  return { id: result.lastInsertRowId, name: capitalized, baseUnit };
 }

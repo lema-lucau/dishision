@@ -137,6 +137,21 @@ describe('relaxation backfill (§5.3) — picker only, relax: true', () => {
     expect(result.relaxed).toBe(false);
     expect(result.items.length).toBe(4);
   });
+
+  it('backfills up to a custom relaxTarget (the "I\'m feeling…" picker asks for 10, not 3)', () => {
+    const matching = recipe({ tags: ['chicken'] });
+    const others = Array.from({ length: 20 }, () => recipe({ tags: ['beef'] }));
+    const result = runRecipeQuery([matching, ...others], { chips: ['chicken'], sort: 'name', relax: true, relaxTarget: 10 });
+    expect(result.relaxed).toBe(true);
+    expect(result.items.length).toBe(10);
+  });
+
+  it('does not relax past a custom relaxTarget already met', () => {
+    const matches = Array.from({ length: 10 }, () => recipe({ tags: ['chicken'] }));
+    const result = runRecipeQuery(matches, { chips: ['chicken'], sort: 'name', relax: true, relaxTarget: 10 });
+    expect(result.relaxed).toBe(false);
+    expect(result.items.length).toBe(10);
+  });
 });
 
 describe('Recipes tab hard filter (§5.4) — no relax by default', () => {

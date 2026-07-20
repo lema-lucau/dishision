@@ -17,6 +17,7 @@ import { useDb } from '../db/DbContext';
 import { capitalize } from '../lib/capitalize';
 import { formatDuration } from '../lib/formatDuration';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import { phaseColor } from '../theme/stepColors';
 import { createUserIngredient, searchCanonicalIngredients, type CanonicalIngredientOption } from './ingredientSearch';
 import type { RecipeDraft, RecipeIngredientDraft, RecipeStepDraft } from './recipeSave';
 import type { BaseUnit, Effort, Phase, RecipeUnit, TimelineMode } from '../seed/types';
@@ -57,7 +58,17 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
   const [ingredientQuery, setIngredientQuery] = useState('');
   const [suggestions, setSuggestions] = useState<CanonicalIngredientOption[]>([]);
   const [saving, setSaving] = useState(false);
+  const [showNewTagInput, setShowNewTagInput] = useState(false);
+  const [newTagText, setNewTagText] = useState('');
   const { modal, notice } = useConfirmModal();
+
+  // Tags already on the draft that aren't one of the fixed suggestions (either
+  // typed in here, or loaded from an existing recipe's custom tags) — shown as
+  // their own chips so they can be toggled off too.
+  const customTagsInDraft = draft.tags.filter(
+    (t) => !TAG_SUGGESTIONS.some((s) => s.toLowerCase() === t.toLowerCase()),
+  );
+  const tagChips = [...TAG_SUGGESTIONS, ...customTagsInDraft];
 
   const sequentialOffsets = useMemo(
     () => (draft.timelineMode === 'sequential' ? deriveSequentialOffsets(draft.steps) : null),
@@ -154,9 +165,20 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
   }
 
   function toggleTag(tag: string) {
+    const isSelected = draft.tags.some((t) => t.toLowerCase() === tag.toLowerCase());
     update({
-      tags: draft.tags.includes(tag) ? draft.tags.filter((t) => t !== tag) : [...draft.tags, tag],
+      tags: isSelected ? draft.tags.filter((t) => t.toLowerCase() !== tag.toLowerCase()) : [...draft.tags, capitalize(tag)],
     });
+  }
+
+  function submitNewTag() {
+    const capitalized = capitalize(newTagText.trim());
+    if (!capitalized) return;
+    if (!draft.tags.some((t) => t.toLowerCase() === capitalized.toLowerCase())) {
+      update({ tags: [...draft.tags, capitalized] });
+    }
+    setNewTagText('');
+    setShowNewTagInput(false);
   }
 
   async function handleSave() {
@@ -225,11 +247,33 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
 
       <Text style={styles.label}>Tags</Text>
       <View style={styles.tagWrap}>
-        {TAG_SUGGESTIONS.map((tag) => (
-          <TouchableOpacity key={tag} onPress={() => toggleTag(tag)} style={[styles.tagChip, draft.tags.includes(tag) && styles.tagChipActive]}>
-            <Text style={[styles.tagChipText, draft.tags.includes(tag) && styles.tagChipTextActive]}>{capitalize(tag)}</Text>
+        {tagChips.map((tag) => {
+          const selected = draft.tags.some((t) => t.toLowerCase() === tag.toLowerCase());
+          return (
+            <TouchableOpacity key={tag} onPress={() => toggleTag(tag)} style={[styles.tagChip, selected && styles.tagChipActive]}>
+              <Text style={[styles.tagChipText, selected && styles.tagChipTextActive]}>{capitalize(tag)}</Text>
+            </TouchableOpacity>
+          );
+        })}
+        {showNewTagInput ? (
+          <View style={styles.newTagInputRow}>
+            <TextInput
+              style={[styles.input, styles.newTagInput]}
+              value={newTagText}
+              onChangeText={setNewTagText}
+              placeholder="New tag"
+              autoFocus
+              onSubmitEditing={submitNewTag}
+            />
+            <TouchableOpacity onPress={submitNewTag} style={styles.iconButton} hitSlop={8}>
+              <Text style={styles.addLink}>Add</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity onPress={() => setShowNewTagInput(true)} style={styles.tagChip}>
+            <Text style={styles.tagChipText}>+ New tag</Text>
           </TouchableOpacity>
-        ))}
+        )}
       </View>
 
       {draft.timelineMode === 'parallel' && (
@@ -320,11 +364,15 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
       <Text style={styles.sectionTitle}>STEPS</Text>
       <View style={styles.stepsStack}>
       {draft.steps.map((step, index) => (
-        <View key={index} style={styles.ingredientCard}>
+        <View key={index} style={[styles.ingredientCard, { backgroundColor: phaseColor(theme, step.phase).bg }]}>
           <View style={styles.stepHeaderRow}>
             <View style={styles.segmented}>
               {(['prep', 'cook'] as Phase[]).map((p) => (
-                <TouchableOpacity key={p} onPress={() => updateStep(index, { phase: p })} style={[styles.segmentButton, step.phase === p && styles.segmentButtonActive]}>
+                <TouchableOpacity
+                  key={p}
+                  onPress={() => updateStep(index, { phase: p })}
+                  style={[styles.segmentButton, step.phase === p && { backgroundColor: phaseColor(theme, p).fg }]}
+                >
                   <Text style={[styles.segmentText, step.phase === p && styles.segmentTextActive]}>{capitalize(p)}</Text>
                 </TouchableOpacity>
               ))}
@@ -500,6 +548,8 @@ const makeStyles = (theme: AppTheme) =>
     backgroundColor: theme.colors.chipBg,
   },
   tagChipActive: { backgroundColor: theme.colors.accent },
+  newTagInputRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  newTagInput: { paddingVertical: 6, minWidth: 120 },
   tagChipText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.xs, lineHeight: theme.fontSize.xs + 2, color: theme.colors.ink2 },
   tagChipTextActive: { color: theme.colors.accentFg },
   sectionTitle: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.5, marginTop: theme.spacing.sm },

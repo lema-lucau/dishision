@@ -994,6 +994,15 @@ Radius:  6 (chips) / 10 (tiles) / 13 (cards, buttons) / 20 (pills)
 
 Risograph's card borders and offset shadows (§4.3) are additive to this scale, not a replacement for it.
 
+**Breathing room, as a standing rule.** A cluster of labels, chips, and inputs stacked with only `xs`/`sm` gaps between every element reads as noise, not information — this has bitten Cooking Mode's log editor and the substitutions form once already. When a group has more than two distinct row-types stacked vertically (a label, a chip row, an input, another label, …), each row-type gets its own visual separation, not just uniform `xs` spacing:
+
+- A section label (e.g. "Substitutions", "Photos") is bold (`fonts.body.bold` or `fonts.display.semiBold`, never `semiBold` body at a small size) and carries `spacing.md`–`spacing.lg` above it, separating it from the previous section rather than just the next control.
+- A card or grouped-control cluster (a substitution row, a form) gets its own background distinct from both the page and its inputs — never the same token as the chip fill it contains, or the chip disappears into the card. Prefer `surface` for the card and `bg` for text inputs inside it (or vice versa), never `surfaceWarm` for both card and chip.
+- Text inputs get a visible border (`borderStrong`, not `border`) and internal padding of at least `spacing.sm` vertical / `spacing.base` horizontal — a hairline border with no fill is easy to miss as an editable field.
+- Rows of chips get `spacing.sm` between chips, not `spacing.xs` — `xs` is for chips that are variants of the same choice (e.g. star rating), not independent options.
+
+This isn't a new token — it's a discipline about which existing tokens to reach for when a section has several kinds of content stacked together, so a themed screen doesn't need a second pass once it's built to stop reading as cluttered.
+
 ### 4.7 Signature element — the time split bar
 
 The one thing no other recipe app shows. A two-tone bar directly under the recipe title, splitting total time into hands-on (`--accent`) and passive (`--amber`), with a plain-language key beneath.
@@ -1375,6 +1384,8 @@ Tap a cook → log editor:
 | Substitutions | structured: original → replacement, verdict, **promote to recipe** |
 
 **Promote to recipe:** rewrites recipe_ingredient permanently. The cook_log_substitution row keeps original_text as a snapshot, so old logs stay self-describing regardless of what the recipe says now. **No recipe versioning** — the recipe is "how I make it today", the log is "what I made that night."
+
+**Photos:** multi-select from the library in one picker call, each photo through the unconditional §8 pipeline. Thumbnails in the editor are large enough to actually recognise the dish (not a 72px chip). Tapping a thumbnail (not its remove badge) opens a full-screen **PhotoViewer**: pinch/double-tap to zoom, pan while zoomed, swipe down to dismiss, prev/next arrows when the log has more than one photo. This is a deliberate, narrow exception to §15's "no hex literals" rule — the viewer's backdrop and chrome are fixed near-black/white regardless of the active theme, the same convention every photo-viewing surface uses (a themed light backdrop would fight the photo, not frame it). Built on react-native-gesture-handler + react-native-reanimated (§15.1).
 
 ### 5.10 Me
 
@@ -2236,6 +2247,11 @@ Runtime:
   @expo-google-fonts/ibm-plex-mono
   expo-linear-gradient     gradients, photo scrims, hero glow (redesign spec R2–R3)
   expo-haptics             tactile feedback on committing actions (redesign spec R3)
+  react-native-gesture-handler  pinch/pan/double-tap in the cook log PhotoViewer (§5.9)
+  react-native-reanimated       driving PhotoViewer's zoom/pan transforms off the JS thread (§5.9)
+  react-native-worklets         required peer dep of react-native-reanimated 4.x — install directly,
+                                 not just transitively, or the app crashes outside Expo Go with a
+                                 TurboModule signature-mismatch error (§5.9)
 
 Dev / test:
   vitest, better-sqlite3, jest-expo,

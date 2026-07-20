@@ -4,6 +4,7 @@
 import type { DbClient } from '../db/DbClient';
 import { invalidateMedianCostCache } from '../recommend/medianCostCache';
 import { uuidv4 } from '../utils/uuid';
+import { capitalize } from '../lib/capitalize';
 import type { Effort, Phase, RecipeUnit, TimelineMode } from '../seed/types';
 
 export interface RecipeIngredientDraft {
@@ -39,9 +40,10 @@ export interface RecipeDraft {
 }
 
 async function resolveOrCreateTagId(db: DbClient, name: string): Promise<number> {
-  const existing = await db.getFirstAsync<{ id: number }>('SELECT id FROM tag WHERE name = ?', [name]);
+  const capitalized = capitalize(name.trim());
+  const existing = await db.getFirstAsync<{ id: number }>('SELECT id FROM tag WHERE name = ? COLLATE NOCASE', [capitalized]);
   if (existing) return existing.id;
-  const result = await db.runAsync('INSERT INTO tag (name, type) VALUES (?, ?)', [name, 'custom']);
+  const result = await db.runAsync('INSERT INTO tag (name, type) VALUES (?, ?)', [capitalized, 'custom']);
   return result.lastInsertRowId;
 }
 
@@ -65,7 +67,7 @@ async function writeChildren(db: DbClient, recipeId: number, draft: RecipeDraft)
     await db.runAsync(
       `INSERT INTO recipe_ingredient (recipe_id, canonical_id, display_name, quantity, unit, scalable, optional, sort_order)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [recipeId, ing.canonicalId, ing.displayName, ing.quantity, ing.unit, ing.scalable ? 1 : 0, ing.optional ? 1 : 0, index],
+      [recipeId, ing.canonicalId, capitalize(ing.displayName.trim()), ing.quantity, ing.unit, ing.scalable ? 1 : 0, ing.optional ? 1 : 0, index],
     );
   }
 

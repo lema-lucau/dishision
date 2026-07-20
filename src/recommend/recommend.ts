@@ -17,6 +17,14 @@ export interface RecommendContext {
   weights: RecommendationWeights;
   /** Injectable for deterministic tests; defaults to Math.random in real use. */
   random?: () => number;
+  /**
+   * How many diverse picks to return, best first. Defaults to 3 (what Home
+   * shows). dailyCache.ts asks for a deeper bench so a "not tonight"
+   * dismissal can promote the next one instead of recomputing the whole set
+   * (§6.7) — the ladder's own ">= 3 survivors" threshold (§6.3) is unrelated
+   * and stays fixed at 3 regardless of this value.
+   */
+  benchSize?: number;
 }
 
 export interface LadderStep {
@@ -76,7 +84,7 @@ export function computeRecommendations(allRecipes: EnrichedRecipe[], ctx: Recomm
 
   const picks = pickDiverse(
     scored.map((s) => s.recipe),
-    3,
+    ctx.benchSize ?? 3,
   );
 
   const relaxed = usedWindowDays !== ladder[0];

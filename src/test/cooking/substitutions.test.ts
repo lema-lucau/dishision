@@ -67,8 +67,8 @@ describe('cook_log_substitution CRUD (§5.9)', () => {
       id,
       cookLogId,
       originalIngredientId: ingredientId,
-      originalText: 'chicken thigh',
-      replacementText: 'tofu',
+      originalText: 'Chicken thigh',
+      replacementText: 'Tofu',
       verdict: 'better',
       promoted: false,
     });
@@ -83,7 +83,7 @@ describe('cook_log_substitution CRUD (§5.9)', () => {
       verdict: 'worse',
     });
     const [row] = await loadSubstitutionsForLog(db, cookLogId);
-    expect(row.replacementText).toBe('seitan');
+    expect(row.replacementText).toBe('Seitan');
     expect(row.verdict).toBe('worse');
   });
 
@@ -109,11 +109,11 @@ describe('cook_log_substitution CRUD (§5.9)', () => {
         'SELECT display_name FROM recipe_ingredient WHERE id = ?',
         [ingredientId],
       );
-      expect(ingredient?.display_name).toBe('tofu');
+      expect(ingredient?.display_name).toBe('Tofu');
 
       const [row] = await loadSubstitutionsForLog(db, cookLogId);
       expect(row.promoted).toBe(true);
-      expect(row.originalText).toBe('chicken thigh'); // snapshot, unchanged by promotion
+      expect(row.originalText).toBe('Chicken thigh'); // snapshot, unchanged by promotion
     });
 
     it('fails without promoting when original_ingredient_id is null (free-text substitution)', async () => {
@@ -149,8 +149,8 @@ describe('cook_log_substitution CRUD (§5.9)', () => {
 
       const [olderRow] = await loadSubstitutionsForLog(db, olderLogId);
       expect(olderRow.id).toBe(olderSubId);
-      expect(olderRow.originalText).toBe('chicken thigh');
-      expect(olderRow.replacementText).toBe('lentils');
+      expect(olderRow.originalText).toBe('Chicken thigh');
+      expect(olderRow.replacementText).toBe('Lentils');
       expect(olderRow.promoted).toBe(false);
     });
   });

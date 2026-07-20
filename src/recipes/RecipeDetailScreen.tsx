@@ -7,6 +7,7 @@ import { formatCurrency } from '../lib/currency';
 import { formatDuration } from '../lib/formatDuration';
 import { formatScaledQuantity, scaleQuantity } from '../lib/scaling';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import { laneColor, phaseColor, timeTagColor } from '../theme/stepColors';
 import { ActionButton } from './ActionButton';
 import { EmojiTile } from './EmojiTile';
 import type { EnrichedRecipe } from './loadRecipes';
@@ -124,9 +125,9 @@ export function RecipeDetailScreen({
       <View style={styles.macrosSection}>
         <View style={styles.macrosRow}>
           <MacroBox value={recipe.kcalPerServing} label="Kcal" />
-          <MacroBox value={recipe.proteinPerServing} label="Protein" />
-          <MacroBox value={recipe.carbsPerServing} label="Carbs" />
-          <MacroBox value={recipe.fatPerServing} label="Fat" />
+          <MacroBox value={recipe.proteinPerServing} label="Protein" unit="g" />
+          <MacroBox value={recipe.carbsPerServing} label="Carbs" unit="g" />
+          <MacroBox value={recipe.fatPerServing} label="Fat" unit="g" />
         </View>
       </View>
       {!macroComplete && (
@@ -169,31 +170,36 @@ export function RecipeDetailScreen({
 
       {stepsExpanded && (
         <View style={styles.stepsList}>
-          {recipe.steps.map((step) => (
-            <View key={step.id} style={styles.stepRow}>
-              <View style={styles.stepBadgeRow}>
-                <View style={styles.stepBadge}>
-                  <Text style={styles.stepBadgeText}>{capitalize(step.phase)}</Text>
+          {recipe.steps.map((step) => {
+            const phaseColors = phaseColor(theme, step.phase);
+            const timeColors = timeTagColor(theme);
+            const lane = step.laneName ? laneColor(theme, step.laneName) : null;
+            return (
+              <View key={step.id} style={[styles.stepRow, { backgroundColor: phaseColors.bg }]}>
+                <View style={styles.stepBadgeRow}>
+                  <View style={[styles.stepBadge, { backgroundColor: theme.colors.surface }]}>
+                    <Text style={[styles.stepBadgeText, { color: phaseColors.fg }]}>{capitalize(step.phase)}</Text>
+                  </View>
+                  {lane && (
+                    <View style={[styles.stepBadge, { backgroundColor: lane.bg }]}>
+                      <Text style={[styles.stepBadgeText, { color: lane.fg }]}>{capitalize(step.laneName!)}</Text>
+                    </View>
+                  )}
+                  {step.durationSeconds != null && (
+                    <View style={[styles.stepBadge, { backgroundColor: timeColors.bg }]}>
+                      <Text style={[styles.stepBadgeText, { color: timeColors.fg }]}>{formatDuration(step.durationSeconds)}</Text>
+                    </View>
+                  )}
+                  {step.important && (
+                    <View style={[styles.stepBadge, styles.stepBadgeAlert]}>
+                      <Text style={[styles.stepBadgeText, styles.stepBadgeAlertText]}>⚠ Alert</Text>
+                    </View>
+                  )}
                 </View>
-                {step.laneName && (
-                  <View style={styles.stepBadge}>
-                    <Text style={styles.stepBadgeText}>{step.laneName}</Text>
-                  </View>
-                )}
-                {step.durationSeconds != null && (
-                  <View style={styles.stepBadge}>
-                    <Text style={styles.stepBadgeText}>{formatDuration(step.durationSeconds)}</Text>
-                  </View>
-                )}
-                {step.important && (
-                  <View style={[styles.stepBadge, styles.stepBadgeAlert]}>
-                    <Text style={[styles.stepBadgeText, styles.stepBadgeAlertText]}>⚠ Alert</Text>
-                  </View>
-                )}
+                <Text style={styles.stepInstruction}>{step.instruction}</Text>
               </View>
-              <Text style={styles.stepInstruction}>{step.instruction}</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
 

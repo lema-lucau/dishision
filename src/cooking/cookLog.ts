@@ -1,6 +1,7 @@
 // §5.9 cook log CRUD. Counts, ratings, and streaks are never stored here or
 // anywhere else (§2.5) — they're derived fresh from these rows every read.
 import type { DbClient } from '../db/DbClient';
+import { capitalize } from '../lib/capitalize';
 
 export interface CookLogDraft {
   recipeId: number;
@@ -37,7 +38,7 @@ export interface CookLogRow {
 async function writeTags(db: DbClient, cookLogId: number, tags: string[]): Promise<void> {
   await db.runAsync('DELETE FROM cook_log_tag WHERE cook_log_id = ?', [cookLogId]);
   for (const tag of tags) {
-    await db.runAsync('INSERT OR IGNORE INTO cook_log_tag (cook_log_id, tag) VALUES (?, ?)', [cookLogId, tag]);
+    await db.runAsync('INSERT OR IGNORE INTO cook_log_tag (cook_log_id, tag) VALUES (?, ?)', [cookLogId, capitalize(tag.trim())]);
   }
 }
 
@@ -111,6 +112,14 @@ export async function updateCookLog(db: DbClient, cookLogId: number, draft: Cook
 // it, since a leftover with no owning cook is meaningless.
 export async function deleteCookLog(db: DbClient, cookLogId: number): Promise<void> {
   await db.runAsync('DELETE FROM cook_log WHERE id = ?', [cookLogId]);
+}
+
+// Removes a quick tag from every cook log that has it, not just the one
+// currently being edited — the tag vocabulary is shared globally (§5.9), so
+// deleting a tag is a global operation too. Callers are responsible for
+// warning the user before calling this (it can't be undone).
+export async function deleteQuickTagEverywhere(db: DbClient, tag: string): Promise<void> {
+  await db.runAsync('DELETE FROM cook_log_tag WHERE tag = ? COLLATE NOCASE', [tag]);
 }
 
 export interface CookLogFilter {
@@ -200,5 +209,6 @@ export async function loadCookLogs(db: DbClient, filter: CookLogFilter = {}): Pr
     createdAt: r.created_at,
   }));
 
-  return filter.tags?.length ? mapped.filter((r) => filter.tags!.every((t) => r.quickTags.includes(t))) : mapped;
+  const filterTags = filter.tags?.map((t) => capitalize(t.trim()));
+  return filterTags?.length ? mapped.filter((r) => filterTags.every((t) => r.quickTags.includes(t))) : mapped;
 }

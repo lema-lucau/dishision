@@ -14,7 +14,7 @@ function draft(overrides: Partial<CookLogDraft> = {}): CookLogDraft {
     notes: 'Turned out great',
     whatWentWell: '',
     whatToChange: '',
-    quickTags: ['perfect'],
+    quickTags: ['Perfect'],
     photos: [],
     viaCookingMode: false,
     ...overrides,
@@ -42,14 +42,14 @@ describe('cook_log CRUD (§5.9, §2.5)', () => {
     const [log] = await loadCookLogs(db, { recipeId });
     expect(log.id).toBe(id);
     expect(log.stars).toBe(4);
-    expect(log.quickTags).toEqual(['perfect']);
+    expect(log.quickTags).toEqual(['Perfect']);
   });
 
   it('update replaces tags rather than accumulating them', async () => {
-    const id = await createCookLog(db, draft({ recipeId, quickTags: ['perfect'] }));
+    const id = await createCookLog(db, draft({ recipeId, quickTags: ['Perfect'] }));
     await updateCookLog(db, id, draft({ recipeId, quickTags: ['too salty', 'would repeat'] }));
     const [log] = await loadCookLogs(db, { recipeId });
-    expect(log.quickTags.sort()).toEqual(['too salty', 'would repeat']);
+    expect(log.quickTags.sort()).toEqual(['Too salty', 'Would repeat']);
   });
 
   it('deleting a log decrements the derived count, and its leftover cascades away (§2.5, §2.6)', async () => {

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { DatePickerModal } from '../components/DatePickerModal';
 import { useConfirmModal } from '../components/useConfirmModal';
-import { deleteCookLog, loadCookLogs, updateCookLog, type CookLogDraft, type CookLogRow } from '../cooking/cookLog';
+import { deleteCookLog, deleteQuickTagEverywhere, loadCookLogs, updateCookLog, type CookLogDraft, type CookLogRow } from '../cooking/cookLog';
 import {
   createSubstitution,
   deleteSubstitution,
@@ -17,15 +17,17 @@ import {
   type SubstitutionRow,
   type SubstitutionVerdict,
 } from '../cooking/substitutions';
+import { addCustomQuickTag, BUILT_IN_QUICK_TAGS, loadCustomQuickTags, removeCustomQuickTag } from '../cooking/quickTags';
 import { useDb } from '../db/DbContext';
+import { capitalize } from '../lib/capitalize';
 import { formatShortDate } from '../lib/formatDate';
-import { pickAndCompressPhoto } from '../photos/pickAndCompressPhoto';
+import { PhotoViewer } from '../photos/PhotoViewer';
+import { pickAndCompressPhotos } from '../photos/pickAndCompressPhoto';
 import { EmojiTile } from '../recipes/EmojiTile';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 const VERDICTS: SubstitutionVerdict[] = ['better', 'same', 'worse'];
 
-const QUICK_TAGS = ['too salty', 'perfect', 'too slow', 'too bland', 'would repeat', 'too much effort'];
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
 type SortKey = 'date' | 'rating';
 
@@ -57,7 +59,48 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
   const [editing, setEditing] = useState<CookLogRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CookLogRow | 'bulk' | null>(null);
   const [notFoundNotice, setNotFoundNotice] = useState(false);
-  const { modal } = useConfirmModal();
+  const [quickTagVocab, setQuickTagVocab] = useState<string[]>(BUILT_IN_QUICK_TAGS);
+  const { modal, confirm } = useConfirmModal();
+
+  useEffect(() => {
+    loadCustomQuickTags(db).then((custom) => setQuickTagVocab([...BUILT_IN_QUICK_TAGS, ...custom]));
+  }, [db]);
+
+  // Shared by the filter panel and the editor's own tag picker (§5.9) — a
+  // tag added from either place is immediately available to both, and to
+  // every other cook log, since the vocabulary isn't per-log.
+  async function handleAddQuickTag(tag: string) {
+    const custom = await addCustomQuickTag(db, tag);
+    setQuickTagVocab([...BUILT_IN_QUICK_TAGS, ...custom]);
+  }
+
+  // Actually performs the global delete (§5.9 vocabulary is shared, not
+  // per-log) — factored out so both the filter panel's long-press (which has
+  // its own confirm below) and the editor's own long-press (which shows its
+  // own confirm, since this component's modal isn't mounted while editing)
+  // can trigger the same mutation + vocab refresh.
+  async function performDeleteQuickTag(tag: string) {
+    await deleteQuickTagEverywhere(db, tag);
+    const custom = await removeCustomQuickTag(db, tag);
+    setQuickTagVocab([...BUILT_IN_QUICK_TAGS, ...custom]);
+    setSelectedTags((tags) => {
+      if (!tags.has(tag)) return tags;
+      const next = new Set(tags);
+      next.delete(tag);
+      return next;
+    });
+    await reload();
+  }
+
+  function handleDeleteQuickTag(tag: string) {
+    confirm(
+      'Delete tag',
+      `Delete "${tag}"? This removes it from every cook log that has it, not just this one.`,
+      'Delete',
+      () => performDeleteQuickTag(tag),
+      true,
+    );
+  }
 
   const reload = useCallback(async () => {
     const rows = await loadCookLogs(db, {
@@ -136,6 +179,9 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
     return (
       <CookLogEditor
         log={editing}
+        quickTagVocab={quickTagVocab}
+        onAddQuickTag={handleAddQuickTag}
+        onDeleteQuickTag={performDeleteQuickTag}
         onCancel={() => setEditing(null)}
         onSaved={async () => {
           setEditing(null);
@@ -212,10 +258,11 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
               ))}
             </View>
             <View style={styles.filterRow}>
-              {QUICK_TAGS.map((tag) => (
+              {quickTagVocab.map((tag) => (
                 <TouchableOpacity
                   key={tag}
                   onPress={() => toggleTagFilter(tag)}
+                  onLongPress={() => handleDeleteQuickTag(tag)}
                   style={[styles.chip, selectedTags.has(tag) && styles.chipActive]}
                 >
                   <Text style={[styles.chipText, selectedTags.has(tag) && styles.chipTextActive]}>{tag}</Text>
@@ -497,11 +544,17 @@ function CookLogGridItem({
 
 function CookLogEditor({
   log,
+  quickTagVocab,
+  onAddQuickTag,
+  onDeleteQuickTag,
   onCancel,
   onSaved,
   onDeleted,
 }: {
   log: CookLogRow;
+  quickTagVocab: string[];
+  onAddQuickTag: (tag: string) => Promise<void>;
+  onDeleteQuickTag: (tag: string) => Promise<void>;
   onCancel: () => void;
   onSaved: () => void;
   onDeleted: () => void;
@@ -511,11 +564,16 @@ function CookLogEditor({
   const db = useDb();
   const [stars, setStars] = useState<number | null>(log.stars);
   const [quickTags, setQuickTags] = useState<string[]>(log.quickTags);
+  const [addingTag, setAddingTag] = useState(false);
+  const [newTagText, setNewTagText] = useState('');
   const [whatWentWell, setWhatWentWell] = useState(log.whatWentWell ?? '');
   const [whatToChange, setWhatToChange] = useState(log.whatToChange ?? '');
   const [notes, setNotes] = useState(log.notes ?? '');
   const [photos, setPhotos] = useState<string[]>(log.photos);
   const [addingPhoto, setAddingPhoto] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [photoSelectMode, setPhotoSelectMode] = useState(false);
+  const [selectedPhotoUris, setSelectedPhotoUris] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const { modal, confirm, notice } = useConfirmModal();
 
@@ -540,11 +598,38 @@ function CookLogEditor({
     setQuickTags((tags) => (tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag]));
   }
 
-  async function handleAddPhoto() {
+  function handleLongPressTag(tag: string) {
+    confirm(
+      'Delete tag',
+      `Delete "${tag}"? This removes it from every cook log that has it, not just this one.`,
+      'Delete',
+      async () => {
+        await onDeleteQuickTag(tag);
+        setQuickTags((tags) => tags.filter((t) => t.toLowerCase() !== tag.toLowerCase()));
+      },
+      true,
+    );
+  }
+
+  async function handleSubmitNewTag() {
+    const trimmed = newTagText.trim();
+    if (!trimmed) {
+      setAddingTag(false);
+      return;
+    }
+    await onAddQuickTag(trimmed);
+    setQuickTags((tags) => (tags.includes(trimmed.toLowerCase()) ? tags : [...tags, trimmed.toLowerCase()]));
+    setNewTagText('');
+    setAddingTag(false);
+  }
+
+  // Picks and compresses every selected photo in one round trip (§5.9) —
+  // no need to reopen the library picker per photo.
+  async function handleAddPhotos() {
     setAddingPhoto(true);
     try {
-      const result = await pickAndCompressPhoto();
-      if (result) setPhotos((p) => [...p, result.uri]);
+      const results = await pickAndCompressPhotos();
+      if (results.length > 0) setPhotos((p) => [...p, ...results.map((r) => r.uri)]);
     } finally {
       setAddingPhoto(false);
     }
@@ -552,6 +637,34 @@ function CookLogEditor({
 
   function handleRemovePhoto(uri: string) {
     setPhotos((p) => p.filter((u) => u !== uri));
+  }
+
+  function requestRemovePhoto(uri: string) {
+    confirm('Delete photo', "Delete this photo? This can't be undone once you save.", 'Delete', () => handleRemovePhoto(uri), true);
+  }
+
+  function togglePhotoSelected(uri: string) {
+    setSelectedPhotoUris((uris) => {
+      const next = new Set(uris);
+      if (next.has(uri)) next.delete(uri);
+      else next.add(uri);
+      return next;
+    });
+  }
+
+  function requestRemoveSelectedPhotos() {
+    const count = selectedPhotoUris.size;
+    confirm(
+      'Delete photos',
+      `Delete ${count} photo${count === 1 ? '' : 's'}? This can't be undone once you save.`,
+      'Delete',
+      () => {
+        setPhotos((p) => p.filter((u) => !selectedPhotoUris.has(u)));
+        setSelectedPhotoUris(new Set());
+        setPhotoSelectMode(false);
+      },
+      true,
+    );
   }
 
   function resetNewSubForm() {
@@ -654,11 +767,36 @@ function CookLogEditor({
 
       <Text style={styles.label}>Quick tags</Text>
       <View style={styles.filterRow}>
-        {QUICK_TAGS.map((tag) => (
-          <TouchableOpacity key={tag} onPress={() => toggleTag(tag)} style={[styles.chip, quickTags.includes(tag) && styles.chipActive]}>
+        {quickTagVocab.map((tag) => (
+          <TouchableOpacity
+            key={tag}
+            onPress={() => toggleTag(tag)}
+            onLongPress={() => handleLongPressTag(tag)}
+            style={[styles.chip, quickTags.includes(tag) && styles.chipActive]}
+          >
             <Text style={[styles.chipText, quickTags.includes(tag) && styles.chipTextActive]}>{tag}</Text>
           </TouchableOpacity>
         ))}
+        {addingTag ? (
+          <View style={styles.newTagRow}>
+            <TextInput
+              style={styles.newTagInput}
+              value={newTagText}
+              onChangeText={setNewTagText}
+              placeholder="new tag"
+              placeholderTextColor={theme.colors.ink3}
+              autoFocus
+              onSubmitEditing={handleSubmitNewTag}
+            />
+            <TouchableOpacity style={styles.newTagConfirm} onPress={handleSubmitNewTag}>
+              <Text style={styles.newTagConfirmText}>Add</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.chip} onPress={() => setAddingTag(true)}>
+            <Text style={styles.chipText}>+ New tag</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <Text style={styles.label}>What went well</Text>
@@ -667,21 +805,6 @@ function CookLogEditor({
       <TextInput style={styles.textArea} value={whatToChange} onChangeText={setWhatToChange} multiline />
       <Text style={styles.label}>Notes</Text>
       <TextInput style={styles.textArea} value={notes} onChangeText={setNotes} multiline />
-
-      <Text style={styles.label}>Photos</Text>
-      <View style={styles.photoRow}>
-        {photos.map((uri) => (
-          <TouchableOpacity key={uri} style={styles.photoThumbWrap} onPress={() => handleRemovePhoto(uri)} activeOpacity={0.8}>
-            <Image source={{ uri }} style={styles.photoThumb} />
-            <View style={styles.photoRemoveBadge}>
-              <Text style={styles.photoRemoveBadgeText}>✕</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhoto} disabled={addingPhoto}>
-          <Text style={styles.addPhotoButtonText}>{addingPhoto ? '…' : '+ Add'}</Text>
-        </TouchableOpacity>
-      </View>
 
       <Text style={styles.label}>Substitutions</Text>
       {substitutions.map((sub) => (
@@ -696,15 +819,16 @@ function CookLogEditor({
               </TouchableOpacity>
             )}
           </View>
+          <Text style={styles.subFormLabel}>Verdict</Text>
           <View style={styles.filterRow}>
             {VERDICTS.map((v) => (
               <TouchableOpacity
                 key={v}
                 disabled={sub.promoted}
                 onPress={() => handleSubVerdict(sub, v)}
-                style={[styles.chip, sub.verdict === v && styles.chipActive]}
+                style={[styles.chip, sub.verdict === v && styles.chipActive, sub.promoted && styles.chipDisabled]}
               >
-                <Text style={[styles.chipText, sub.verdict === v && styles.chipTextActive]}>{v}</Text>
+                <Text style={[styles.chipText, sub.verdict === v && styles.chipTextActive]}>{capitalize(v)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -712,7 +836,7 @@ function CookLogEditor({
             <Text style={styles.subPromotedText}>✓ Promoted to recipe</Text>
           ) : (
             <TouchableOpacity
-              style={styles.subPromoteButton}
+              style={[styles.subPromoteButton, sub.originalIngredientId == null && styles.subPromoteButtonDisabled]}
               onPress={() => handlePromote(sub)}
               disabled={sub.originalIngredientId == null}
             >
@@ -739,7 +863,10 @@ function CookLogEditor({
                 key={ing.id}
                 onPress={() => {
                   setNewSubIngredientId(ing.id);
-                  if (!newSubOriginalText) setNewSubOriginalText(ing.displayName);
+                  // Always sync to the picked ingredient's name — a stale
+                  // typed-over value from a previous selection must not
+                  // survive picking a different one.
+                  setNewSubOriginalText(ing.displayName);
                 }}
                 style={[styles.chip, newSubIngredientId === ing.id && styles.chipActive]}
               >
@@ -759,7 +886,7 @@ function CookLogEditor({
                 onPress={() => setNewSubVerdict(newSubVerdict === v ? null : v)}
                 style={[styles.chip, newSubVerdict === v && styles.chipActive]}
               >
-                <Text style={[styles.chipText, newSubVerdict === v && styles.chipTextActive]}>{v}</Text>
+                <Text style={[styles.chipText, newSubVerdict === v && styles.chipTextActive]}>{capitalize(v)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -778,6 +905,60 @@ function CookLogEditor({
         </TouchableOpacity>
       )}
 
+      <View style={styles.photoSectionHeader}>
+        <Text style={styles.label}>Photos</Text>
+        {photos.length > 0 && (
+          <TouchableOpacity
+            onPress={() => {
+              setPhotoSelectMode((s) => !s);
+              setSelectedPhotoUris(new Set());
+            }}
+          >
+            <Text style={styles.photoSelectToggle}>{photoSelectMode ? 'Cancel' : 'Select'}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      <View style={styles.photoRow}>
+        {photos.map((uri, index) => {
+          const isSelected = selectedPhotoUris.has(uri);
+          return (
+            <TouchableOpacity
+              key={uri}
+              style={styles.photoThumbWrap}
+              onPress={() => (photoSelectMode ? togglePhotoSelected(uri) : setViewerIndex(index))}
+              onLongPress={() => {
+                setPhotoSelectMode(true);
+                togglePhotoSelected(uri);
+              }}
+              activeOpacity={0.85}
+            >
+              <Image source={{ uri }} style={[styles.photoThumb, isSelected && styles.photoThumbSelected]} />
+              {photoSelectMode ? (
+                <View style={styles.photoSelectCheckBadge}>
+                  <Text style={styles.photoSelectCheckText}>{isSelected ? '☑' : '☐'}</Text>
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.photoRemoveBadge} onPress={() => requestRemovePhoto(uri)} hitSlop={8}>
+                  <Text style={styles.photoRemoveBadgeText}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+        {!photoSelectMode && (
+          <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhotos} disabled={addingPhoto}>
+            <Text style={styles.addPhotoButtonText}>{addingPhoto ? '…' : '+ Add'}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {photoSelectMode && selectedPhotoUris.size > 0 && (
+        <TouchableOpacity style={styles.photoDeleteSelectedButton} onPress={requestRemoveSelectedPhotos}>
+          <Text style={styles.photoDeleteSelectedText}>
+            Delete {selectedPhotoUris.size} photo{selectedPhotoUris.size === 1 ? '' : 's'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
         <Text style={styles.saveButtonText}>{saving ? 'Saving…' : 'Save'}</Text>
       </TouchableOpacity>
@@ -793,6 +974,7 @@ function CookLogEditor({
         <Text style={styles.deleteButtonText}>Delete log</Text>
       </TouchableOpacity>
       {modal}
+      <PhotoViewer visible={viewerIndex != null} photos={photos} initialIndex={viewerIndex ?? 0} onClose={() => setViewerIndex(null)} />
     </ScrollView>
   );
 }
@@ -839,11 +1021,27 @@ const makeStyles = (theme: AppTheme) =>
   },
   filtersToggleText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
   filtersPanel: { gap: theme.spacing.sm },
-  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
   chip: { paddingHorizontal: theme.spacing.md, paddingVertical: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
   chipActive: { backgroundColor: theme.colors.accent },
+  chipDisabled: { opacity: 0.4 },
   chipText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
   chipTextActive: { color: theme.colors.accentFg },
+  newTagRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  newTagInput: {
+    minWidth: 100,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong,
+    fontFamily: theme.fonts.body.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.ink,
+  },
+  newTagConfirm: { paddingHorizontal: theme.spacing.md, paddingVertical: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.accent },
+  newTagConfirmText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentFg },
   dateRangeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
   dateButton: {
     flex: 1,
@@ -928,7 +1126,7 @@ const makeStyles = (theme: AppTheme) =>
   editorHeaderText: { gap: 2 },
   backButton: { marginBottom: theme.spacing.sm },
   back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
-  label: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2, marginTop: theme.spacing.sm },
+  label: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.ink, marginTop: theme.spacing.lg, marginBottom: 2 },
   starsRow: { flexDirection: 'row', gap: theme.spacing.xs },
   star: { fontSize: theme.fontSize.xl, color: theme.colors.amber },
   textArea: {
@@ -945,62 +1143,94 @@ const makeStyles = (theme: AppTheme) =>
     textAlignVertical: 'center',
     includeFontPadding: false,
   },
+  photoSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  photoSelectToggle: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
   photoThumbWrap: { position: 'relative' },
-  photoThumb: { width: 72, height: 72, borderRadius: theme.radius.card, backgroundColor: theme.colors.surfaceWarm },
-  photoRemoveBadge: {
+  photoThumb: { width: 112, height: 112, borderRadius: theme.radius.card, backgroundColor: theme.colors.surfaceWarm },
+  photoThumbSelected: { opacity: 0.6 },
+  photoSelectCheckBadge: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 20,
-    height: 20,
+    top: 4,
+    right: 4,
+    width: 26,
+    height: 26,
     borderRadius: theme.radius.pill,
-    backgroundColor: theme.colors.redTint,
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  photoRemoveBadgeText: { fontSize: theme.fontSize.xs, color: theme.colors.red },
+  photoSelectCheckText: { fontSize: theme.fontSize.base, color: theme.colors.accentText },
+  photoDeleteSelectedButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.redTint,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+  },
+  photoDeleteSelectedText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.red },
+  photoRemoveBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 26,
+    height: 26,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.redTint,
+    borderWidth: 1,
+    borderColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoRemoveBadgeText: { fontSize: theme.fontSize.sm, color: theme.colors.red },
   addPhotoButton: {
-    width: 72,
-    height: 72,
+    width: 112,
+    height: 112,
     borderRadius: theme.radius.card,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.borderStrong,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
   },
   addPhotoButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+  // §4.6 "breathing room": the card sits on `surface`, its chips on
+  // `chipBg`, and its inputs on `bg` — three deliberately distinct tokens
+  // so nothing here blends into its container, in any of the 17 themes.
   subCard: {
-    gap: theme.spacing.xs,
-    padding: theme.spacing.sm,
-    backgroundColor: theme.colors.surfaceWarm,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.base,
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.card,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong,
   },
   subCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm },
-  subCardText: { flex: 1, fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink },
+  subCardText: { flex: 1, fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink },
   subRemoveText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.red },
   subPromotedText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.green },
   subPromoteButton: {
     alignSelf: 'flex-start',
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: 6,
+    paddingVertical: theme.spacing.sm,
     borderRadius: theme.radius.pill,
     backgroundColor: theme.colors.accentTint,
   },
+  subPromoteButtonDisabled: { opacity: 0.5 },
   subPromoteButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.accentText },
-  subFormLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+  subFormLabel: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.xs, color: theme.colors.ink2, marginTop: 2 },
   subInput: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderWidth: 1.5,
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.card,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.sm,
     fontFamily: theme.fonts.body.regular,
     fontSize: theme.fontSize.base,
     color: theme.colors.ink,
+    backgroundColor: theme.colors.bg,
   },
-  subFormButtonRow: { flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'flex-end' },
+  subFormButtonRow: { flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'flex-end', marginTop: theme.spacing.xs },
   subFormCancelButton: { paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
   subFormCancelText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
   subFormAddButton: { paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm, borderRadius: theme.radius.pill, backgroundColor: theme.colors.accent },
