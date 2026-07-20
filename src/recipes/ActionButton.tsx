@@ -34,7 +34,7 @@ export function ActionButton({ label, onPress, variant = 'neutral', fill = false
       onPress={onPress}
       style={[styles.button, fill && styles.buttonFill, { backgroundColor: bg }]}
     >
-      <Text style={[styles.label, { color: fg }]} numberOfLines={1}>
+      <Text style={[styles.label, { color: fg }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
         {label}
       </Text>
     </TouchableOpacity>

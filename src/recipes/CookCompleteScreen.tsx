@@ -9,13 +9,12 @@ import { addShortfallToShoppingList, completeCook } from '../cooking/completeCoo
 import type { CookLogDraft } from '../cooking/cookLog';
 import { updateCookLog } from '../cooking/cookLog';
 import { previewCook, type CookPreview } from '../cooking/previewCook';
+import { BUILT_IN_QUICK_TAGS, loadCustomQuickTags } from '../cooking/quickTags';
 import { useDb } from '../db/DbContext';
 import { dateInputToIso, formatShortDate, toDateInputValue } from '../lib/formatDate';
 import { getAutoAddShortfalls } from '../settings/getSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { EnrichedRecipe } from './loadRecipes';
-
-const QUICK_TAGS = ['too salty', 'perfect', 'too slow', 'too bland', 'would repeat', 'too much effort'];
 
 interface CookCompleteScreenProps {
   recipe: EnrichedRecipe;
@@ -38,12 +37,20 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
   const [whatWentWell, setWhatWentWell] = useState('');
   const [whatToChange, setWhatToChange] = useState('');
   const [quickTags, setQuickTags] = useState<string[]>([]);
+  const [quickTagVocab, setQuickTagVocab] = useState<string[]>(BUILT_IN_QUICK_TAGS);
   const [preview, setPreview] = useState<CookPreview | null>(null);
   const [autoAddShortfalls, setAutoAddShortfalls] = useState(true);
   const [addedManually, setAddedManually] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
 
   const cookedAtIso = useMemo(() => dateInputToIso(cookedAtDate), [cookedAtDate]);
+
+  // §5.9: the tag vocabulary is shared across every cook log entry point,
+  // not just the Cook Log tab's own editor — a tag added there should show
+  // up here too.
+  useEffect(() => {
+    loadCustomQuickTags(db).then((custom) => setQuickTagVocab([...BUILT_IN_QUICK_TAGS, ...custom]));
+  }, [db]);
 
   useEffect(() => {
     getAutoAddShortfalls(db).then(setAutoAddShortfalls);
@@ -89,6 +96,7 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
           whatWentWell,
           whatToChange,
           quickTags,
+          photos: [],
           viaCookingMode: !retroactive,
         };
         await updateCookLog(db, result.cookLogId, draft);
@@ -205,7 +213,7 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>QUICK TAGS</Text>
           <View style={styles.tagWrap}>
-            {QUICK_TAGS.map((tag) => (
+            {quickTagVocab.map((tag) => (
               <TouchableOpacity key={tag} onPress={() => toggleTag(tag)} style={[styles.tagChip, quickTags.includes(tag) && styles.tagChipActive]}>
                 <Text style={[styles.tagChipText, quickTags.includes(tag) && styles.tagChipTextActive]}>{tag}</Text>
               </TouchableOpacity>

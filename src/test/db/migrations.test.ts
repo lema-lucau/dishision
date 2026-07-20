@@ -48,7 +48,7 @@ describe('migrations', () => {
   it('sets PRAGMA user_version to the latest migration', async () => {
     const db = await createTestDb();
     const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    expect(row?.user_version).toBe(1);
+    expect(row?.user_version).toBe(2);
   });
 
   it('is idempotent — running migrate again on an up-to-date db is a no-op', async () => {

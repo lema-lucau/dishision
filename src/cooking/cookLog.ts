@@ -1,6 +1,7 @@
 // §5.9 cook log CRUD. Counts, ratings, and streaks are never stored here or
 // anywhere else (§2.5) — they're derived fresh from these rows every read.
 import type { DbClient } from '../db/DbClient';
+import { capitalize } from '../lib/capitalize';
 
 export interface CookLogDraft {
   recipeId: number;
@@ -13,6 +14,8 @@ export interface CookLogDraft {
   whatToChange: string;
   quickTags: string[];
   viaCookingMode: boolean;
+  /** URIs already through the §8 compression pipeline — this module never compresses. */
+  photos: string[];
 }
 
 export interface CookLogRow {
@@ -28,13 +31,23 @@ export interface CookLogRow {
   whatWentWell: string | null;
   whatToChange: string | null;
   quickTags: string[];
+  photos: string[];
   createdAt: string;
 }
 
 async function writeTags(db: DbClient, cookLogId: number, tags: string[]): Promise<void> {
   await db.runAsync('DELETE FROM cook_log_tag WHERE cook_log_id = ?', [cookLogId]);
   for (const tag of tags) {
-    await db.runAsync('INSERT OR IGNORE INTO cook_log_tag (cook_log_id, tag) VALUES (?, ?)', [cookLogId, tag]);
+    await db.runAsync('INSERT OR IGNORE INTO cook_log_tag (cook_log_id, tag) VALUES (?, ?)', [cookLogId, capitalize(tag.trim())]);
+  }
+}
+
+// Delete-and-reinsert, same shape as writeTags — sort_order just mirrors
+// array order, there's no manual reordering UI (§5.9).
+async function writePhotos(db: DbClient, cookLogId: number, photos: string[]): Promise<void> {
+  await db.runAsync('DELETE FROM cook_log_photo WHERE cook_log_id = ?', [cookLogId]);
+  for (let i = 0; i < photos.length; i++) {
+    await db.runAsync('INSERT INTO cook_log_photo (cook_log_id, uri, sort_order) VALUES (?, ?, ?)', [cookLogId, photos[i], i]);
   }
 }
 
@@ -58,6 +71,7 @@ export async function createCookLog(db: DbClient, draft: CookLogDraft): Promise<
     );
     const id = result.lastInsertRowId;
     await writeTags(db, id, draft.quickTags);
+    await writePhotos(db, id, draft.photos);
     await db.execAsync('COMMIT');
     return id;
   } catch (error) {
@@ -85,6 +99,7 @@ export async function updateCookLog(db: DbClient, cookLogId: number, draft: Cook
       ],
     );
     await writeTags(db, cookLogId, draft.quickTags);
+    await writePhotos(db, cookLogId, draft.photos);
     await db.execAsync('COMMIT');
   } catch (error) {
     await db.execAsync('ROLLBACK');
@@ -97,6 +112,14 @@ export async function updateCookLog(db: DbClient, cookLogId: number, draft: Cook
 // it, since a leftover with no owning cook is meaningless.
 export async function deleteCookLog(db: DbClient, cookLogId: number): Promise<void> {
   await db.runAsync('DELETE FROM cook_log WHERE id = ?', [cookLogId]);
+}
+
+// Removes a quick tag from every cook log that has it, not just the one
+// currently being edited — the tag vocabulary is shared globally (§5.9), so
+// deleting a tag is a global operation too. Callers are responsible for
+// warning the user before calling this (it can't be undone).
+export async function deleteQuickTagEverywhere(db: DbClient, tag: string): Promise<void> {
+  await db.runAsync('DELETE FROM cook_log_tag WHERE tag = ? COLLATE NOCASE', [tag]);
 }
 
 export interface CookLogFilter {
@@ -159,6 +182,16 @@ export async function loadCookLogs(db: DbClient, filter: CookLogFilter = {}): Pr
     tagsByLog.set(t.cook_log_id, list);
   }
 
+  const photoRows = await db.getAllAsync<{ cook_log_id: number; uri: string }>(
+    'SELECT cook_log_id, uri FROM cook_log_photo ORDER BY sort_order',
+  );
+  const photosByLog = new Map<number, string[]>();
+  for (const p of photoRows) {
+    const list = photosByLog.get(p.cook_log_id) ?? [];
+    list.push(p.uri);
+    photosByLog.set(p.cook_log_id, list);
+  }
+
   const mapped = rows.map((r) => ({
     id: r.id,
     recipeId: r.recipe_id,
@@ -172,8 +205,10 @@ export async function loadCookLogs(db: DbClient, filter: CookLogFilter = {}): Pr
     whatWentWell: r.what_went_well,
     whatToChange: r.what_to_change,
     quickTags: tagsByLog.get(r.id) ?? [],
+    photos: photosByLog.get(r.id) ?? [],
     createdAt: r.created_at,
   }));
 
-  return filter.tags?.length ? mapped.filter((r) => filter.tags!.every((t) => r.quickTags.includes(t))) : mapped;
+  const filterTags = filter.tags?.map((t) => capitalize(t.trim()));
+  return filterTags?.length ? mapped.filter((r) => filterTags.every((t) => r.quickTags.includes(t))) : mapped;
 }

@@ -7,14 +7,16 @@ import { useTheme, type AppTheme } from '../theme/ThemeContext';
 interface MacroBoxProps {
   value: number | null;
   label: string;
+  /** e.g. 'g' for protein/carbs/fat — omitted for kcal, which has no unit suffix. */
+  unit?: string;
 }
 
-export function MacroBox({ value, label }: MacroBoxProps) {
+export function MacroBox({ value, label, unit }: MacroBoxProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.box}>
-      <Text style={styles.value}>{value != null ? Math.round(value) : '—'}</Text>
+      <Text style={styles.value}>{value != null ? `${Math.round(value)}${unit ?? ''}` : '—'}</Text>
       <Text style={styles.label}>{label}</Text>
     </View>
   );

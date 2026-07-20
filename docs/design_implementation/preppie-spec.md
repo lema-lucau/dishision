@@ -1,9 +1,11 @@
 # Preppie — Design & Implementation Spec
 
-**Version:** 1.4
+**Version:** 1.5
 **Platform:** React Native / Expo SDK 54, SQLite, Android
 **Users:** Independent profiles on separate phones, optionally linked into a household over local WiFi
 **Status:** Specification — not yet implemented
+
+> **Visual treatment & layout — see the companion `preppie-visual-redesign-spec.md` ("Warm Editorial", R-sections).** This base spec defines *what Preppie is* — data, units, recommendation engine, sharing, theme *architecture*, and screen *behaviour* — and remains authoritative for all of it. The redesign spec defines *how it looks and feels* and **supersedes the visual presentation of §4.5–4.8 and the layout of §5.2–5.10**. The token architecture (§4.1–4.4) and every behavioural rule below are unchanged and still law. Where the two disagree on visuals/layout, the redesign spec wins; on anything else, this one does.
 
 ## Table of Contents
 
@@ -647,6 +649,8 @@ Recipes need 140g of something sold in 200g bags. The shop does not sell 0.7 bag
 
 ## 4. Design system
 
+> **Visual presentation is now led by `preppie-visual-redesign-spec.md`.** The theming *architecture* and token contract in §4.1–4.4 are unchanged and authoritative. The *presentation* rules in §4.5 (typography usage), §4.6 (radius scale), and §4.8 (emoji tiles) are extended/superseded there: the redesign adds a centrally-derived visual layer (elevation, gradients, glow, photo scrim — R2) computed from these same tokens with no new per-theme slots and no component hex, plus softer photo radii (R2.5) and a category-tinted gradient photo fallback that replaces the flat emoji tile at card/hero sizes (R4).
+
 ### 4.1 Theming architecture
 
 Preppie ships **seven themes**, user-selectable in settings. **Hearth is the default.**
@@ -990,6 +994,15 @@ Radius:  6 (chips) / 10 (tiles) / 13 (cards, buttons) / 20 (pills)
 
 Risograph's card borders and offset shadows (§4.3) are additive to this scale, not a replacement for it.
 
+**Breathing room, as a standing rule.** A cluster of labels, chips, and inputs stacked with only `xs`/`sm` gaps between every element reads as noise, not information — this has bitten Cooking Mode's log editor and the substitutions form once already. When a group has more than two distinct row-types stacked vertically (a label, a chip row, an input, another label, …), each row-type gets its own visual separation, not just uniform `xs` spacing:
+
+- A section label (e.g. "Substitutions", "Photos") is bold (`fonts.body.bold` or `fonts.display.semiBold`, never `semiBold` body at a small size) and carries `spacing.md`–`spacing.lg` above it, separating it from the previous section rather than just the next control.
+- A card or grouped-control cluster (a substitution row, a form) gets its own background distinct from both the page and its inputs — never the same token as the chip fill it contains, or the chip disappears into the card. Prefer `surface` for the card and `bg` for text inputs inside it (or vice versa), never `surfaceWarm` for both card and chip.
+- Text inputs get a visible border (`borderStrong`, not `border`) and internal padding of at least `spacing.sm` vertical / `spacing.base` horizontal — a hairline border with no fill is easy to miss as an editable field.
+- Rows of chips get `spacing.sm` between chips, not `spacing.xs` — `xs` is for chips that are variants of the same choice (e.g. star rating), not independent options.
+
+This isn't a new token — it's a discipline about which existing tokens to reach for when a section has several kinds of content stacked together, so a themed screen doesn't need a second pass once it's built to stop reading as cluttered.
+
 ### 4.7 Signature element — the time split bar
 
 The one thing no other recipe app shows. A two-tone bar directly under the recipe title, splitting total time into hands-on (`--accent`) and passive (`--amber`), with a plain-language key beneath.
@@ -1017,6 +1030,8 @@ It answers the question people actually have — *how much of my evening does th
 Ember is flagged because both tones sit in the same warm-orange family; it's the one theme worth an explicit on-device check once built, not just a contrast-ratio calculation.
 
 ### 4.8 Emoji photo tiles
+
+> **Superseded at card/hero sizes by the redesign's `<RecipePhoto>` and category-tinted fallback tile (redesign spec R4).** The plain `--surface-warm` emoji tile below still applies to small inline uses (e.g. a 36px leftovers row); at ≥ ~88px surfaces the fallback is a gradient tinted from the recipe's category colour (§4.4) with the emoji centred on top — deliberate and themed, not a flat box. Real photos (`photo_uri`, §2.3) lead wherever present.
 
 Until a recipe has a real photo, its `photo_emoji` renders as the thumbnail and hero: the emoji at large size (list rows ~28px, detail hero ~64px), centred on a `--surface-warm` tile with the standard tile radius. Deliberate and warm, not a broken-image placeholder. Every seeded recipe carries a hand-picked, dish-appropriate emoji (§9.1); user recipes default to 🍽️ and the emoji is editable in the recipe form. Renders correctly in all seven themes since it only depends on `--surface-warm`, which every theme defines.
 
@@ -1105,6 +1120,8 @@ The preview uses a fixed sample recipe (the same Thai Green Curry used throughou
 **Apply theme** writes the `theme` setting (§2.3), closes back to Settings, and the whole app reflects the change immediately — no animation, no restart, per §4.1. **Back** returns to the grid with no change made. Nothing commits from Step 1 alone; a tap on a card is always "show me," never "set this."
 
 ## 5. Screens
+
+> **Screen *layouts* are redesigned in `preppie-visual-redesign-spec.md` (R6).** Everything in §5 below remains authoritative for **behaviour, state, and data flow** — nothing here changes. The redesign restyles the presentation: each screen opens with one editorial photo-led hero, cards float with soft shadows, recipes lead with real photos (or a gradient fallback), and **all horizontal scrolling is replaced with wrapping** (R7). Read the matching R6 subsection alongside each screen: Home → R6.1, Recipes → R6.2, Recipe detail → R6.3, Plan → R6.4, Cook log → R6.5, Me/Profile → R6.6.
 
 ### 5.1 Navigation
 
@@ -1367,6 +1384,8 @@ Tap a cook → log editor:
 | Substitutions | structured: original → replacement, verdict, **promote to recipe** |
 
 **Promote to recipe:** rewrites recipe_ingredient permanently. The cook_log_substitution row keeps original_text as a snapshot, so old logs stay self-describing regardless of what the recipe says now. **No recipe versioning** — the recipe is "how I make it today", the log is "what I made that night."
+
+**Photos:** multi-select from the library in one picker call, each photo through the unconditional §8 pipeline. Thumbnails in the editor are large enough to actually recognise the dish (not a 72px chip). Tapping a thumbnail (not its remove badge) opens a full-screen **PhotoViewer**: pinch/double-tap to zoom, pan while zoomed, swipe down to dismiss, prev/next arrows when the log has more than one photo. This is a deliberate, narrow exception to §15's "no hex literals" rule — the viewer's backdrop and chrome are fixed near-black/white regardless of the active theme, the same convention every photo-viewing surface uses (a themed light backdrop would fight the photo, not frame it). Built on react-native-gesture-handler + react-native-reanimated (§15.1).
 
 ### 5.10 Me
 
@@ -2226,6 +2245,13 @@ Runtime:
   @expo-google-fonts/fraunces
   @expo-google-fonts/public-sans
   @expo-google-fonts/ibm-plex-mono
+  expo-linear-gradient     gradients, photo scrims, hero glow (redesign spec R2–R3)
+  expo-haptics             tactile feedback on committing actions (redesign spec R3)
+  react-native-gesture-handler  pinch/pan/double-tap in the cook log PhotoViewer (§5.9)
+  react-native-reanimated       driving PhotoViewer's zoom/pan transforms off the JS thread (§5.9)
+  react-native-worklets         required peer dep of react-native-reanimated 4.x — install directly,
+                                 not just transitively, or the app crashes outside Expo Go with a
+                                 TurboModule signature-mismatch error (§5.9)
 
 Dev / test:
   vitest, better-sqlite3, jest-expo,
@@ -2246,6 +2272,15 @@ Deferred, not forgotten:
 - ~~Name~~ → **Preppie stays.** It's cute, and the household's other member gets a vote.
 
 ## 17. Changelog
+
+**v1.5**
+
+- **Visual redesign introduced as a companion spec:** `preppie-visual-redesign-spec.md` ("Warm Editorial", R-sections) — the client-approved blend of exploration directions A (Warm & Cozy) + B (Editorial). It supersedes the *visual presentation* of §4.5–4.8 and the *layout* of §5.2–5.10; all behaviour, data, and the token architecture (§4.1–4.4) are unchanged. Pointers added at the top, §4, §4.8, and §5.
+- Redesign adds a **centrally-derived visual layer** (elevation/shadows, gradients, hero glow, photo scrim — redesign R2) computed once from the existing tokens — no new per-theme slots, no component-level hex, so the §4.1/§15 architecture is unweakened.
+- **Real photos now lead**, with a category-tinted gradient fallback tile replacing the flat emoji tile at card/hero sizes (redesign R4); `photo_uri` already exists (§2.3) so no migration is required.
+- **Hard rule added: no horizontal scrolling anywhere** — rows of cards/chips/recommendations wrap (redesign R7).
+- Dependency allowlist (§15.1) gains **`expo-linear-gradient`** and **`expo-haptics`** (redesign R8) — the only additions; no animation/blur libraries this phase.
+- S17 Polish (§14) is expanded to carry the redesign rollout (redesign R9); it can also run standalone since every screen already exists.
 
 **v1.4**
 

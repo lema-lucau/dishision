@@ -46,12 +46,20 @@ export interface RecipeQuery {
   /** Exclude never_again / active not_tonight rows (§6.2). On by default for the Recipes tab and the picker; off for e.g. an exclusions-management view. */
   applyExclusions?: boolean;
   /**
-   * Backfill to 3 from the boost pool when chip filtering yields fewer than
-   * 3 (§5.3). This is a picker-only behaviour — the Recipes tab filter is a
-   * hard filter and should show every match, however many (including
-   * zero), never silently padding the list with non-matches.
+   * Backfill from the boost pool when chip filtering yields fewer than
+   * `relaxTarget` (§5.3). This is a picker-only behaviour — the Recipes tab
+   * filter is a hard filter and should show every match, however many
+   * (including zero), never silently padding the list with non-matches.
    */
   relax?: boolean;
+  /** Target result count when relaxed — the picker asks for up to 10 (§5.3), defaults to 3. */
+  relaxTarget?: number;
+  /**
+   * Pre-computed §6.8 median, when the caller has one cached (setting table,
+   * see src/recommend/medianCostCache.ts). Falls back to a live recompute
+   * when omitted so existing callers are unaffected.
+   */
+  medianCostOverride?: number | null;
 }
 
 export interface ChipAvailability {
@@ -62,7 +70,9 @@ export interface ChipAvailability {
 const PROTEIN_CHIPS: ChipKey[] = ['chicken', 'beef', 'pork', 'lamb', 'fish', 'veg'];
 const DATA_GATED_THRESHOLD = 0.6;
 
-function isExcludedNow(recipe: EnrichedRecipe, now: number): boolean {
+// Exported for reuse by the recommendation engine's hard filters (§6.2),
+// which apply the same exclusion rule ahead of scoring.
+export function isExcludedNow(recipe: EnrichedRecipe, now: number): boolean {
   if (!recipe.exclusion) return false;
   if (recipe.exclusion.kind === 'never_again') return true;
   if (!recipe.exclusion.expiresAt) return false;
@@ -234,7 +244,7 @@ export function runRecipeQuery(
   now: number = Date.now(),
 ): QueryResult {
   const chipAvailability = computeChipAvailability(allRecipes);
-  const median = computeMedianCostPerServing(allRecipes);
+  const median = query.medianCostOverride !== undefined ? query.medianCostOverride : computeMedianCostPerServing(allRecipes);
   const applyExclusions = query.applyExclusions ?? true;
 
   const base = applyExclusions ? allRecipes.filter((r) => !isExcludedNow(r, now)) : allRecipes;
@@ -250,12 +260,13 @@ export function runRecipeQuery(
   const activeChips = (query.chips ?? []).filter((c) => chipAvailability[c]?.enabled);
   const chipFiltered = searched.filter(({ recipe }) => activeChips.every((c) => chipMatches(recipe, c, median)));
 
+  const relaxTarget = query.relaxTarget ?? 3;
   let relaxed = false;
   let resultSet = chipFiltered;
-  if (query.relax && activeChips.length > 0 && chipFiltered.length < 3) {
+  if (query.relax && activeChips.length > 0 && chipFiltered.length < relaxTarget) {
     relaxed = true;
     const already = new Set(chipFiltered.map((r) => r.recipe.id));
-    const backfill = searched.filter((r) => !already.has(r.recipe.id)).slice(0, 3 - chipFiltered.length);
+    const backfill = searched.filter((r) => !already.has(r.recipe.id)).slice(0, relaxTarget - chipFiltered.length);
     resultSet = [...chipFiltered, ...backfill];
   }
 

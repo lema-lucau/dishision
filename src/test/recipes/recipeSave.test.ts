@@ -65,7 +65,7 @@ describe('createManualRecipe / updateManualRecipe (§5.5)', () => {
       `SELECT t.name FROM recipe_tag rt JOIN tag t ON t.id = rt.tag_id WHERE rt.recipe_id = ? ORDER BY t.name`,
       [id],
     );
-    expect(tags.map((t) => t.name)).toEqual(['beef', 'one-pot']);
+    expect(tags.map((t) => t.name)).toEqual(['Beef', 'One-pot']);
   });
 
   it('update replaces children rather than accumulating duplicates', async () => {
