@@ -3,6 +3,7 @@ import { createTestDb } from '../support/testDb';
 import { runSeed } from '../../seed/seedRunner';
 import { ingredients } from '../../seed/data/ingredients';
 import { recipes } from '../../seed/data/recipes';
+import { tags } from '../../seed/data/tags';
 
 describe('seed data integrity (§9)', () => {
   it('every recipe ingredient resolves to a canonical ingredient name or alias', () => {
@@ -20,6 +21,40 @@ describe('seed data integrity (§9)', () => {
       }
     }
     expect(orphans).toEqual([]);
+  });
+
+  // Fixtures are deliberately lowercase (matched case-insensitively, see
+  // ingredients.ts) — the seed runner is the one place that must capitalise
+  // them at write time, matching the same rule applied to user-created
+  // ingredients/tags (lib/capitalize.ts) and backfilled once for existing
+  // rows by migration 002. Regression test for a bug where reseeding kept
+  // silently re-lowercasing everything via the seed_id upsert.
+  it('capitalises ingredient, alias, tag, and recipe-ingredient names on seed', async () => {
+    const db = await createTestDb();
+    await runSeed(db);
+
+    const lowercaseIngredients = await db.getAllAsync<{ name: string }>(
+      "SELECT name FROM canonical_ingredient WHERE name != UPPER(SUBSTR(name, 1, 1)) || SUBSTR(name, 2)",
+    );
+    expect(lowercaseIngredients).toEqual([]);
+
+    const lowercaseAliases = await db.getAllAsync<{ alias: string }>(
+      "SELECT alias FROM canonical_ingredient_alias WHERE alias != UPPER(SUBSTR(alias, 1, 1)) || SUBSTR(alias, 2)",
+    );
+    expect(lowercaseAliases).toEqual([]);
+
+    const lowercaseTags = await db.getAllAsync<{ name: string }>(
+      "SELECT name FROM tag WHERE name != UPPER(SUBSTR(name, 1, 1)) || SUBSTR(name, 2)",
+    );
+    expect(lowercaseTags).toEqual([]);
+
+    const lowercaseDisplayNames = await db.getAllAsync<{ display_name: string }>(
+      "SELECT display_name FROM recipe_ingredient WHERE display_name != UPPER(SUBSTR(display_name, 1, 1)) || SUBSTR(display_name, 2)",
+    );
+    expect(lowercaseDisplayNames).toEqual([]);
+
+    expect(ingredients.length).toBeGreaterThan(0);
+    expect(tags.length).toBeGreaterThan(0);
   });
 
   it('every canonical ingredient has complete macros and cost', () => {

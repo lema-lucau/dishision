@@ -6,6 +6,7 @@
 import { uuidv4 } from '../utils/uuid';
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { capitalize } from '../lib/capitalize';
 import { ingredients as seedIngredients } from './data/ingredients';
 import { recipes as seedRecipes } from './data/recipes';
 import { tags as seedTags } from './data/tags';
@@ -45,7 +46,7 @@ async function upsertIngredient(db: DbClient, ing: IngredientFixture): Promise<n
        updated_at = datetime('now')`,
     [
       ing.seedId,
-      ing.name,
+      capitalize(ing.name),
       ing.baseUnit,
       ing.packSize ?? null,
       ing.packLabel ?? null,
@@ -66,7 +67,7 @@ async function upsertIngredient(db: DbClient, ing: IngredientFixture): Promise<n
   for (const alias of ing.aliases ?? []) {
     await db.runAsync(
       'INSERT OR IGNORE INTO canonical_ingredient_alias (canonical_id, alias) VALUES (?, ?)',
-      [row.id, alias],
+      [row.id, capitalize(alias)],
     );
   }
 
@@ -78,7 +79,7 @@ async function upsertTag(db: DbClient, tag: TagFixture): Promise<number> {
     `INSERT INTO tag (seed_id, name, type, colour)
      VALUES (?, ?, ?, ?)
      ON CONFLICT(seed_id) DO UPDATE SET name = excluded.name, type = excluded.type, colour = excluded.colour`,
-    [tag.seedId, tag.name, tag.type, tag.colour ?? null],
+    [tag.seedId, capitalize(tag.name), tag.type, tag.colour ?? null],
   );
   const row = await db.getFirstAsync<{ id: number }>('SELECT id FROM tag WHERE seed_id = ?', [tag.seedId]);
   if (!row) throw new Error(`Tag upsert failed to produce a row: ${tag.seedId}`);
@@ -191,7 +192,7 @@ async function upsertRecipe(
       [
         recipeId,
         canonicalId,
-        ing.displayName ?? ing.canonicalName,
+        capitalize(ing.displayName ?? ing.canonicalName),
         ing.quantity,
         ing.unit,
         ing.scalable === false ? 0 : 1,
