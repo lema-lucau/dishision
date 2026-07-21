@@ -31,3 +31,17 @@ export async function rerollAvatarEmoji(db: DbClient, current?: string): Promise
 export async function loadProfile(db: DbClient): Promise<Profile | null> {
   return db.getFirstAsync<Profile>('SELECT * FROM profile WHERE id = 1');
 }
+
+// §5.10 avatar: "pick from photo library (same compression pipeline, §8),
+// or the assigned emoji." Setting a photo doesn't touch avatar_emoji — it
+// stays underneath, ready the moment the photo is cleared (photo_uri NULL
+// -> use avatar_emoji, per the DDL comment).
+export async function setAvatarPhoto(db: DbClient, uri: string): Promise<void> {
+  await db.runAsync("UPDATE profile SET avatar_uri = ?, updated_at = datetime('now') WHERE id = 1", [uri]);
+  logger.info('db', 'Set avatar photo', { uri });
+}
+
+export async function clearAvatarPhoto(db: DbClient): Promise<void> {
+  await db.runAsync("UPDATE profile SET avatar_uri = NULL, updated_at = datetime('now') WHERE id = 1", []);
+  logger.info('db', 'Cleared avatar photo, reverted to emoji');
+}

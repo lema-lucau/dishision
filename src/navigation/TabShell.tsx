@@ -1,14 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DebugScreen } from '../debug/DebugScreen';
 import { useSettingsStore } from '../debug/settingsStore';
 import type { Profile } from '../profile/ensureProfile';
+import { HouseholdScreen } from '../household/HouseholdScreen';
 import { CookLogScreen } from '../screens/CookLogScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { PlanScreen } from '../screens/PlanScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { RecipesScreen } from '../screens/RecipesScreen';
+import { useImportIntentStore } from '../sharing/importIntentStore';
 import { ThemePickerScreen } from '../theme/ThemePickerScreen';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { TABS, type TabKey } from './tabs';
@@ -16,25 +18,41 @@ import { useUiChromeStore } from './uiChromeStore';
 
 interface TabShellProps {
   profile: Profile;
+  onRestored: () => void;
 }
 
-export function TabShell({ profile }: TabShellProps) {
+export function TabShell({ profile, onRestored }: TabShellProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [debugScreenOpen, setDebugScreenOpen] = useState(false);
   const [themePickerOpen, setThemePickerOpen] = useState(false);
+  const [householdOpen, setHouseholdOpen] = useState(false);
   const [cookLogFocusId, setCookLogFocusId] = useState<number | null>(null);
   const [recipesFavouritesOnly, setRecipesFavouritesOnly] = useState(false);
   const [recipesInitialRecipeId, setRecipesInitialRecipeId] = useState<number | null>(null);
   const [recipesInitialStartCooking, setRecipesInitialStartCooking] = useState(false);
   const debugModeEnabled = useSettingsStore((s) => s.debugMode);
-  const toggleDebugMode = useSettingsStore((s) => s.toggleDebugMode);
   const tabBarHidden = useUiChromeStore((s) => s.tabBarHidden);
   const insets = useSafeAreaInsets();
+  const pendingImport = useImportIntentStore((s) => s.pending);
+
+  // §7.2: a recipe arriving via deep link or .preppie file jumps straight
+  // to the Recipes tab's import preview, whichever tab was active.
+  useEffect(() => {
+    if (pendingImport) setActiveTab('recipes');
+  }, [pendingImport]);
 
   if (themePickerOpen) {
     return <ThemePickerScreen onClose={() => setThemePickerOpen(false)} />;
+  }
+
+  if (householdOpen) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <HouseholdScreen profile={profile} onBack={() => setHouseholdOpen(false)} />
+      </View>
+    );
   }
 
   if (debugScreenOpen) {
@@ -92,9 +110,10 @@ export function TabShell({ profile }: TabShellProps) {
           <ProfileScreen
             profile={profile}
             debugModeEnabled={debugModeEnabled}
-            onToggleDebugMode={toggleDebugMode}
             onOpenDebug={() => setDebugScreenOpen(true)}
             onOpenThemePicker={() => setThemePickerOpen(true)}
+            onOpenHousehold={() => setHouseholdOpen(true)}
+            onRestored={onRestored}
             onViewAllFavourites={() => {
               setRecipesFavouritesOnly(true);
               setActiveTab('recipes');

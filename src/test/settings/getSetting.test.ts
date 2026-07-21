@@ -1,6 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../db/DbClient';
-import { getCurrencySymbol, getSetting, getSettingWithDefault } from '../../settings/getSetting';
+import {
+  getAlertSound,
+  getAlertTakeover,
+  getAlertVibrate,
+  getCostStalenessDays,
+  getCurrencyCode,
+  getCurrencySymbol,
+  getDefaultServingSize,
+  getSetting,
+  getSettingWithDefault,
+} from '../../settings/getSetting';
+import { setAlertSound, setCurrency, setDefaultServingSize } from '../../settings/setSetting';
 import { createTestDb } from '../support/testDb';
 
 describe('setting reads (§2.3, §5.10)', () => {
@@ -30,5 +41,27 @@ describe('setting reads (§2.3, §5.10)', () => {
   it('getCurrencySymbol reflects a changed setting', async () => {
     await db.runAsync('INSERT INTO setting (key, value) VALUES (?, ?)', ['currency_symbol', '£']);
     expect(await getCurrencySymbol(db)).toBe('£');
+  });
+
+  it('S14 defaults: serving size 2, alerts on, currency EUR, staleness 90 days', async () => {
+    expect(await getDefaultServingSize(db)).toBe(2);
+    expect(await getAlertVibrate(db)).toBe(true);
+    expect(await getAlertSound(db)).toBe(true);
+    expect(await getAlertTakeover(db)).toBe(true);
+    expect(await getCurrencyCode(db)).toBe('EUR');
+    expect(await getCostStalenessDays(db)).toBe(90);
+  });
+
+  it('setCurrency updates both code and symbol together', async () => {
+    await setCurrency(db, 'AUD', 'A$');
+    expect(await getCurrencyCode(db)).toBe('AUD');
+    expect(await getCurrencySymbol(db)).toBe('A$');
+  });
+
+  it('setDefaultServingSize / setAlertSound round-trip', async () => {
+    await setDefaultServingSize(db, 4);
+    expect(await getDefaultServingSize(db)).toBe(4);
+    await setAlertSound(db, false);
+    expect(await getAlertSound(db)).toBe(false);
   });
 });

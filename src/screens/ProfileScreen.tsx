@@ -1,47 +1,74 @@
-// §5.10 Profile (was "Me"). Identity, favourites, and the theme picker entry
-// live here. Stats, backup/export, and the full settings surface are a later
-// slice — this page focuses on identity, favourites, and appearance.
-import { useEffect, useMemo, useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+// §5.10 Profile (was "Me"). Identity, favourites, appearance, and — as of
+// S14 — the full Stats/Settings/Backup surface, each its own pushed
+// screen, same local-ViewState-stack pattern as RecipesScreen/PlanScreen.
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { BackupScreen } from '../backup/BackupScreen';
 import { useDb } from '../db/DbContext';
+import { dismissCostPrompt, loadStaleIngredients, shouldShowCostPrompt } from '../profile/costStaleness';
+import { CostRefreshScreen } from '../profile/CostRefreshScreen';
 import { loadTopFavourites, type FavouriteSummary } from '../profile/loadFavourites';
-import { rerollAvatarEmoji, updateDisplayName } from '../profile/profileMutations';
+import { clearAvatarPhoto, rerollAvatarEmoji, setAvatarPhoto, updateDisplayName } from '../profile/profileMutations';
+import { SettingsScreen } from '../profile/SettingsScreen';
+import { StatsScreen } from '../profile/StatsScreen';
 import type { Profile } from '../profile/ensureProfile';
+import { pickAndCompressPhoto } from '../photos/pickAndCompressPhoto';
 import { EmojiTile } from '../recipes/EmojiTile';
 import { useTheme, useThemeControls, type AppTheme } from '../theme/ThemeContext';
 import { themes } from '../theme/themes';
 
+type ViewState = { mode: 'hero' } | { mode: 'stats' } | { mode: 'settings' } | { mode: 'backup' } | { mode: 'costRefresh' };
+
 interface ProfileScreenProps {
   profile: Profile;
   debugModeEnabled: boolean;
-  onToggleDebugMode: () => void;
   onOpenDebug: () => void;
   onOpenThemePicker: () => void;
   onViewAllFavourites: () => void;
+  onOpenHousehold: () => void;
+  onRestored: () => void;
 }
 
 export function ProfileScreen({
   profile,
   debugModeEnabled,
-  onToggleDebugMode,
   onOpenDebug,
   onOpenThemePicker,
   onViewAllFavourites,
+  onOpenHousehold,
+  onRestored,
 }: ProfileScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
   const { themeId } = useThemeControls();
+  const [view, setView] = useState<ViewState>({ mode: 'hero' });
 
   const [displayName, setDisplayName] = useState(profile.display_name);
+  const [avatarUri, setAvatarUri] = useState(profile.avatar_uri);
   const [avatarEmoji, setAvatarEmoji] = useState(profile.avatar_emoji);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(profile.display_name);
   const [favourites, setFavourites] = useState<FavouriteSummary[]>([]);
+  const [costPrompt, setCostPrompt] = useState<{ count: number } | null>(null);
 
   useEffect(() => {
     loadTopFavourites(db).then(setFavourites);
   }, [db]);
+
+  const checkCostPrompt = useCallback(async () => {
+    const show = await shouldShowCostPrompt(db);
+    if (!show) {
+      setCostPrompt(null);
+      return;
+    }
+    const stale = await loadStaleIngredients(db);
+    setCostPrompt({ count: stale.length });
+  }, [db]);
+
+  useEffect(() => {
+    checkCostPrompt();
+  }, [checkCostPrompt]);
 
   async function saveName() {
     const trimmed = nameDraft.trim();
@@ -57,7 +84,47 @@ export function ProfileScreen({
     setAvatarEmoji(next);
   }
 
+  async function pickAvatarPhoto() {
+    const photo = await pickAndCompressPhoto();
+    if (!photo) return;
+    await setAvatarPhoto(db, photo.uri);
+    setAvatarUri(photo.uri);
+  }
+
+  async function revertToEmoji() {
+    await clearAvatarPhoto(db);
+    setAvatarUri(null);
+  }
+
   const currentTheme = themes[themeId];
+
+  if (view.mode === 'stats') {
+    return <StatsScreen onBack={() => setView({ mode: 'hero' })} />;
+  }
+  if (view.mode === 'settings') {
+    return <SettingsScreen onBack={() => setView({ mode: 'hero' })} onOpenBackup={() => setView({ mode: 'backup' })} />;
+  }
+  if (view.mode === 'backup') {
+    return (
+      <BackupScreen
+        onBack={() => setView({ mode: 'hero' })}
+        onRestored={() => {
+          setView({ mode: 'hero' });
+          onRestored();
+        }}
+      />
+    );
+  }
+  if (view.mode === 'costRefresh') {
+    return (
+      <CostRefreshScreen
+        onBack={() => {
+          setView({ mode: 'hero' });
+          checkCostPrompt();
+        }}
+      />
+    );
+  }
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -65,18 +132,18 @@ export function ProfileScreen({
       {/* Identity hero */}
       <View style={styles.hero}>
         <View style={styles.avatarWrap}>
-          {profile.avatar_uri ? (
-            <Image source={{ uri: profile.avatar_uri }} style={styles.avatarPhoto} />
-          ) : (
-            <View style={styles.avatarTile}>
-              <Text style={styles.avatarEmoji}>{avatarEmoji}</Text>
-            </View>
-          )}
-          {!profile.avatar_uri && (
-            <TouchableOpacity style={styles.rerollBadge} onPress={reroll} hitSlop={8}>
-              <Text style={styles.rerollBadgeText}>🎲</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity onPress={pickAvatarPhoto} activeOpacity={0.85}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarPhoto} />
+            ) : (
+              <View style={styles.avatarTile}>
+                <Text style={styles.avatarEmoji}>{avatarEmoji}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.rerollBadge} onPress={avatarUri ? revertToEmoji : reroll} hitSlop={8}>
+            <Text style={styles.rerollBadgeText}>{avatarUri ? '↺' : '🎲'}</Text>
+          </TouchableOpacity>
         </View>
 
         {editingName ? (
@@ -107,6 +174,24 @@ export function ProfileScreen({
           </TouchableOpacity>
         )}
       </View>
+
+      {costPrompt && (
+        <TouchableOpacity style={styles.costBanner} onPress={() => setView({ mode: 'costRefresh' })} activeOpacity={0.85}>
+          <Text style={styles.costBannerText}>
+            {costPrompt.count} ingredient price{costPrompt.count === 1 ? '' : 's'} could be out of date. Update them?
+          </Text>
+          <TouchableOpacity
+            onPress={async (e) => {
+              e.stopPropagation?.();
+              await dismissCostPrompt(db);
+              setCostPrompt(null);
+            }}
+            hitSlop={8}
+          >
+            <Text style={styles.costBannerDismiss}>✕</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      )}
 
       {/* Favourites */}
       <View style={styles.section}>
@@ -153,16 +238,24 @@ export function ProfileScreen({
         </TouchableOpacity>
       </View>
 
-      {/* Developer */}
+      {/* Household / Stats / Settings — §5.10 hero rows */}
       <View style={styles.section}>
         <View style={styles.card}>
-          <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>Debug mode</Text>
-            <Switch value={debugModeEnabled} onValueChange={onToggleDebugMode} />
-          </View>
+          <TouchableOpacity style={styles.navRow} onPress={onOpenHousehold}>
+            <Text style={styles.navRowLabel}>Household</Text>
+            <Text style={styles.chevron}>▸</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.navRow, styles.navRowDivider]} onPress={() => setView({ mode: 'stats' })}>
+            <Text style={styles.navRowLabel}>Stats</Text>
+            <Text style={styles.chevron}>▸</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.navRow, styles.navRowDivider]} onPress={() => setView({ mode: 'settings' })}>
+            <Text style={styles.navRowLabel}>Settings</Text>
+            <Text style={styles.chevron}>▸</Text>
+          </TouchableOpacity>
           {debugModeEnabled && (
-            <TouchableOpacity style={[styles.settingRow, styles.settingRowDivider]} onPress={onOpenDebug}>
-              <Text style={styles.settingLabel}>Debug log</Text>
+            <TouchableOpacity style={[styles.navRow, styles.navRowDivider]} onPress={onOpenDebug}>
+              <Text style={styles.navRowLabel}>Debug</Text>
               <Text style={styles.chevron}>▸</Text>
             </TouchableOpacity>
           )}
@@ -218,6 +311,18 @@ const makeStyles = (theme: AppTheme) =>
       textAlign: 'center',
     },
     nameSave: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.accentText },
+    costBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.colors.amberTint,
+      borderRadius: theme.radius.card,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.sm,
+      gap: theme.spacing.sm,
+    },
+    costBannerText: { flex: 1, fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.amberText },
+    costBannerDismiss: { fontSize: theme.fontSize.base, color: theme.colors.amberText },
     section: { gap: theme.spacing.sm },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     sectionLabel: {
@@ -261,13 +366,13 @@ const makeStyles = (theme: AppTheme) =>
     miniBarActive: { flex: 0.45 },
     miniBarPassive: { flex: 0.55 },
     themeChevron: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
-    settingRow: {
+    navRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingVertical: theme.spacing.md,
     },
-    settingRowDivider: { borderTopWidth: 1, borderTopColor: theme.colors.border },
-    settingLabel: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.base, color: theme.colors.ink },
+    navRowDivider: { borderTopWidth: 1, borderTopColor: theme.colors.border },
+    navRowLabel: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.base, color: theme.colors.ink },
     chevron: { color: theme.colors.ink3, fontSize: theme.fontSize.base },
   });

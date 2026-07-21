@@ -29,6 +29,7 @@ interface RecipeDetailScreenProps {
   onAlreadyCookedThis: () => void;
   /** Adds the recipe (at the currently selected serving count) to today's plan and the open shopping list. */
   onAddToShoppingList: (servings: number) => Promise<void>;
+  onShare: () => void;
 }
 
 export function RecipeDetailScreen({
@@ -44,6 +45,7 @@ export function RecipeDetailScreen({
   onStartCooking,
   onAlreadyCookedThis,
   onAddToShoppingList,
+  onShare,
 }: RecipeDetailScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -245,6 +247,7 @@ export function RecipeDetailScreen({
         />
         <ActionButton label="Edit" variant="neutral" onPress={onEdit} fill />
         <ActionButton label="Copy & tweak" variant="accent" onPress={onCopy} fill />
+        <ActionButton label="Share" variant="neutral" onPress={onShare} fill />
       </View>
       <View style={styles.actionsRow}>
         {recipe.exclusion ? (

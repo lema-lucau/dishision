@@ -3,6 +3,7 @@
     "name": "Preppie",
     "slug": "preppie",
     "version": "1.0.0",
+    "scheme": "preppie",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +22,17 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": ["BROWSABLE", "DEFAULT"],
+          "data": [
+            { "scheme": "content", "pathPattern": ".*\\.preppie" },
+            { "scheme": "file", "pathPattern": ".*\\.preppie" }
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

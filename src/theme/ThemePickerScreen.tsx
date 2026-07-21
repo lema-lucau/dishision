@@ -141,6 +141,7 @@ function ThemePreview({ themeId, onBack, onApply }: { themeId: ThemeId; onBack: 
           onStartCooking={noop}
           onAlreadyCookedThis={noop}
           onAddToShoppingList={async () => {}}
+          onShare={noop}
         />
       </View>
 

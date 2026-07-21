@@ -25,6 +25,13 @@ import { runRecipeQuery } from '../recipes/queryEngine';
 import { createManualRecipe, updateManualRecipe, type RecipeDraft } from '../recipes/recipeSave';
 import { getCurrencySymbol } from '../settings/getSetting';
 import { SORT_LABELS, SortMenu } from '../recipes/SortMenu';
+import { useImportIntentStore } from '../sharing/importIntentStore';
+import { ImportEntryScreen } from '../sharing/ImportEntryScreen';
+import { ImportPreviewScreen } from '../sharing/ImportPreviewScreen';
+import { ManualMergeScreen } from '../sharing/ManualMergeScreen';
+import { mergeRecipeLineage } from '../sharing/importRecipe';
+import type { SharePayload } from '../sharing/payload';
+import { ShareSheetScreen } from '../sharing/ShareSheetScreen';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
@@ -37,7 +44,11 @@ type ViewState =
   | { mode: 'exclusions' }
   | { mode: 'ingredients' }
   | { mode: 'cookComplete'; recipeId: number; retroactive: boolean }
-  | { mode: 'cookingMode'; recipeId: number };
+  | { mode: 'cookingMode'; recipeId: number }
+  | { mode: 'share'; recipeId: number }
+  | { mode: 'importEntry' }
+  | { mode: 'importPreview'; payload: SharePayload }
+  | { mode: 'mergeDuplicates' };
 
 interface RecipesScreenProps {
   /** Set when arriving from the Profile page's "View all" favourites link (§5.10). */
@@ -126,6 +137,17 @@ export function RecipesScreen({
     getCurrencySymbol(db).then(setCurrencySymbol);
   }, [db]);
 
+  // §7.2: a recipe delivered via deep link or .preppie file jumps straight
+  // into the import preview — never written silently (§7.3).
+  const pendingImportPayload = useImportIntentStore((s) => s.pending);
+  const clearPendingImport = useImportIntentStore((s) => s.clear);
+  useEffect(() => {
+    if (pendingImportPayload) {
+      setView({ mode: 'importPreview', payload: pendingImportPayload });
+      clearPendingImport();
+    }
+  }, [pendingImportPayload, clearPendingImport]);
+
   useEffect(() => {
     if (view.mode === 'create') {
       setEditDraft(emptyRecipeDraft());
@@ -166,6 +188,51 @@ export function RecipesScreen({
       <IngredientsScreen
         onBack={() => setView({ mode: 'list' })}
         onOpenRecipe={(recipeId) => setView({ mode: 'detail', recipeId })}
+      />
+    );
+  }
+
+  if (view.mode === 'share') {
+    const recipe = recipes.find((r) => r.id === view.recipeId);
+    if (!recipe) {
+      setView({ mode: 'list' });
+      return null;
+    }
+    return <ShareSheetScreen recipe={recipe} onBack={() => setView({ mode: 'detail', recipeId: recipe.id })} />;
+  }
+
+  if (view.mode === 'importEntry') {
+    return (
+      <ImportEntryScreen
+        onBack={() => setView({ mode: 'list' })}
+        onPayload={(payload) => setView({ mode: 'importPreview', payload })}
+      />
+    );
+  }
+
+  if (view.mode === 'importPreview') {
+    return (
+      <ImportPreviewScreen
+        payload={view.payload}
+        onCancel={() => setView({ mode: 'list' })}
+        onImported={async (recipeId) => {
+          await reload();
+          setView(recipeId >= 0 ? { mode: 'detail', recipeId } : { mode: 'list' });
+        }}
+      />
+    );
+  }
+
+  if (view.mode === 'mergeDuplicates') {
+    return (
+      <ManualMergeScreen
+        recipes={recipes}
+        onBack={() => setView({ mode: 'list' })}
+        onMerge={async (keepId, duplicateId, adopt) => {
+          await mergeRecipeLineage(db, keepId, duplicateId, adopt);
+          await reload();
+          setView({ mode: 'detail', recipeId: keepId });
+        }}
       />
     );
   }
@@ -227,6 +294,7 @@ export function RecipesScreen({
         }}
         onStartCooking={() => setView({ mode: 'cookingMode', recipeId: recipe.id })}
         onAlreadyCookedThis={() => setView({ mode: 'cookComplete', recipeId: recipe.id, retroactive: true })}
+        onShare={() => setView({ mode: 'share', recipeId: recipe.id })}
         onAddToShoppingList={async (servings) => {
           await createPlannedMeal(db, { recipeId: recipe.id, plannedDate: localDateKey(), slot: 'dinner', plannedServings: servings });
           await addRecipeToShoppingList(db, { recipeId: recipe.id, servings });
@@ -284,9 +352,14 @@ export function RecipesScreen({
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Recipes</Text>
-        <TouchableOpacity onPress={() => setView({ mode: 'create' })}>
-          <Text style={styles.addLink}>+ Add recipe</Text>
-        </TouchableOpacity>
+        <View style={styles.headerLinks}>
+          <TouchableOpacity onPress={() => setView({ mode: 'importEntry' })}>
+            <Text style={styles.addLink}>Import</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setView({ mode: 'create' })}>
+            <Text style={styles.addLink}>+ Add recipe</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchRow}>
@@ -355,7 +428,10 @@ export function RecipesScreen({
               <Text style={[styles.pageSizeButtonText, pageSize === size && styles.pageSizeButtonTextActive]}>{size}</Text>
             </TouchableOpacity>
           ))}
-          <TouchableOpacity onPress={() => setView({ mode: 'exclusions' })} style={styles.exclusionsLink}>
+          <TouchableOpacity onPress={() => setView({ mode: 'mergeDuplicates' })} style={styles.exclusionsLink}>
+            <Text style={styles.toolbarLink}>Merge duplicates</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setView({ mode: 'exclusions' })}>
             <Text style={styles.toolbarLink}>Exclusions</Text>
           </TouchableOpacity>
         </View>
@@ -407,6 +483,7 @@ const makeStyles = (theme: AppTheme) =>
   container: { flex: 1, padding: theme.spacing.base, gap: theme.spacing.md },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerLinks: { flexDirection: 'row', gap: theme.spacing.base },
   title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
   addLink: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
   favBanner: {
