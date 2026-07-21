@@ -9,6 +9,11 @@ const ML_PER: Partial<Record<RecipeUnit, number>> = {
   tsp: 5,
   tbsp: 15,
   cup: 240,
+  l: 1000,
+};
+
+const G_PER: Partial<Record<RecipeUnit, number>> = {
+  kg: 1000,
 };
 
 export interface ConvertibleIngredient {
@@ -52,6 +57,9 @@ export function convertToBaseUnit(
     if (unit === 'g') {
       return { value: quantity / density, measured: true };
     }
+    if (unit === 'kg') {
+      return { value: (quantity * G_PER.kg!) / density, measured: true };
+    }
     return { value: null, measured: false };
   }
 
@@ -61,6 +69,9 @@ export function convertToBaseUnit(
       return { value: quantity * ingredient.packSize, measured: true };
     }
     return { value: null, measured: false };
+  }
+  if (unit === 'kg') {
+    return { value: quantity * G_PER.kg!, measured: true };
   }
   if (unit === 'ml') {
     return { value: quantity * density, measured: true };

@@ -3,7 +3,7 @@
 // and a log editor (stars, quick tags, free-text fields — photos and
 // substitutions with promote-to-recipe are explicitly S10 per spec).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { DatePickerModal } from '../components/DatePickerModal';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { deleteCookLog, deleteQuickTagEverywhere, loadCookLogs, updateCookLog, type CookLogDraft, type CookLogRow } from '../cooking/cookLog';
@@ -20,7 +20,7 @@ import {
 import { addCustomQuickTag, BUILT_IN_QUICK_TAGS, loadCustomQuickTags, removeCustomQuickTag } from '../cooking/quickTags';
 import { useDb } from '../db/DbContext';
 import { capitalize } from '../lib/capitalize';
-import { formatShortDate } from '../lib/formatDate';
+import { formatDMY, formatShortDate } from '../lib/formatDate';
 import { PhotoViewer } from '../photos/PhotoViewer';
 import { pickAndCompressPhotos } from '../photos/pickAndCompressPhoto';
 import { EmojiTile } from '../recipes/EmojiTile';
@@ -236,7 +236,8 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
         />
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <KeyboardAvoidingView style={styles.scroll} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <TouchableOpacity style={styles.filtersToggle} onPress={() => setFiltersExpanded((e) => !e)}>
           <Text style={styles.filtersToggleText}>
             {filtersExpanded ? '▾' : '▸'} Filters
@@ -272,11 +273,11 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
             <View style={styles.dateRangeRow}>
               <TouchableOpacity style={styles.dateButton} onPress={() => setShowFromPicker(true)}>
                 <Text style={styles.dateButtonLabel}>From</Text>
-                <Text style={styles.dateButtonValue}>{dateFrom ?? 'Any'}</Text>
+                <Text style={styles.dateButtonValue}>{dateFrom ? formatDMY(dateFrom) : 'Any'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dateButton} onPress={() => setShowToPicker(true)}>
                 <Text style={styles.dateButtonLabel}>To</Text>
-                <Text style={styles.dateButtonValue}>{dateTo ?? 'Any'}</Text>
+                <Text style={styles.dateButtonValue}>{dateTo ? formatDMY(dateTo) : 'Any'}</Text>
               </TouchableOpacity>
               {(dateFrom || dateTo) && (
                 <TouchableOpacity
@@ -381,6 +382,7 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {selectMode && selectedIds.size > 0 && (
         <View style={styles.selectionBar}>
@@ -744,7 +746,8 @@ function CookLogEditor({
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.editorContent}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.editorContent} keyboardShouldPersistTaps="handled">
       <TouchableOpacity style={styles.backButton} onPress={onCancel}>
         <Text style={styles.back}>← Cancel</Text>
       </TouchableOpacity>
@@ -800,11 +803,26 @@ function CookLogEditor({
       </View>
 
       <Text style={styles.label}>What went well</Text>
-      <TextInput style={styles.textArea} value={whatWentWell} onChangeText={setWhatWentWell} multiline />
+      <TextInput
+        style={styles.textArea}
+        value={whatWentWell}
+        onChangeText={setWhatWentWell}
+        multiline
+      />
       <Text style={styles.label}>What to change</Text>
-      <TextInput style={styles.textArea} value={whatToChange} onChangeText={setWhatToChange} multiline />
+      <TextInput
+        style={styles.textArea}
+        value={whatToChange}
+        onChangeText={setWhatToChange}
+        multiline
+      />
       <Text style={styles.label}>Notes</Text>
-      <TextInput style={styles.textArea} value={notes} onChangeText={setNotes} multiline />
+      <TextInput
+        style={styles.textArea}
+        value={notes}
+        onChangeText={setNotes}
+        multiline
+      />
 
       <Text style={styles.label}>Substitutions</Text>
       {substitutions.map((sub) => (
@@ -875,9 +893,21 @@ function CookLogEditor({
             ))}
           </View>
           <Text style={styles.subFormLabel}>Original</Text>
-          <TextInput style={styles.subInput} value={newSubOriginalText} onChangeText={setNewSubOriginalText} placeholder="chicken thigh" placeholderTextColor={theme.colors.ink3} />
+          <TextInput
+            style={styles.subInput}
+            value={newSubOriginalText}
+            onChangeText={setNewSubOriginalText}
+            placeholder="chicken thigh"
+            placeholderTextColor={theme.colors.ink3}
+          />
           <Text style={styles.subFormLabel}>Replaced with</Text>
-          <TextInput style={styles.subInput} value={newSubReplacementText} onChangeText={setNewSubReplacementText} placeholder="tofu" placeholderTextColor={theme.colors.ink3} />
+          <TextInput
+            style={styles.subInput}
+            value={newSubReplacementText}
+            onChangeText={setNewSubReplacementText}
+            placeholder="tofu"
+            placeholderTextColor={theme.colors.ink3}
+          />
           <Text style={styles.subFormLabel}>Verdict</Text>
           <View style={styles.filterRow}>
             {VERDICTS.map((v) => (
@@ -976,6 +1006,7 @@ function CookLogEditor({
       {modal}
       <PhotoViewer visible={viewerIndex != null} photos={photos} initialIndex={viewerIndex ?? 0} onClose={() => setViewerIndex(null)} />
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

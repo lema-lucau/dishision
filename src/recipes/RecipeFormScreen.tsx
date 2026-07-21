@@ -4,6 +4,8 @@
 // read-only timeline preview — the cheap 90% of the visual editor.
 import { useMemo, useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -16,6 +18,7 @@ import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { capitalize } from '../lib/capitalize';
 import { formatDuration } from '../lib/formatDuration';
+import { UNIT_OPTIONS } from '../lib/unitLabels';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { phaseColor } from '../theme/stepColors';
 import { createUserIngredient, searchCanonicalIngredients, type CanonicalIngredientOption } from './ingredientSearch';
@@ -23,7 +26,6 @@ import type { RecipeDraft, RecipeIngredientDraft, RecipeStepDraft } from './reci
 import type { BaseUnit, Effort, Phase, RecipeUnit, TimelineMode } from '../seed/types';
 import { EmojiPicker } from './EmojiPicker';
 
-const UNIT_OPTIONS: RecipeUnit[] = ['g', 'ml', 'tsp', 'tbsp', 'cup', 'unit'];
 const TAG_SUGGESTIONS = ['chicken', 'beef', 'pork', 'fish', 'lamb', 'veg', 'healthy', 'comfort', 'hob', 'oven', 'one-pot', 'traybake'];
 
 export interface RecipeFormScreenProps {
@@ -197,7 +199,8 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
   const totalSeconds = draft.steps.reduce((acc, s) => acc + (s.durationSeconds ?? 0), 0);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <TouchableOpacity onPress={onCancel}>
         <Text style={styles.back}>← Cancel</Text>
       </TouchableOpacity>
@@ -206,7 +209,12 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
       <EmojiPicker value={draft.photoEmoji || '🍽️'} onChange={(e) => update({ photoEmoji: e })} />
 
       <Text style={styles.label}>Name</Text>
-      <TextInput style={styles.input} value={draft.name} onChangeText={(v) => update({ name: v })} placeholder="Thai Green Curry" />
+      <TextInput
+        style={styles.input}
+        value={draft.name}
+        onChangeText={(v) => update({ name: v })}
+        placeholder="Thai Green Curry"
+      />
 
       <Text style={styles.label}>Description</Text>
       <TextInput
@@ -281,7 +289,11 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
           <Text style={styles.sectionTitle}>LANES</Text>
           {draft.lanes.map((lane, index) => (
             <View key={index} style={styles.inlineRow}>
-              <TextInput style={[styles.input, styles.flex1]} value={lane} onChangeText={(v) => updateLane(index, v)} />
+              <TextInput
+                style={[styles.input, styles.flex1]}
+                value={lane}
+                onChangeText={(v) => updateLane(index, v)}
+              />
               <TouchableOpacity onPress={() => removeLane(index)}>
                 <Text style={styles.removeLink}>Remove</Text>
               </TouchableOpacity>
@@ -294,49 +306,51 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
       )}
 
       <Text style={styles.sectionTitle}>INGREDIENTS</Text>
-      {draft.ingredients.map((ing, index) => (
-        <View key={index} style={styles.ingredientCard}>
-          <View style={styles.inlineRow}>
-            <TextInput
-              style={[styles.input, styles.flex1]}
-              value={ing.displayName}
-              onChangeText={(v) => updateIngredient(index, { displayName: v })}
-              placeholder="display name"
-            />
-            <TouchableOpacity onPress={() => moveIngredient(index, -1)} style={styles.iconButton} hitSlop={8}>
-              <Text style={styles.reorderLink}>↑</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => moveIngredient(index, 1)} style={styles.iconButton} hitSlop={8}>
-              <Text style={styles.reorderLink}>↓</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => removeIngredient(index)} style={styles.iconButton} hitSlop={8}>
-              <Text style={styles.removeLink}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.inlineRow}>
-            <TextInput
-              style={[styles.input, styles.flexSmall]}
-              keyboardType="numeric"
-              value={ing.quantity ? String(ing.quantity) : ''}
-              onChangeText={(v) => updateIngredient(index, { quantity: Number(v) || 0 })}
-              placeholder="qty"
-            />
-            <View style={styles.segmented}>
-              {UNIT_OPTIONS.map((u) => (
-                <TouchableOpacity key={u} onPress={() => updateIngredient(index, { unit: u })} style={[styles.unitButton, ing.unit === u && styles.segmentButtonActive]}>
-                  <Text style={[styles.segmentText, ing.unit === u && styles.segmentTextActive]}>{u}</Text>
-                </TouchableOpacity>
-              ))}
+      {draft.ingredients.map((ing, index) => {
+        return (
+          <View key={index} style={styles.ingredientCard}>
+            <View style={styles.inlineRow}>
+              <TextInput
+                style={[styles.input, styles.flex1]}
+                value={ing.displayName}
+                onChangeText={(v) => updateIngredient(index, { displayName: v })}
+                placeholder="display name"
+              />
+              <TouchableOpacity onPress={() => moveIngredient(index, -1)} style={styles.iconButton} hitSlop={8}>
+                <Text style={styles.reorderLink}>↑</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => moveIngredient(index, 1)} style={styles.iconButton} hitSlop={8}>
+                <Text style={styles.reorderLink}>↓</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => removeIngredient(index)} style={styles.iconButton} hitSlop={8}>
+                <Text style={styles.removeLink}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.inlineRow}>
+              <TextInput
+                style={[styles.input, styles.flexSmall]}
+                keyboardType="numeric"
+                value={ing.quantity ? String(ing.quantity) : ''}
+                onChangeText={(v) => updateIngredient(index, { quantity: Number(v) || 0 })}
+                placeholder="qty"
+              />
+              <View style={styles.segmented}>
+                {UNIT_OPTIONS.map((u) => (
+                  <TouchableOpacity key={u} onPress={() => updateIngredient(index, { unit: u })} style={[styles.unitButton, ing.unit === u && styles.segmentButtonActive]}>
+                    <Text style={[styles.segmentText, ing.unit === u && styles.segmentTextActive]}>{u}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <View style={styles.inlineRow}>
+              <Text style={styles.switchLabel}>Scalable</Text>
+              <Switch value={ing.scalable} onValueChange={(v) => updateIngredient(index, { scalable: v })} />
+              <Text style={styles.switchLabel}>Optional</Text>
+              <Switch value={ing.optional} onValueChange={(v) => updateIngredient(index, { optional: v })} />
             </View>
           </View>
-          <View style={styles.inlineRow}>
-            <Text style={styles.switchLabel}>Scalable</Text>
-            <Switch value={ing.scalable} onValueChange={(v) => updateIngredient(index, { scalable: v })} />
-            <Text style={styles.switchLabel}>Optional</Text>
-            <Switch value={ing.optional} onValueChange={(v) => updateIngredient(index, { optional: v })} />
-          </View>
-        </View>
-      ))}
+        );
+      })}
 
       <TextInput
         style={styles.input}
@@ -363,7 +377,8 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
       <View style={styles.stepsSection}>
       <Text style={styles.sectionTitle}>STEPS</Text>
       <View style={styles.stepsStack}>
-      {draft.steps.map((step, index) => (
+      {draft.steps.map((step, index) => {
+        return (
         <View key={index} style={[styles.ingredientCard, { backgroundColor: phaseColor(theme, step.phase).bg }]}>
           <View style={styles.stepHeaderRow}>
             <View style={styles.segmented}>
@@ -442,7 +457,8 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
             <Text style={styles.derivedOffset}>Derived start: {formatDuration(sequentialOffsets[index])}</Text>
           )}
         </View>
-      ))}
+        );
+      })}
       </View>
       <View style={styles.addStepRow}>
         <TouchableOpacity style={styles.addStepButton} onPress={() => update({ steps: [...draft.steps, emptyStep('prep')] })}>
@@ -492,6 +508,7 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
 
       {modal}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -2,7 +2,7 @@
 // live here. Stats, backup/export, and the full settings surface are a later
 // slice — this page focuses on identity, favourites, and appearance.
 import { useEffect, useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDb } from '../db/DbContext';
 import { loadTopFavourites, type FavouriteSummary } from '../profile/loadFavourites';
 import { rerollAvatarEmoji, updateDisplayName } from '../profile/profileMutations';
@@ -60,7 +60,8 @@ export function ProfileScreen({
   const currentTheme = themes[themeId];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {/* Identity hero */}
       <View style={styles.hero}>
         <View style={styles.avatarWrap}>
@@ -168,6 +169,7 @@ export function ProfileScreen({
         </View>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

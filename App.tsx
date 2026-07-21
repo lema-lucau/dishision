@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DbProvider } from './src/db/DbContext';
 import { openDatabase } from './src/db/openDatabase';
@@ -74,36 +75,46 @@ export default function App() {
 
   if (fontsError) {
     return (
-      <SafeAreaProvider>
-        <ErrorScreen message={String(fontsError)} />
-      </SafeAreaProvider>
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <SafeAreaProvider>
+          <ErrorScreen message={String(fontsError)} />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     );
   }
   if (initError) {
     return (
-      <SafeAreaProvider>
-        <ErrorScreen message={initError} />
-      </SafeAreaProvider>
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <SafeAreaProvider>
+          <ErrorScreen message={initError} />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     );
   }
   if (!fontsLoaded || !db || !profile) {
     return (
-      <SafeAreaProvider>
-        <LoadingScreen />
-      </SafeAreaProvider>
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <SafeAreaProvider>
+          <LoadingScreen />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <DbProvider db={db}>
-        <ThemeProvider db={db}>
-          <ThemedRoot profile={profile} />
-        </ThemeProvider>
-      </DbProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.gestureRoot}>
+      <SafeAreaProvider>
+        <DbProvider db={db}>
+          <ThemeProvider db={db}>
+            <ThemedRoot profile={profile} />
+          </ThemeProvider>
+        </DbProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({ gestureRoot: { flex: 1 } });
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({

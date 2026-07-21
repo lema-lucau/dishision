@@ -4,7 +4,7 @@
 // skippable (§1.1 no-nagging) — Done alone still commits made/eaten, pantry
 // deduction, and any leftover.
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { addShortfallToShoppingList, completeCook } from '../cooking/completeCook';
 import type { CookLogDraft } from '../cooking/cookLog';
 import { updateCookLog } from '../cooking/cookLog';
@@ -110,7 +110,8 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
   const leftoverLine = preview?.leftoverPlan;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Cooked {recipe.name}</Text>
       <Text style={styles.subtitle}>
         {Math.round(recipe.totalSeconds / 60)} min · {recipe.timesCooked + 1}
@@ -220,11 +221,29 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
             ))}
           </View>
           <Text style={styles.label}>What went well</Text>
-          <TextInput style={styles.textArea} value={whatWentWell} onChangeText={setWhatWentWell} multiline placeholder="…" />
+          <TextInput
+            style={styles.textArea}
+            value={whatWentWell}
+            onChangeText={setWhatWentWell}
+            multiline
+            placeholder="…"
+          />
           <Text style={styles.label}>What to change</Text>
-          <TextInput style={styles.textArea} value={whatToChange} onChangeText={setWhatToChange} multiline placeholder="…" />
+          <TextInput
+            style={styles.textArea}
+            value={whatToChange}
+            onChangeText={setWhatToChange}
+            multiline
+            placeholder="…"
+          />
           <Text style={styles.label}>Notes</Text>
-          <TextInput style={styles.textArea} value={notes} onChangeText={setNotes} multiline placeholder="…" />
+          <TextInput
+            style={styles.textArea}
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+            placeholder="…"
+          />
         </View>
       )}
 
@@ -242,6 +261,7 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
         <Text style={styles.cancelLink}>Cancel</Text>
       </TouchableOpacity>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

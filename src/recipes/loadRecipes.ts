@@ -5,6 +5,7 @@
 import type { DbClient } from '../db/DbClient';
 import { deriveNutrition, deriveTimeSplit, durationBucket, type DurationBucket } from '../lib/derive';
 import { convertToBaseUnit } from '../lib/units';
+import { primaryProteinTag } from './queryEngine';
 import type { RecipeUnit } from '../seed/types';
 
 interface RecipeRow {
@@ -147,11 +148,6 @@ export interface EnrichedRecipe {
   hasStaleCost: boolean;
   /** Private log text (§5.4 search) — never leaves the device, never included in a share payload. */
   logNotes: string[];
-}
-
-function primaryProteinTag(tags: string[]): string | null {
-  const proteinTags = ['chicken', 'beef', 'pork', 'fish', 'lamb', 'veg'];
-  return tags.find((t) => proteinTags.includes(t)) ?? null;
 }
 
 export async function loadEnrichedRecipes(

@@ -78,6 +78,11 @@ export function TabShell({ profile }: TabShellProps) {
               setCookLogFocusId(cookLogId);
               setActiveTab('cookLog');
             }}
+            onOpenRecipe={(recipeId) => {
+              setRecipesInitialRecipeId(recipeId);
+              setRecipesInitialStartCooking(false);
+              setActiveTab('recipes');
+            }}
           />
         )}
         {activeTab === 'cookLog' && (

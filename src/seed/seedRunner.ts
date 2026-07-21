@@ -6,6 +6,8 @@
 import { uuidv4 } from '../utils/uuid';
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { capitalize } from '../lib/capitalize';
+import { inferIngredientCategory } from '../lib/ingredientCategory';
 import { ingredients as seedIngredients } from './data/ingredients';
 import { recipes as seedRecipes } from './data/recipes';
 import { tags as seedTags } from './data/tags';
@@ -26,11 +28,12 @@ function slugify(name: string): string {
 }
 
 async function upsertIngredient(db: DbClient, ing: IngredientFixture): Promise<number> {
+  const category = ing.category ?? inferIngredientCategory(ing.name);
   await db.runAsync(
     `INSERT INTO canonical_ingredient
        (seed_id, name, base_unit, pack_size, pack_label, kcal_per_100, protein_per_100,
-        carbs_per_100, fat_per_100, cost_per_100, cost_updated_at, density, source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, 'seed')
+        carbs_per_100, fat_per_100, cost_per_100, cost_updated_at, density, category, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, 'seed')
      ON CONFLICT(seed_id) DO UPDATE SET
        name = excluded.name,
        base_unit = excluded.base_unit,
@@ -42,10 +45,11 @@ async function upsertIngredient(db: DbClient, ing: IngredientFixture): Promise<n
        fat_per_100 = excluded.fat_per_100,
        cost_per_100 = excluded.cost_per_100,
        density = excluded.density,
+       category = excluded.category,
        updated_at = datetime('now')`,
     [
       ing.seedId,
-      ing.name,
+      capitalize(ing.name),
       ing.baseUnit,
       ing.packSize ?? null,
       ing.packLabel ?? null,
@@ -55,6 +59,7 @@ async function upsertIngredient(db: DbClient, ing: IngredientFixture): Promise<n
       ing.fatPer100 ?? null,
       ing.costPer100 ?? null,
       ing.density ?? null,
+      category,
     ],
   );
   const row = await db.getFirstAsync<{ id: number }>(
@@ -66,7 +71,7 @@ async function upsertIngredient(db: DbClient, ing: IngredientFixture): Promise<n
   for (const alias of ing.aliases ?? []) {
     await db.runAsync(
       'INSERT OR IGNORE INTO canonical_ingredient_alias (canonical_id, alias) VALUES (?, ?)',
-      [row.id, alias],
+      [row.id, capitalize(alias)],
     );
   }
 
@@ -78,7 +83,7 @@ async function upsertTag(db: DbClient, tag: TagFixture): Promise<number> {
     `INSERT INTO tag (seed_id, name, type, colour)
      VALUES (?, ?, ?, ?)
      ON CONFLICT(seed_id) DO UPDATE SET name = excluded.name, type = excluded.type, colour = excluded.colour`,
-    [tag.seedId, tag.name, tag.type, tag.colour ?? null],
+    [tag.seedId, capitalize(tag.name), tag.type, tag.colour ?? null],
   );
   const row = await db.getFirstAsync<{ id: number }>('SELECT id FROM tag WHERE seed_id = ?', [tag.seedId]);
   if (!row) throw new Error(`Tag upsert failed to produce a row: ${tag.seedId}`);
@@ -191,7 +196,7 @@ async function upsertRecipe(
       [
         recipeId,
         canonicalId,
-        ing.displayName ?? ing.canonicalName,
+        capitalize(ing.displayName ?? ing.canonicalName),
         ing.quantity,
         ing.unit,
         ing.scalable === false ? 0 : 1,

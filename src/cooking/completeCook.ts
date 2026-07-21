@@ -6,6 +6,7 @@
 // Complete button (§5.6) — cooking_session has nothing to do with this file.
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { findOrCreateOpenShoppingList } from '../plan/shoppingListMutations';
 import { getAutoAddShortfalls } from '../settings/getSetting';
 import { computeConsumption, type ConsumptionIngredientInput } from './pantryConsumption';
 import { computeLeftoverPlan } from './leftover';
@@ -74,15 +75,6 @@ export async function loadIngredientsForConsumption(
       pantryQuantity: r.pantry_quantity,
     })),
   };
-}
-
-async function findOrCreateOpenShoppingList(db: DbClient): Promise<number> {
-  const existing = await db.getFirstAsync<{ id: number }>(
-    'SELECT id FROM shopping_list WHERE completed_at IS NULL ORDER BY created_at DESC LIMIT 1',
-  );
-  if (existing) return existing.id;
-  const result = await db.runAsync('INSERT INTO shopping_list (name) VALUES (NULL)');
-  return result.lastInsertRowId;
 }
 
 // The manual counterpart to the auto-add path above, for when

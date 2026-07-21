@@ -3,11 +3,15 @@
 // is its own small stack via local state, same pattern as the Debug screen
 // toggle in TabShell.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDb } from '../db/DbContext';
+import { localDateKey } from '../lib/formatDate';
+import { addRecipeToShoppingList } from '../plan/shoppingListGeneration';
+import { createPlannedMeal } from '../plan/planMutations';
 import { CookCompleteScreen } from '../recipes/CookCompleteScreen';
 import { CookingModeScreen } from '../recipes/CookingModeScreen';
 import { ExclusionsScreen } from '../recipes/ExclusionsScreen';
+import { IngredientsScreen } from '../recipes/IngredientsScreen';
 import { FilterChipBar } from '../recipes/FilterChipBar';
 import { emptyRecipeDraft, loadRecipeDraft } from '../recipes/loadRecipeForEdit';
 import { loadEnrichedRecipes, type EnrichedRecipe } from '../recipes/loadRecipes';
@@ -31,6 +35,7 @@ type ViewState =
   | { mode: 'create' }
   | { mode: 'edit'; recipeId: number }
   | { mode: 'exclusions' }
+  | { mode: 'ingredients' }
   | { mode: 'cookComplete'; recipeId: number; retroactive: boolean }
   | { mode: 'cookingMode'; recipeId: number };
 
@@ -156,6 +161,15 @@ export function RecipesScreen({
     );
   }
 
+  if (view.mode === 'ingredients') {
+    return (
+      <IngredientsScreen
+        onBack={() => setView({ mode: 'list' })}
+        onOpenRecipe={(recipeId) => setView({ mode: 'detail', recipeId })}
+      />
+    );
+  }
+
   if ((view.mode === 'create' || view.mode === 'edit') && editDraft) {
     return (
       <RecipeFormScreen
@@ -213,6 +227,10 @@ export function RecipesScreen({
         }}
         onStartCooking={() => setView({ mode: 'cookingMode', recipeId: recipe.id })}
         onAlreadyCookedThis={() => setView({ mode: 'cookComplete', recipeId: recipe.id, retroactive: true })}
+        onAddToShoppingList={async (servings) => {
+          await createPlannedMeal(db, { recipeId: recipe.id, plannedDate: localDateKey(), slot: 'dinner', plannedServings: servings });
+          await addRecipeToShoppingList(db, { recipeId: recipe.id, servings });
+        }}
       />
     );
   }
@@ -289,7 +307,8 @@ export function RecipesScreen({
         </TouchableOpacity>
       )}
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <KeyboardAvoidingView style={styles.scroll} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <TouchableOpacity
           style={styles.filtersToggle}
           onPress={() => setFiltersExpanded((e) => !e)}
@@ -341,7 +360,12 @@ export function RecipesScreen({
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.matchCount}>{result.items.length} matches</Text>
+        <View style={styles.matchCountRow}>
+          <Text style={styles.matchCount}>{result.items.length} matches</Text>
+          <TouchableOpacity onPress={() => setView({ mode: 'ingredients' })}>
+            <Text style={styles.toolbarLink}>All ingredients</Text>
+          </TouchableOpacity>
+        </View>
         {result.relaxed && <Text style={styles.relaxedNote}>Closest matches — not all fit your filters exactly.</Text>}
 
         {MEAL_TYPES.map((mealType) => {
@@ -362,6 +386,7 @@ export function RecipesScreen({
           );
         })}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <SortMenu
         visible={sortMenuOpen}
@@ -449,6 +474,7 @@ const makeStyles = (theme: AppTheme) =>
   pageSizeButtonActive: { backgroundColor: theme.colors.accent },
   pageSizeButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
   pageSizeButtonTextActive: { color: theme.colors.accentFg },
+  matchCountRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   matchCount: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
   relaxedNote: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.amberText, fontStyle: 'italic' },
 });

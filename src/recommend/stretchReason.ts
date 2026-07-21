@@ -4,7 +4,7 @@
 // out of FeelingPickerSheet.tsx, which pulls in react-native and can't be
 // unit-tested under plain Vitest) so this logic is directly testable.
 import type { EnrichedRecipe } from '../recipes/loadRecipes';
-import type { ChipKey } from '../recipes/queryEngine';
+import { hasTag, type ChipKey } from '../recipes/queryEngine';
 
 export function stretchReason(recipe: EnrichedRecipe, chips: ChipKey[], medianCostPerServing: number | null): string | null {
   for (const chip of chips) {
@@ -16,10 +16,10 @@ export function stretchReason(recipe: EnrichedRecipe, chips: ChipKey[], medianCo
         if (recipe.activeSeconds >= 15 * 60) return `${Math.round(recipe.activeSeconds / 60)} min hands-on, not under 15`;
         break;
       case 'healthy':
-        if (!recipe.tags.includes('healthy')) return 'not tagged healthy';
+        if (!hasTag(recipe.tags, 'healthy')) return 'not tagged healthy';
         break;
       case 'comfort':
-        if (!recipe.tags.includes('comfort')) return 'not tagged comfort';
+        if (!hasTag(recipe.tags, 'comfort')) return 'not tagged comfort';
         break;
       case 'highProtein':
         if (recipe.proteinPerServing == null || recipe.proteinPerServing < 30) {
@@ -37,7 +37,7 @@ export function stretchReason(recipe: EnrichedRecipe, chips: ChipKey[], medianCo
       case 'lamb':
       case 'fish':
       case 'veg':
-        if (!recipe.tags.includes(chip)) return `not tagged ${chip}`;
+        if (!hasTag(recipe.tags, chip)) return `not tagged ${chip}`;
         break;
       case 'cheap':
         if (recipe.costPerServing == null || medianCostPerServing == null || recipe.costPerServing >= medianCostPerServing) {

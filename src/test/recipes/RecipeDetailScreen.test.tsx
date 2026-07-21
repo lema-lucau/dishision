@@ -95,6 +95,7 @@ async function renderDetail(recipe: EnrichedRecipe) {
       onClearExclusion={noopAsync}
       onStartCooking={noop}
       onAlreadyCookedThis={noop}
+      onAddToShoppingList={noopAsync}
     />,
   );
 }

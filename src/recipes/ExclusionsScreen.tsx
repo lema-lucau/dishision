@@ -1,6 +1,7 @@
 // §5.4 exclusions view: Never again (permanent) and Not tonight (expiring).
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { formatDMY } from '../lib/formatDate';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { EnrichedRecipe } from './loadRecipes';
 import { EmojiTile } from './EmojiTile';
@@ -44,7 +45,7 @@ export function ExclusionsScreen({ recipes, onUnexclude, onBack }: ExclusionsScr
           <View style={styles.nameCol}>
             <Text style={styles.name}>{recipe.name}</Text>
             {recipe.exclusion?.expiresAt && (
-              <Text style={styles.expiry}>until {new Date(recipe.exclusion.expiresAt).toLocaleDateString()}</Text>
+              <Text style={styles.expiry}>until {formatDMY(recipe.exclusion.expiresAt)}</Text>
             )}
           </View>
           <TouchableOpacity onPress={() => onUnexclude(recipe.id)}>

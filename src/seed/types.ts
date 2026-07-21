@@ -5,7 +5,7 @@
 // canonical_name against the local table.
 
 export type BaseUnit = 'g' | 'ml' | 'unit';
-export type RecipeUnit = 'g' | 'ml' | 'tsp' | 'tbsp' | 'cup' | 'unit';
+export type RecipeUnit = 'g' | 'kg' | 'ml' | 'l' | 'tsp' | 'tbsp' | 'cup' | 'unit';
 export type TagType = 'protein' | 'diet' | 'style' | 'equipment' | 'meal' | 'custom';
 export type Phase = 'prep' | 'cook';
 export type Effort = 'active' | 'passive';
@@ -24,6 +24,8 @@ export interface IngredientFixture {
   costPer100?: number;
   density?: number;
   aliases?: string[];
+  /** Pantry section-grouping category. Inferred from name when omitted. */
+  category?: import('../lib/ingredientCategory').IngredientCategory;
 }
 
 export interface TagFixture {
