@@ -2,9 +2,8 @@
 // Used by the Plan tab (§5.8) to attach a recipe to a date/slot; kept
 // generic rather than baked into PlanScreen so any future entry point that
 // needs "choose one of my recipes" doesn't reinvent it.
-import { useMemo, useRef, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useKeyboardAwareScroll } from '../hooks/useKeyboardAwareScroll';
+import { useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import type { EnrichedRecipe } from '../recipes/loadRecipes';
 import { EmojiTile } from '../recipes/EmojiTile';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
@@ -20,8 +19,6 @@ interface RecipePickerModalProps {
 export function RecipePickerModal({ visible, recipes, title = 'Choose a recipe', onSelect, onClose }: RecipePickerModalProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { scrollRef, scrollToInput, onScroll } = useKeyboardAwareScroll();
-  const searchInputRef = useRef<TextInput>(null);
   const [query, setQuery] = useState('');
 
   const filtered = query.trim()
@@ -30,19 +27,18 @@ export function RecipePickerModal({ visible, recipes, title = 'Choose a recipe',
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity activeOpacity={1} style={styles.sheet}>
           <Text style={styles.title}>{title}</Text>
           <TextInput
-            ref={searchInputRef}
             style={styles.search}
             placeholder="Search recipes…"
             placeholderTextColor={theme.colors.ink3}
             value={query}
             onChangeText={setQuery}
-            onFocus={() => scrollToInput(searchInputRef)}
           />
-          <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} style={styles.list}>
+          <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
             {filtered.length === 0 && <Text style={styles.empty}>No recipes match.</Text>}
             {filtered.map((recipe) => (
               <TouchableOpacity
@@ -71,12 +67,14 @@ export function RecipePickerModal({ visible, recipes, title = 'Choose a recipe',
           </TouchableOpacity>
         </TouchableOpacity>
       </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
+    flex: { flex: 1 },
     backdrop: { flex: 1, backgroundColor: theme.colors.scrim, justifyContent: 'flex-end' },
     sheet: {
       maxHeight: '75%',

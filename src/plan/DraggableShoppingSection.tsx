@@ -16,7 +16,11 @@ import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 
-export const DRAG_ROW_HEIGHT = 64;
+// Must match ShoppingListScreen's row height (50) plus its own marginBottom
+// (theme.spacing.xs, 4) — these rows are absolutely positioned during drag,
+// so that gap has to be baked into the slot height itself rather than
+// coming from margin (which position:absolute ignores for layout purposes).
+export const DRAG_ROW_HEIGHT = 54;
 
 interface DraggableShoppingSectionProps<T extends { id: number }> {
   items: T[];

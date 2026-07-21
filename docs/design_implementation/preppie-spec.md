@@ -1003,7 +1003,7 @@ Risograph's card borders and offset shadows (§4.3) are additive to this scale, 
 
 This isn't a new token — it's a discipline about which existing tokens to reach for when a section has several kinds of content stacked together, so a themed screen doesn't need a second pass once it's built to stop reading as cluttered.
 
-**Keyboard avoidance, as a standing rule.** `KeyboardAvoidingView` does not behave reliably across this app's screen layouts and must not be used. Every screen with a `TextInput` instead uses `useKeyboardAwareScroll()` (`src/hooks/useKeyboardAwareScroll.ts`): wrap the screen's outer `ScrollView` with the hook's `scrollRef` and `onScroll`, and give each `TextInput` an `onFocus={() => scrollToInput(inputRef)}` (with its own `useRef<TextInput>`). The hook measures the focused input against the live keyboard height and scrolls just enough to clear it — no static padding, no layout shift when the keyboard is closed. Any new input added to the app needs this wiring before it ships.
+**Keyboard avoidance, as a standing rule.** Every screen with a `TextInput` wraps its scrollable content in `KeyboardAvoidingView` with `behavior={Platform.OS === 'ios' ? 'padding' : 'height'}`, and the inner `ScrollView` gets `keyboardShouldPersistTaps="handled"`. A prior custom `useKeyboardAwareScroll` hook (ref-measure-and-scroll-on-focus) was tried first and removed — it was unreliable across screens. This is the same pattern as the Memento/travel-companion sibling project. No per-input wiring (no refs, no `onFocus` handlers) — the `KeyboardAvoidingView` alone at the top of each screen/modal handles it. Any new input added to the app needs to live inside one of these wrappers before it ships.
 
 ### 4.7 Signature element — the time split bar
 

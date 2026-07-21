@@ -2,11 +2,10 @@
 // hand-editable since nothing else tells the app you binned the wilted
 // spinach. Staples sit alongside it: the always-have list that's excluded
 // from generated shopping lists unless flagged running low.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
-import { useKeyboardAwareScroll } from '../hooks/useKeyboardAwareScroll';
 import { formatInDisplayUnit, type DisplayUnit } from '../lib/displayUnit';
 import { INGREDIENT_CATEGORIES, INGREDIENT_CATEGORY_LABELS, type IngredientCategory } from '../lib/ingredientCategory';
 import { pluralizeUnit } from '../lib/unitLabels';
@@ -39,9 +38,6 @@ export function PantryScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
-  const { scrollRef, scrollToInput, onScroll } = useKeyboardAwareScroll();
-  const searchInputRef = useRef<TextInput>(null);
-  const addSearchInputRef = useRef<TextInput>(null);
   const [section, setSection] = useState<Section>('pantry');
   const [pantry, setPantry] = useState<PantryItemRow[]>([]);
   const [staples, setStaples] = useState<StapleRow[]>([]);
@@ -186,11 +182,9 @@ export function PantryScreen() {
         <View style={styles.searchRow}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
-            ref={searchInputRef}
             style={styles.searchInput}
             value={listSearch}
             onChangeText={setListSearch}
-            onFocus={() => scrollToInput(searchInputRef)}
             placeholder={section === 'pantry' ? 'Search pantry…' : 'Search staples…'}
             placeholderTextColor={theme.colors.ink3}
           />
@@ -206,13 +200,11 @@ export function PantryScreen() {
       </View>
 
       <TextInput
-        ref={addSearchInputRef}
         style={styles.addSearch}
         placeholder={section === 'pantry' ? 'Add to pantry…' : 'Add a staple…'}
         placeholderTextColor={theme.colors.ink3}
         value={addQuery}
         onChangeText={runAddSearch}
-        onFocus={() => scrollToInput(addSearchInputRef)}
       />
       {addSuggestions.length > 0 && (
         <View style={styles.suggestions}>
@@ -228,7 +220,8 @@ export function PantryScreen() {
         </View>
       )}
 
-      <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <KeyboardAvoidingView style={styles.scroll} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {section === 'pantry' &&
           (pagedPantry.length === 0 ? (
             <Text style={styles.empty}>{needle ? 'Nothing matches.' : 'Nothing in the pantry yet.'}</Text>
@@ -286,6 +279,7 @@ export function PantryScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {selectMode && selectedIds.size > 0 && (
         <View style={styles.selectionBar}>

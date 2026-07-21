@@ -2,8 +2,10 @@
 // against canonical_ingredient with an "add this ingredient" fallback;
 // step editor is form-based (durations/offset/lane/effort/important) with a
 // read-only timeline preview — the cheap 90% of the visual editor.
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -14,7 +16,6 @@ import {
 } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
-import { useKeyboardAwareScroll } from '../hooks/useKeyboardAwareScroll';
 import { capitalize } from '../lib/capitalize';
 import { formatDuration } from '../lib/formatDuration';
 import { UNIT_OPTIONS } from '../lib/unitLabels';
@@ -55,11 +56,6 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
-  const { scrollRef, scrollToInput, onScroll } = useKeyboardAwareScroll();
-  const nameInputRef = useRef<TextInput>(null);
-  const descriptionInputRef = useRef<TextInput>(null);
-  const newTagInputRef = useRef<TextInput>(null);
-  const ingredientSearchInputRef = useRef<TextInput>(null);
   const [draft, setDraft] = useState<RecipeDraft>(initialDraft);
   const [ingredientQuery, setIngredientQuery] = useState('');
   const [suggestions, setSuggestions] = useState<CanonicalIngredientOption[]>([]);
@@ -203,31 +199,28 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
   const totalSeconds = draft.steps.reduce((acc, s) => acc + (s.durationSeconds ?? 0), 0);
 
   return (
-    <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <TouchableOpacity onPress={onCancel}>
         <Text style={styles.back}>← Cancel</Text>
       </TouchableOpacity>
       <Text style={styles.title}>{title}</Text>
 
-      <EmojiPicker value={draft.photoEmoji || '🍽️'} onChange={(e) => update({ photoEmoji: e })} scrollToInput={scrollToInput} />
+      <EmojiPicker value={draft.photoEmoji || '🍽️'} onChange={(e) => update({ photoEmoji: e })} />
 
       <Text style={styles.label}>Name</Text>
       <TextInput
-        ref={nameInputRef}
         style={styles.input}
         value={draft.name}
         onChangeText={(v) => update({ name: v })}
-        onFocus={() => scrollToInput(nameInputRef)}
         placeholder="Thai Green Curry"
       />
 
       <Text style={styles.label}>Description</Text>
       <TextInput
-        ref={descriptionInputRef}
         style={styles.input}
         value={draft.description}
         onChangeText={(v) => update({ description: v })}
-        onFocus={() => scrollToInput(descriptionInputRef)}
         placeholder="Weeknight staple."
       />
 
@@ -273,11 +266,9 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
         {showNewTagInput ? (
           <View style={styles.newTagInputRow}>
             <TextInput
-              ref={newTagInputRef}
               style={[styles.input, styles.newTagInput]}
               value={newTagText}
               onChangeText={setNewTagText}
-              onFocus={() => scrollToInput(newTagInputRef)}
               placeholder="New tag"
               autoFocus
               onSubmitEditing={submitNewTag}
@@ -296,23 +287,18 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
       {draft.timelineMode === 'parallel' && (
         <>
           <Text style={styles.sectionTitle}>LANES</Text>
-          {draft.lanes.map((lane, index) => {
-            const rowRef: { input?: TextInput | null } = {};
-            return (
-              <View key={index} style={styles.inlineRow}>
-                <TextInput
-                  ref={(el) => { rowRef.input = el; }}
-                  style={[styles.input, styles.flex1]}
-                  value={lane}
-                  onChangeText={(v) => updateLane(index, v)}
-                  onFocus={() => scrollToInput(rowRef.input ?? null)}
-                />
-                <TouchableOpacity onPress={() => removeLane(index)}>
-                  <Text style={styles.removeLink}>Remove</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          })}
+          {draft.lanes.map((lane, index) => (
+            <View key={index} style={styles.inlineRow}>
+              <TextInput
+                style={[styles.input, styles.flex1]}
+                value={lane}
+                onChangeText={(v) => updateLane(index, v)}
+              />
+              <TouchableOpacity onPress={() => removeLane(index)}>
+                <Text style={styles.removeLink}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
           <TouchableOpacity onPress={addLane}>
             <Text style={styles.addLink}>+ Add lane</Text>
           </TouchableOpacity>
@@ -321,16 +307,13 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
 
       <Text style={styles.sectionTitle}>INGREDIENTS</Text>
       {draft.ingredients.map((ing, index) => {
-        const rowRef: { name?: TextInput | null; qty?: TextInput | null } = {};
         return (
           <View key={index} style={styles.ingredientCard}>
             <View style={styles.inlineRow}>
               <TextInput
-                ref={(el) => { rowRef.name = el; }}
                 style={[styles.input, styles.flex1]}
                 value={ing.displayName}
                 onChangeText={(v) => updateIngredient(index, { displayName: v })}
-                onFocus={() => scrollToInput(rowRef.name ?? null)}
                 placeholder="display name"
               />
               <TouchableOpacity onPress={() => moveIngredient(index, -1)} style={styles.iconButton} hitSlop={8}>
@@ -345,12 +328,10 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
             </View>
             <View style={styles.inlineRow}>
               <TextInput
-                ref={(el) => { rowRef.qty = el; }}
                 style={[styles.input, styles.flexSmall]}
                 keyboardType="numeric"
                 value={ing.quantity ? String(ing.quantity) : ''}
                 onChangeText={(v) => updateIngredient(index, { quantity: Number(v) || 0 })}
-                onFocus={() => scrollToInput(rowRef.qty ?? null)}
                 placeholder="qty"
               />
               <View style={styles.segmented}>
@@ -372,11 +353,9 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
       })}
 
       <TextInput
-        ref={ingredientSearchInputRef}
         style={styles.input}
         value={ingredientQuery}
         onChangeText={runIngredientSearch}
-        onFocus={() => scrollToInput(ingredientSearchInputRef)}
         placeholder="Search or add an ingredient…"
       />
       {suggestions.map((s) => (
@@ -399,7 +378,6 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
       <Text style={styles.sectionTitle}>STEPS</Text>
       <View style={styles.stepsStack}>
       {draft.steps.map((step, index) => {
-        const rowRef: { instruction?: TextInput | null; duration?: TextInput | null; offset?: TextInput | null } = {};
         return (
         <View key={index} style={[styles.ingredientCard, { backgroundColor: phaseColor(theme, step.phase).bg }]}>
           <View style={styles.stepHeaderRow}>
@@ -427,11 +405,9 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
             </View>
           </View>
           <TextInput
-            ref={(el) => { rowRef.instruction = el; }}
             style={styles.input}
             value={step.instruction}
             onChangeText={(v) => updateStep(index, { instruction: v })}
-            onFocus={() => scrollToInput(rowRef.instruction ?? null)}
             placeholder="Instruction"
             multiline
           />
@@ -447,24 +423,20 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
           <View style={styles.inlineRow}>
             <Text style={styles.switchLabel}>Duration (mins)</Text>
             <TextInput
-              ref={(el) => { rowRef.duration = el; }}
               style={[styles.input, styles.flexSmall]}
               keyboardType="numeric"
               value={step.durationSeconds != null ? String(step.durationSeconds / 60) : ''}
               onChangeText={(v) => updateStep(index, { durationSeconds: v ? Number(v) * 60 : undefined })}
-              onFocus={() => scrollToInput(rowRef.duration ?? null)}
               placeholder="—"
             />
             {draft.timelineMode === 'parallel' && (
               <>
                 <Text style={styles.switchLabel}>Offset (mins)</Text>
                 <TextInput
-                  ref={(el) => { rowRef.offset = el; }}
                   style={[styles.input, styles.flexSmall]}
                   keyboardType="numeric"
                   value={step.startOffsetSeconds != null ? String(step.startOffsetSeconds / 60) : ''}
                   onChangeText={(v) => updateStep(index, { startOffsetSeconds: v ? Number(v) * 60 : undefined })}
-                  onFocus={() => scrollToInput(rowRef.offset ?? null)}
                   placeholder="0"
                 />
               </>
@@ -536,6 +508,7 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
 
       {modal}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

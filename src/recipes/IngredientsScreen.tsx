@@ -2,11 +2,10 @@
 // whole canonical_ingredient table, multi-select delete (the only way to
 // delete — long-press instead opens a read-only "used in these recipes"
 // view), and an add-ingredient modal for hand-authoring new ones.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
-import { useKeyboardAwareScroll } from '../hooks/useKeyboardAwareScroll';
 import { INGREDIENT_CATEGORIES, INGREDIENT_CATEGORY_LABELS, type IngredientCategory } from '../lib/ingredientCategory';
 import { UNIT_LABELS, UNIT_OPTIONS } from '../lib/unitLabels';
 import {
@@ -47,13 +46,6 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
-  const { scrollRef, scrollToInput, onScroll } = useKeyboardAwareScroll();
-  const searchInputRef = useRef<TextInput>(null);
-  const { scrollRef: addScrollRef, scrollToInput: addScrollToInput, onScroll: addOnScroll } = useKeyboardAwareScroll();
-  const nameInputRef = useRef<TextInput>(null);
-  const packSizeInputRef = useRef<TextInput>(null);
-  const packLabelInputRef = useRef<TextInput>(null);
-
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -181,11 +173,9 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
         <View style={styles.searchRow}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
-            ref={searchInputRef}
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            onFocus={() => scrollToInput(searchInputRef)}
             placeholder="Search ingredients…"
             placeholderTextColor={theme.colors.ink3}
           />
@@ -210,7 +200,8 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
         </View>
       </View>
 
-      <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <KeyboardAvoidingView style={styles.scroll} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {items.length === 0 && <Text style={styles.empty}>No ingredients match.</Text>}
         {items.map((item) => (
           <TouchableOpacity
@@ -243,6 +234,7 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {selectMode && selectedIds.size > 0 && (
         <View style={styles.selectionBar}>
@@ -288,17 +280,15 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
       {addForm && (
         <View style={styles.inUseBackdrop}>
           <TouchableOpacity style={styles.inUseBackdropTouch} activeOpacity={1} onPress={() => setAddForm(null)} />
-          <View style={styles.addSheet}>
-            <ScrollView ref={addScrollRef} onScroll={addOnScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled">
+          <KeyboardAvoidingView style={styles.addSheet} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <ScrollView keyboardShouldPersistTaps="handled">
               <Text style={styles.inUseTitle}>Add ingredient</Text>
 
               <Text style={styles.fieldLabel}>Name</Text>
               <TextInput
-                ref={nameInputRef}
                 style={styles.fieldInput}
                 value={addForm.name}
                 onChangeText={(name) => setAddForm((f) => (f ? { ...f, name } : f))}
-                onFocus={() => addScrollToInput(nameInputRef)}
                 placeholder="e.g. smoked paprika"
                 placeholderTextColor={theme.colors.ink3}
               />
@@ -337,22 +327,18 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
                 <>
                   <Text style={styles.fieldLabel}>Pack size (in {UNIT_LABELS[addForm.unit]})</Text>
                   <TextInput
-                    ref={packSizeInputRef}
                     style={styles.fieldInput}
                     value={addForm.packSize}
                     onChangeText={(packSize) => setAddForm((f) => (f ? { ...f, packSize } : f))}
-                    onFocus={() => addScrollToInput(packSizeInputRef)}
                     keyboardType="numeric"
                     placeholder="optional"
                     placeholderTextColor={theme.colors.ink3}
                   />
                   <Text style={styles.fieldLabel}>Pack label</Text>
                   <TextInput
-                    ref={packLabelInputRef}
                     style={styles.fieldInput}
                     value={addForm.packLabel}
                     onChangeText={(packLabel) => setAddForm((f) => (f ? { ...f, packLabel } : f))}
-                    onFocus={() => addScrollToInput(packLabelInputRef)}
                     placeholder="e.g. bag, tin"
                     placeholderTextColor={theme.colors.ink3}
                   />
@@ -370,7 +356,7 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
                 <Text style={styles.inUseCloseText}>Cancel</Text>
               </TouchableOpacity>
             </ScrollView>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       )}
 

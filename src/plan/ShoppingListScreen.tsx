@@ -4,14 +4,13 @@
 // drag-reorder within a section, add manual with autocomplete), search,
 // mark-all-checked/unchecked, and check-off -> pantry.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { DatePickerModal } from '../components/DatePickerModal';
 import { UnitPickerModal } from '../components/UnitPickerModal';
 import { pluralizeUnit } from '../lib/unitLabels';
 import type { DisplayUnit } from '../lib/displayUnit';
 import { useDb } from '../db/DbContext';
-import { useKeyboardAwareScroll } from '../hooks/useKeyboardAwareScroll';
 import { formatDMY } from '../lib/formatDate';
 import { createUserIngredient, searchCanonicalIngredients, type CanonicalIngredientOption } from '../recipes/ingredientSearch';
 import { DraggableShoppingSection } from './DraggableShoppingSection';
@@ -45,11 +44,6 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
-  const { scrollRef, scrollToInput, onScroll } = useKeyboardAwareScroll();
-  const searchInputRef = useRef<TextInput>(null);
-  const newNameInputRef = useRef<TextInput>(null);
-  const newQtyInputRef = useRef<TextInput>(null);
-  const newBuyCountInputRef = useRef<TextInput>(null);
   const [list, setList] = useState<ShoppingListSummary | null | undefined>(undefined);
   const [rangeStart, setRangeStart] = useState(defaultRangeStart);
   const [rangeEnd, setRangeEnd] = useState(defaultRangeEnd);
@@ -58,6 +52,33 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
   const [search, setSearch] = useState('');
   const [unitPickerFor, setUnitPickerFor] = useState<number | 'new' | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [editMode, setEditMode] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  // The add-item fields sit at the very bottom of the list, below whatever
+  // KeyboardAvoidingView already reclaims — extra bottom padding only while
+  // the keyboard is actually up AND one of those fields is focused, so nothing
+  // shifts for the search bar or while just browsing the list.
+  const [bottomInputFocused, setBottomInputFocused] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const addSectionPadded = bottomInputFocused && keyboardVisible;
+
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  const handleBottomInputFocus = useCallback(() => {
+    setBottomInputFocused(true);
+    // The add-item fields are always the last things in the list, so
+    // scrolling all the way down is enough to clear the keyboard — no need
+    // for the measure-and-scroll approach that proved unreliable earlier.
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+  }, []);
+  const handleBottomInputBlur = useCallback(() => setBottomInputFocused(false), []);
 
   const [newName, setNewName] = useState('');
   const [newSuggestions, setNewSuggestions] = useState<CanonicalIngredientOption[]>([]);
@@ -190,10 +211,20 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
           <Text style={styles.generateButtonText}>{list ? 'Regenerate' : 'Generate'}</Text>
         </TouchableOpacity>
       </View>
-      {list?.rangeStart && (
-        <Text style={styles.rangeLabel}>
-          {formatDMY(list.rangeStart)} → {list.rangeEnd ? formatDMY(list.rangeEnd) : ''}
-        </Text>
+      {list && (
+        <View style={styles.dateRow}>
+          <Text style={styles.rangeLabel}>
+            {list.rangeStart ? `${formatDMY(list.rangeStart)} → ${list.rangeEnd ? formatDMY(list.rangeEnd) : ''}` : ''}
+          </Text>
+          <TouchableOpacity
+            style={[styles.editModeButton, editMode && styles.editModeButtonActive]}
+            onPress={() => setEditMode((e) => !e)}
+          >
+            <Text style={[styles.editModeButtonText, editMode && styles.editModeButtonTextActive]}>
+              {editMode ? 'Done' : 'Edit/Delete Items'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {list && (
@@ -201,11 +232,9 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
           <View style={styles.searchRow}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
-              ref={searchInputRef}
               style={styles.searchInput}
               value={search}
               onChangeText={setSearch}
-              onFocus={() => scrollToInput(searchInputRef)}
               placeholder="Search this list…"
               placeholderTextColor={theme.colors.ink3}
             />
@@ -221,7 +250,13 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
         </View>
       )}
 
-      <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <KeyboardAvoidingView style={styles.scroll} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, addSectionPadded && styles.scrollContentKeyboardPadded]}
+        keyboardShouldPersistTaps="handled"
+      >
         {!list && <Text style={styles.empty}>No shopping list yet — generate one from your planned meals.</Text>}
         {list && sections.length === 0 && <Text style={styles.empty}>{isFiltering ? 'Nothing matches.' : 'The list is empty.'}</Text>}
 
@@ -247,12 +282,13 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
               </View>
 
               {!isCollapsed && unchecked.length > 0 &&
-                (isFiltering ? (
+                (isFiltering || editMode ? (
                   <View>
                     {unchecked.map((item) => (
                       <View key={item.id} style={styles.staticRowWrap}>
                         <ItemRow
                           item={item}
+                          editMode={editMode}
                           onToggle={() => handleToggle(item)}
                           onDelete={() => handleDelete(item)}
                           onChange={(patch) => handleFieldChange(item, patch)}
@@ -268,6 +304,7 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
                     renderRow={(item) => (
                       <ItemRow
                         item={item}
+                        editMode={editMode}
                         onToggle={() => handleToggle(item)}
                         onDelete={() => handleDelete(item)}
                         onChange={(patch) => handleFieldChange(item, patch)}
@@ -282,6 +319,7 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
                   <View key={item.id} style={styles.staticRowWrap}>
                     <ItemRow
                       item={item}
+                      editMode={editMode}
                       onToggle={() => handleToggle(item)}
                       onDelete={() => handleDelete(item)}
                       onChange={(patch) => handleFieldChange(item, patch)}
@@ -298,23 +336,23 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
             <Text style={styles.sectionLabel}>ADD ITEM</Text>
             <View style={styles.addRow}>
               <TextInput
-                ref={newNameInputRef}
                 style={[styles.addInput, styles.addInputName]}
                 placeholder="Ingredient"
                 placeholderTextColor={theme.colors.ink3}
                 value={newName}
                 onChangeText={runIngredientSearch}
-                onFocus={() => scrollToInput(newNameInputRef)}
+                onFocus={handleBottomInputFocus}
+                onBlur={handleBottomInputBlur}
               />
               <TextInput
-                ref={newQtyInputRef}
                 style={[styles.addInput, styles.addInputQty]}
                 placeholder="Qty"
                 placeholderTextColor={theme.colors.ink3}
                 keyboardType="numeric"
                 value={newQty}
                 onChangeText={setNewQty}
-                onFocus={() => scrollToInput(newQtyInputRef)}
+                onFocus={handleBottomInputFocus}
+                onBlur={handleBottomInputBlur}
               />
               <TouchableOpacity style={styles.unitButton} onPress={() => setUnitPickerFor('new')}>
                 <Text style={styles.unitButtonText}>{pluralizeUnit(Number(newQty) || 1, newUnit)}</Text>
@@ -335,8 +373,8 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
                 <Stepper
                   value={Number(newBuyCount) || 1}
                   onChange={(v) => setNewBuyCount(String(v))}
-                  inputRef={newBuyCountInputRef}
-                  onFocusInput={() => scrollToInput(newBuyCountInputRef)}
+                  onFocusInput={handleBottomInputFocus}
+                  onBlurInput={handleBottomInputBlur}
                 />
                 <TouchableOpacity style={styles.addButton} onPress={handleAddManual}>
                   <Text style={styles.addButtonText}>+</Text>
@@ -346,6 +384,7 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {rangePickerVisible && (
         <View style={styles.rangeSheet}>
@@ -415,14 +454,14 @@ function Stepper({
   value,
   onChange,
   min = 1,
-  inputRef,
   onFocusInput,
+  onBlurInput,
 }: {
   value: number;
   onChange: (value: number) => void;
   min?: number;
-  inputRef?: React.RefObject<TextInput | null>;
   onFocusInput?: () => void;
+  onBlurInput?: () => void;
 }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -444,12 +483,12 @@ function Stepper({
         <Text style={styles.stepperButtonText}>−</Text>
       </TouchableOpacity>
       <TextInput
-        ref={inputRef}
         style={styles.stepperInput}
         value={text}
         onChangeText={setText}
         onEndEditing={commit}
         onFocus={onFocusInput}
+        onBlur={onBlurInput}
         keyboardType="numeric"
       />
       <TouchableOpacity style={styles.stepperButton} onPress={() => onChange(value + 1)} hitSlop={6}>
@@ -461,12 +500,14 @@ function Stepper({
 
 function ItemRow({
   item,
+  editMode,
   onToggle,
   onDelete,
   onChange,
   onOpenUnitPicker,
 }: {
   item: ShoppingListItemRow;
+  editMode: boolean;
   onToggle: () => void;
   onDelete: () => void;
   onChange: (patch: { displayName?: string; quantity?: number; buyCount?: number }) => void;
@@ -476,42 +517,60 @@ function ItemRow({
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [qtyText, setQtyText] = useState(String(item.quantity));
   const [buyCountText, setBuyCountText] = useState(String(item.buyCount));
+  const unitLabel = pluralizeUnit(item.quantity, item.unit as DisplayUnit);
+  const showBuyCount = item.buyCount > 1 || item.isCommon;
 
   return (
     <View style={styles.row}>
       <TouchableOpacity style={[styles.checkbox, item.checked && styles.checkboxChecked]} onPress={onToggle} hitSlop={8}>
         {item.checked && <Text style={styles.checkboxMark}>✓</Text>}
       </TouchableOpacity>
-      <TextInput
-        style={[styles.rowName, item.checked && styles.rowTextChecked]}
-        value={item.displayName}
-        onChangeText={(v) => onChange({ displayName: v })}
-        editable={!item.checked}
-      />
-      <TextInput
-        style={[styles.rowQty, item.checked && styles.rowTextChecked]}
-        value={qtyText}
-        onChangeText={setQtyText}
-        onEndEditing={() => onChange({ quantity: Number(qtyText) || 0 })}
-        keyboardType="numeric"
-        editable={!item.checked}
-      />
-      <TouchableOpacity style={styles.unitButtonSmall} disabled={item.checked} onPress={onOpenUnitPicker}>
-        <Text style={styles.unitButtonSmallText}>{pluralizeUnit(item.quantity, item.unit as DisplayUnit)}</Text>
-      </TouchableOpacity>
-      {item.buyCount > 1 || item.isCommon ? (
-        <TextInput
-          style={[styles.rowBuyCount, item.checked && styles.rowTextChecked]}
-          value={buyCountText}
-          onChangeText={setBuyCountText}
-          onEndEditing={() => onChange({ buyCount: Math.max(1, Number(buyCountText) || 1) })}
-          keyboardType="numeric"
-          editable={!item.checked}
-        />
-      ) : null}
-      <TouchableOpacity style={styles.removeButton} onPress={onDelete} hitSlop={6}>
-        <Text style={styles.removeLink}>✕</Text>
-      </TouchableOpacity>
+      {editMode ? (
+        <>
+          <TextInput
+            style={[styles.rowName, styles.rowInputFixedHeight, item.checked && styles.rowTextChecked]}
+            value={item.displayName}
+            onChangeText={(v) => onChange({ displayName: v })}
+            editable={!item.checked}
+          />
+          <TextInput
+            style={[styles.rowQty, styles.rowInputFixedHeight, item.checked && styles.rowTextChecked]}
+            value={qtyText}
+            onChangeText={setQtyText}
+            onEndEditing={() => onChange({ quantity: Number(qtyText) || 0 })}
+            keyboardType="numeric"
+            editable={!item.checked}
+          />
+          <TouchableOpacity style={styles.unitButtonSmall} disabled={item.checked} onPress={onOpenUnitPicker}>
+            <Text style={styles.unitButtonSmallText}>{unitLabel}</Text>
+          </TouchableOpacity>
+          {showBuyCount ? (
+            <TextInput
+              style={[styles.rowBuyCount, styles.rowInputFixedHeight, item.checked && styles.rowTextChecked]}
+              value={buyCountText}
+              onChangeText={setBuyCountText}
+              onEndEditing={() => onChange({ buyCount: Math.max(1, Number(buyCountText) || 1) })}
+              keyboardType="numeric"
+              editable={!item.checked}
+            />
+          ) : null}
+          <TouchableOpacity style={styles.removeButton} onPress={onDelete} hitSlop={6}>
+            <Text style={styles.removeLink}>✕</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <Text style={[styles.rowName, item.checked && styles.rowTextChecked]} numberOfLines={1}>
+            {item.displayName}
+          </Text>
+          <Text style={[styles.rowQtyStatic, item.checked && styles.rowTextChecked]}>
+            {qtyText} {unitLabel}
+          </Text>
+          {showBuyCount ? (
+            <Text style={[styles.rowBuyCountStatic, item.checked && styles.rowTextChecked]}>×{buyCountText}</Text>
+          ) : null}
+        </>
+      )}
     </View>
   );
 }
@@ -524,6 +583,11 @@ const makeStyles = (theme: AppTheme) =>
     generateButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs },
     generateButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentFg },
     rangeLabel: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: theme.spacing.xs },
+    editModeButton: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+    editModeButtonActive: { backgroundColor: theme.colors.accent },
+    editModeButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+    editModeButtonTextActive: { color: theme.colors.accentFg },
 
     toolsRow: { gap: theme.spacing.base, marginTop: theme.spacing.xs },
     searchRow: {
@@ -546,6 +610,7 @@ const makeStyles = (theme: AppTheme) =>
 
     scroll: { flex: 1 },
     scrollContent: { gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
+    scrollContentKeyboardPadded: { paddingBottom: 260 },
     empty: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic', paddingVertical: theme.spacing.xl, textAlign: 'center' },
 
     section: { gap: theme.spacing.xs },
@@ -566,7 +631,8 @@ const makeStyles = (theme: AppTheme) =>
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: theme.spacing.xs,
+      gap: theme.spacing.sm,
+      height: 50,
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius.tile,
       padding: theme.spacing.sm,
@@ -575,9 +641,9 @@ const makeStyles = (theme: AppTheme) =>
       marginBottom: theme.spacing.xs,
     },
     checkbox: {
-      width: 22,
-      height: 22,
-      borderRadius: 5,
+      width: 26,
+      height: 26,
+      borderRadius: 6,
       borderWidth: 2,
       borderColor: theme.colors.borderStrong,
       alignItems: 'center',
@@ -586,14 +652,28 @@ const makeStyles = (theme: AppTheme) =>
     checkboxChecked: { backgroundColor: theme.colors.green, borderColor: theme.colors.green },
     checkboxMark: { color: theme.colors.accentFg, fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm },
     rowName: { flex: 1, fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.base, color: theme.colors.ink, paddingVertical: 2 },
-    rowQty: { width: 44, fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink, textAlign: 'right' },
-    rowBuyCount: { width: 34, fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText, textAlign: 'center', backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.chip },
+    rowQty: { width: 48, fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink, textAlign: 'right' },
+    rowBuyCount: { width: 38, fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText, textAlign: 'center', backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.chip },
+    // TextInput has its own native vertical padding that Text doesn't, which
+    // is what made edit-mode rows taller than read-only rows even with a
+    // shared row height — pin every TextInput in the row to the same box.
+    rowInputFixedHeight: { height: 30, paddingVertical: 0, textAlignVertical: 'center' },
+    rowQtyStatic: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2, textAlign: 'right' },
+    rowBuyCountStatic: {
+      fontFamily: theme.fonts.data.semiBold,
+      fontSize: theme.fontSize.sm,
+      color: theme.colors.accentText,
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: 2,
+      backgroundColor: theme.colors.accentTint,
+      borderRadius: theme.radius.chip,
+    },
     rowTextChecked: { color: theme.colors.ink4, textDecorationLine: 'line-through' },
-    removeButton: { marginLeft: theme.spacing.xs, paddingHorizontal: 4 },
-    removeLink: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.red },
+    removeButton: { marginLeft: theme.spacing.xs, paddingHorizontal: theme.spacing.xs },
+    removeLink: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.red },
 
-    unitButtonSmall: { paddingHorizontal: theme.spacing.sm, paddingVertical: 4, borderRadius: theme.radius.chip, backgroundColor: theme.colors.chipBg },
-    unitButtonSmallText: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+    unitButtonSmall: { paddingHorizontal: theme.spacing.sm, paddingVertical: 6, borderRadius: theme.radius.chip, backgroundColor: theme.colors.chipBg },
+    unitButtonSmallText: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
 
     addSection: { gap: theme.spacing.sm, marginTop: theme.spacing.lg },
     addRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginBottom: theme.spacing.sm },

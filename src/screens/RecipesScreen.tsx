@@ -2,10 +2,9 @@
 // copy-and-tweak. No routing library on the allowlist (§15.1) — this screen
 // is its own small stack via local state, same pattern as the Debug screen
 // toggle in TabShell.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDb } from '../db/DbContext';
-import { useKeyboardAwareScroll } from '../hooks/useKeyboardAwareScroll';
 import { localDateKey } from '../lib/formatDate';
 import { addRecipeToShoppingList } from '../plan/shoppingListGeneration';
 import { createPlannedMeal } from '../plan/planMutations';
@@ -61,8 +60,6 @@ export function RecipesScreen({
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
-  const { scrollRef, scrollToInput, onScroll } = useKeyboardAwareScroll();
-  const searchInputRef = useRef<TextInput>(null);
   const [favouritesOnly, setFavouritesOnly] = useState(initialFavouritesOnly);
   const [recipes, setRecipes] = useState<EnrichedRecipe[] | null>(null);
   const [currencySymbol, setCurrencySymbol] = useState('€');
@@ -295,11 +292,9 @@ export function RecipesScreen({
       <View style={styles.searchRow}>
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
-          ref={searchInputRef}
           style={styles.searchInput}
           value={search}
           onChangeText={setSearch}
-          onFocus={() => scrollToInput(searchInputRef)}
           placeholder="Search recipes, ingredients, notes…"
           placeholderTextColor={theme.colors.ink3}
         />
@@ -312,7 +307,8 @@ export function RecipesScreen({
         </TouchableOpacity>
       )}
 
-      <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <KeyboardAvoidingView style={styles.scroll} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <TouchableOpacity
           style={styles.filtersToggle}
           onPress={() => setFiltersExpanded((e) => !e)}
@@ -390,6 +386,7 @@ export function RecipesScreen({
           );
         })}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <SortMenu
         visible={sortMenuOpen}

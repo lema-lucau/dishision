@@ -3,15 +3,14 @@
 // (§5.6, cookedAt is always "now"). Everything here is optional and
 // skippable (§1.1 no-nagging) — Done alone still commits made/eaten, pantry
 // deduction, and any leftover.
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { addShortfallToShoppingList, completeCook } from '../cooking/completeCook';
 import type { CookLogDraft } from '../cooking/cookLog';
 import { updateCookLog } from '../cooking/cookLog';
 import { previewCook, type CookPreview } from '../cooking/previewCook';
 import { BUILT_IN_QUICK_TAGS, loadCustomQuickTags } from '../cooking/quickTags';
 import { useDb } from '../db/DbContext';
-import { useKeyboardAwareScroll } from '../hooks/useKeyboardAwareScroll';
 import { dateInputToIso, formatShortDate, toDateInputValue } from '../lib/formatDate';
 import { getAutoAddShortfalls } from '../settings/getSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
@@ -29,11 +28,6 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
-  const { scrollRef, scrollToInput, onScroll } = useKeyboardAwareScroll();
-  const dateInputRef = useRef<TextInput>(null);
-  const whatWentWellInputRef = useRef<TextInput>(null);
-  const whatToChangeInputRef = useRef<TextInput>(null);
-  const notesInputRef = useRef<TextInput>(null);
   const [cookedAtDate, setCookedAtDate] = useState(() => toDateInputValue(new Date().toISOString()));
   const [madeServings, setMadeServings] = useState(recipe.baseServings);
   const [eatenServings, setEatenServings] = useState(recipe.baseServings);
@@ -116,7 +110,8 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
   const leftoverLine = preview?.leftoverPlan;
 
   return (
-    <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Cooked {recipe.name}</Text>
       <Text style={styles.subtitle}>
         {Math.round(recipe.totalSeconds / 60)} min · {recipe.timesCooked + 1}
@@ -144,11 +139,9 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
             })}
           </View>
           <TextInput
-            ref={dateInputRef}
             style={styles.dateInput}
             value={cookedAtDate}
             onChangeText={setCookedAtDate}
-            onFocus={() => scrollToInput(dateInputRef)}
             placeholder="YYYY-MM-DD"
           />
         </View>
@@ -229,31 +222,25 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
           </View>
           <Text style={styles.label}>What went well</Text>
           <TextInput
-            ref={whatWentWellInputRef}
             style={styles.textArea}
             value={whatWentWell}
             onChangeText={setWhatWentWell}
-            onFocus={() => scrollToInput(whatWentWellInputRef)}
             multiline
             placeholder="…"
           />
           <Text style={styles.label}>What to change</Text>
           <TextInput
-            ref={whatToChangeInputRef}
             style={styles.textArea}
             value={whatToChange}
             onChangeText={setWhatToChange}
-            onFocus={() => scrollToInput(whatToChangeInputRef)}
             multiline
             placeholder="…"
           />
           <Text style={styles.label}>Notes</Text>
           <TextInput
-            ref={notesInputRef}
             style={styles.textArea}
             value={notes}
             onChangeText={setNotes}
-            onFocus={() => scrollToInput(notesInputRef)}
             multiline
             placeholder="…"
           />
@@ -274,6 +261,7 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
         <Text style={styles.cancelLink}>Cancel</Text>
       </TouchableOpacity>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

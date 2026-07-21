@@ -1,10 +1,9 @@
 // §5.10 Profile (was "Me"). Identity, favourites, and the theme picker entry
 // live here. Stats, backup/export, and the full settings surface are a later
 // slice — this page focuses on identity, favourites, and appearance.
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDb } from '../db/DbContext';
-import { useKeyboardAwareScroll } from '../hooks/useKeyboardAwareScroll';
 import { loadTopFavourites, type FavouriteSummary } from '../profile/loadFavourites';
 import { rerollAvatarEmoji, updateDisplayName } from '../profile/profileMutations';
 import type { Profile } from '../profile/ensureProfile';
@@ -33,8 +32,6 @@ export function ProfileScreen({
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
   const { themeId } = useThemeControls();
-  const { scrollRef, scrollToInput, onScroll } = useKeyboardAwareScroll();
-  const nameInputRef = useRef<TextInput>(null);
 
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [avatarEmoji, setAvatarEmoji] = useState(profile.avatar_emoji);
@@ -63,7 +60,8 @@ export function ProfileScreen({
   const currentTheme = themes[themeId];
 
   return (
-    <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {/* Identity hero */}
       <View style={styles.hero}>
         <View style={styles.avatarWrap}>
@@ -84,11 +82,9 @@ export function ProfileScreen({
         {editingName ? (
           <View style={styles.nameEditRow}>
             <TextInput
-              ref={nameInputRef}
               style={styles.nameInput}
               value={nameDraft}
               onChangeText={setNameDraft}
-              onFocus={() => scrollToInput(nameInputRef)}
               autoFocus
               onSubmitEditing={saveName}
               returnKeyType="done"
@@ -173,6 +169,7 @@ export function ProfileScreen({
         </View>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

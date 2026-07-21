@@ -1,7 +1,7 @@
 // §5.5 emoji picker for photo_emoji. Searchable by dish/ingredient keyword
 // (§9.1) rather than a bare 12-icon quick-pick, with the current selection
 // always shown as a tile up top (§4.8).
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { EmojiTile } from './EmojiTile';
@@ -10,14 +10,11 @@ import { searchEmoji } from './emojiOptions';
 interface EmojiPickerProps {
   value: string;
   onChange: (emoji: string) => void;
-  /** Wired to the parent screen's useKeyboardAwareScroll, when it has one. */
-  scrollToInput?: (input: TextInput | React.RefObject<TextInput | null> | null) => void;
 }
 
-export function EmojiPicker({ value, onChange, scrollToInput }: EmojiPickerProps) {
+export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const searchInputRef = useRef<TextInput>(null);
   const [query, setQuery] = useState('');
   const results = searchEmoji(query);
 
@@ -26,11 +23,9 @@ export function EmojiPicker({ value, onChange, scrollToInput }: EmojiPickerProps
       <EmojiTile emoji={value || '🍽️'} size={56} emojiSize={32} />
       <View style={styles.pickerColumn}>
         <TextInput
-          ref={searchInputRef}
           style={styles.search}
           value={query}
           onChangeText={setQuery}
-          onFocus={() => scrollToInput?.(searchInputRef)}
           placeholder="Search emoji (curry, pie, fish…)"
           placeholderTextColor={theme.colors.ink3}
         />
