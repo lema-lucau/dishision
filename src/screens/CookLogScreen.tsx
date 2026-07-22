@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { DatePickerModal } from '../components/DatePickerModal';
+import { GenericSortMenu, type SortDirection } from '../components/GenericSortMenu';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { deleteCookLog, deleteQuickTagEverywhere, loadCookLogs, updateCookLog, type CookLogDraft, type CookLogRow } from '../cooking/cookLog';
 import {
@@ -30,6 +31,10 @@ const VERDICTS: SubstitutionVerdict[] = ['better', 'same', 'worse'];
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
 type SortKey = 'date' | 'rating';
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'date', label: 'Date' },
+  { key: 'rating', label: 'Rating' },
+];
 
 interface CookLogScreenProps {
   /** Set by the Plan tab when tapping a cooked meal — jumps straight into that log's editor. */
@@ -44,6 +49,8 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
   const [logs, setLogs] = useState<CookLogRow[] | null>(null);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('date');
+  const [direction, setDirection] = useState<SortDirection>('desc');
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [minStars, setMinStars] = useState<number | null>(null);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [dateFrom, setDateFrom] = useState<string | null>(null);
@@ -109,11 +116,13 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
       dateFrom: dateFrom ? `${dateFrom}T00:00:00.000Z` : undefined,
       dateTo: dateTo ? `${dateTo}T23:59:59.999Z` : undefined,
     });
+    // Base comparator is always newest/highest-first; direction flips it.
     const sorted = [...rows].sort((a, b) =>
       sort === 'date' ? b.cookedAt.localeCompare(a.cookedAt) : (b.stars ?? -1) - (a.stars ?? -1),
     );
+    if (direction === 'asc') sorted.reverse();
     setLogs(sorted);
-  }, [db, sort, minStars, selectedTags, dateFrom, dateTo]);
+  }, [db, sort, direction, minStars, selectedTags, dateFrom, dateTo]);
 
   useEffect(() => {
     reload();
@@ -121,7 +130,7 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
 
   useEffect(() => {
     setPage(1);
-  }, [search, sort, minStars, selectedTags, dateFrom, dateTo, pageSize]);
+  }, [search, sort, direction, minStars, selectedTags, dateFrom, dateTo, pageSize]);
 
   useEffect(() => {
     if (!focusLogId) return;
@@ -297,8 +306,10 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
         <View style={styles.toolbarRow}>
           <View style={styles.sortGroup}>
             <Text style={styles.sortByLabel}>Sort by</Text>
-            <TouchableOpacity onPress={() => setSort(sort === 'date' ? 'rating' : 'date')} style={styles.sortButton}>
-              <Text style={styles.toolbarLink}>{sort === 'date' ? 'Date' : 'Rating'}</Text>
+            <TouchableOpacity onPress={() => setSortMenuOpen(true)} style={styles.sortButton}>
+              <Text style={styles.toolbarLink}>
+                {sort === 'date' ? 'Date' : 'Rating'} {direction === 'asc' ? '↑' : '↓'}
+              </Text>
             </TouchableOpacity>
           </View>
           <View style={styles.layoutToggle}>
@@ -392,6 +403,18 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
           </TouchableOpacity>
         </View>
       )}
+
+      <GenericSortMenu
+        visible={sortMenuOpen}
+        options={SORT_OPTIONS}
+        sort={sort}
+        direction={direction}
+        onChange={(s, d) => {
+          setSort(s);
+          setDirection(d);
+        }}
+        onClose={() => setSortMenuOpen(false)}
+      />
 
       <DatePickerModal
         visible={showFromPicker}

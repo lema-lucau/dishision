@@ -2,31 +2,64 @@
 // they're the same lineage, and one adopts the other's share_id." Handles
 // the same dish arriving twice by different routes and ending up as two
 // separate local rows.
-import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
+import { useDb } from '../db/DbContext';
 import { EmojiTile } from '../recipes/EmojiTile';
 import type { EnrichedRecipe } from '../recipes/loadRecipes';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import { buildDetailedDiff, mergePayloads, type DetailedDiffRow, type DiffFieldKey } from './diff';
+import { buildSharePayload, type SharePayload } from './payload';
+import { RecipeDiffView } from './RecipeDiffView';
 
 interface ManualMergeScreenProps {
   recipes: EnrichedRecipe[];
   onMerge: (keepRecipeId: number, duplicateRecipeId: number, adoptShareId: 'keep' | 'duplicate') => Promise<void>;
+  /** Applies the chosen fields from the duplicate onto the kept recipe, then merges lineage. */
+  onApplyAndMerge: (keepRecipeId: number, duplicateRecipeId: number, merged: SharePayload) => Promise<void>;
   onBack: () => void;
 }
 
-export function ManualMergeScreen({ recipes, onMerge, onBack }: ManualMergeScreenProps) {
+export function ManualMergeScreen({ recipes, onMerge, onApplyAndMerge, onBack }: ManualMergeScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const db = useDb();
   const [keepId, setKeepId] = useState<number | null>(null);
   const [duplicateId, setDuplicateId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [keepPayload, setKeepPayload] = useState<SharePayload | null>(null);
+  const [dupPayload, setDupPayload] = useState<SharePayload | null>(null);
+  const [diffRows, setDiffRows] = useState<DetailedDiffRow[] | null>(null);
+  const [takeIncoming, setTakeIncoming] = useState<Partial<Record<DiffFieldKey, boolean>>>({});
   const { modal, confirm } = useConfirmModal();
 
   const filtered = recipes.filter((r) => r.name.toLowerCase().includes(search.toLowerCase()));
   const keepRecipe = recipes.find((r) => r.id === keepId) ?? null;
   const duplicateRecipe = recipes.find((r) => r.id === duplicateId) ?? null;
+
+  // Load both payloads and build the diff when the review step opens. Default
+  // every field to "keep mine" — the kept recipe is authoritative, so nothing
+  // is adopted from the duplicate unless the user explicitly picks it.
+  useEffect(() => {
+    if (!reviewing || keepId == null || duplicateId == null) return;
+    let cancelled = false;
+    Promise.all([
+      buildSharePayload(db, keepId, { includePhoto: false }),
+      buildSharePayload(db, duplicateId, { includePhoto: false }),
+    ]).then(([keep, dup]) => {
+      if (cancelled) return;
+      setKeepPayload(keep);
+      setDupPayload(dup);
+      setDiffRows(buildDetailedDiff(keep, dup));
+      setTakeIncoming({});
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reviewing, keepId, duplicateId, db]);
 
   function pick(id: number) {
     if (keepId === id) {
@@ -41,11 +74,11 @@ export function ManualMergeScreen({ recipes, onMerge, onBack }: ManualMergeScree
     else if (duplicateId == null) setDuplicateId(id);
   }
 
-  function confirmMerge() {
+  function confirmAutoMerge() {
     if (keepId == null || duplicateId == null || !keepRecipe || !duplicateRecipe) return;
     confirm(
       'Merge these recipes?',
-      `"${duplicateRecipe.name}" will be deleted, along with its cook log, ratings, and favourites. "${keepRecipe.name}" stays, and going forward is treated as the same recipe lineage as "${duplicateRecipe.name}" was. This can't be undone.`,
+      `"${duplicateRecipe.name}" will be deleted, along with its cook log, ratings, and favourites. "${keepRecipe.name}" stays as-is, and going forward is treated as the same recipe lineage. This can't be undone.`,
       'Merge',
       async () => {
         setBusy(true);
@@ -56,6 +89,71 @@ export function ManualMergeScreen({ recipes, onMerge, onBack }: ManualMergeScree
         }
       },
       true,
+    );
+  }
+
+  function confirmApplyAndMerge() {
+    if (keepId == null || duplicateId == null || !keepRecipe || !duplicateRecipe || !keepPayload || !dupPayload) return;
+    const anyTaken = Object.values(takeIncoming).some(Boolean);
+    confirm(
+      'Apply changes and merge?',
+      `The selected changes from "${duplicateRecipe.name}" will be applied to "${keepRecipe.name}", then "${duplicateRecipe.name}" (with its cook log, ratings, and favourites) will be deleted. This can't be undone.`,
+      anyTaken ? 'Apply & merge' : 'Merge',
+      async () => {
+        setBusy(true);
+        try {
+          await onApplyAndMerge(keepId, duplicateId, mergePayloads(keepPayload, dupPayload, takeIncoming));
+        } finally {
+          setBusy(false);
+        }
+      },
+      true,
+    );
+  }
+
+  if (reviewing && keepRecipe && duplicateRecipe) {
+    return (
+      <View style={styles.container}>
+        <TouchableOpacity onPress={() => setReviewing(false)}>
+          <Text style={styles.back}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>Review differences</Text>
+        <Text style={styles.hint}>
+          "{keepRecipe.name}" is kept. Pick any changes to take from "{duplicateRecipe.name}" before it's merged in and removed.
+        </Text>
+
+        <ScrollView style={styles.list} contentContainerStyle={styles.reviewContent}>
+          {!diffRows ? (
+            <ActivityIndicator color={theme.colors.accent} style={{ marginTop: theme.spacing.lg }} />
+          ) : (
+            <RecipeDiffView
+              rows={diffRows}
+              localLabel="Kept"
+              incomingLabel="Duplicate"
+              selectable
+              takeIncoming={takeIncoming}
+              onToggleField={(field, take) => setTakeIncoming((prev) => ({ ...prev, [field]: take }))}
+            />
+          )}
+        </ScrollView>
+
+        <TouchableOpacity
+          style={[styles.mergeButton, busy && styles.mergeButtonDisabled]}
+          disabled={busy || !keepPayload || !dupPayload}
+          onPress={confirmApplyAndMerge}
+        >
+          <Text style={styles.mergeButtonText}>{busy ? 'Merging…' : 'Apply selected & merge'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.autoMergeButton, busy && styles.mergeButtonDisabled]}
+          disabled={busy}
+          onPress={confirmAutoMerge}
+        >
+          <Text style={styles.autoMergeButtonText}>Auto-merge (keep as-is)</Text>
+        </TouchableOpacity>
+
+        {modal}
+      </View>
     );
   }
 
@@ -109,11 +207,11 @@ export function ManualMergeScreen({ recipes, onMerge, onBack }: ManualMergeScree
       </ScrollView>
 
       <TouchableOpacity
-        style={[styles.mergeButton, (keepId == null || duplicateId == null || busy) && styles.mergeButtonDisabled]}
-        disabled={keepId == null || duplicateId == null || busy}
-        onPress={confirmMerge}
+        style={[styles.mergeButton, (keepId == null || duplicateId == null) && styles.mergeButtonDisabled]}
+        disabled={keepId == null || duplicateId == null}
+        onPress={() => setReviewing(true)}
       >
-        <Text style={styles.mergeButtonText}>{busy ? 'Merging…' : 'Merge'}</Text>
+        <Text style={styles.mergeButtonText}>Review & merge ▸</Text>
       </TouchableOpacity>
 
       {modal}
@@ -168,4 +266,12 @@ const makeStyles = (theme: AppTheme) =>
     },
     mergeButtonDisabled: { opacity: 0.4 },
     mergeButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
+    reviewContent: { paddingBottom: theme.spacing.base, gap: theme.spacing.sm },
+    autoMergeButton: {
+      backgroundColor: theme.colors.chipBg,
+      borderRadius: theme.radius.pill,
+      paddingVertical: theme.spacing.sm,
+      alignItems: 'center',
+    },
+    autoMergeButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
   });

@@ -4,7 +4,9 @@
 // and steppers give the same tunability without a new dependency.
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
+import { SyncLogScreen } from '../household/SyncLogScreen';
 import {
   getAlertSound,
   getAlertTakeover,
@@ -59,6 +61,28 @@ const WEIGHT_LABELS: Record<keyof RecommendationWeights, string> = {
   wJitter: 'Variety (jitter)',
 };
 
+// Plain-language help shown when the ⓘ next to a setting is tapped. Kept in one
+// place so the copy is easy to review and reuse.
+const TIPS = {
+  weights:
+    "These control how the 'What should I cook?' suggestions are ranked. Higher weight means that factor matters more. They're relative — raising one makes the others count for less.",
+  wRecency: "Favours recipes you haven't cooked in a while, so suggestions stay fresh.",
+  wRating: "Favours recipes you've rated highly.",
+  wFrequency: 'Favours recipes you cook often — your reliable go-tos.',
+  wJitter: "Adds a little randomness so you don't get the exact same suggestions every day.",
+  recency: 'Recipes cooked within this many days are hidden from suggestions, so you don\'t repeat meals too soon. Set to Off to never hide them.',
+  servings: "The serving count new recipes and the 'add to shopping list' prompts start from.",
+  vibrate: 'Vibrate the phone when a cooking-mode step timer finishes.',
+  sound: 'Play a sound when a cooking-mode step timer finishes.',
+  takeover: 'Show a full-screen alert when a step timer finishes — handy when the phone is propped up across the kitchen.',
+  autoAdd:
+    "When you add a recipe to your shopping list, also add any ingredients you don't have enough of. Either way, shortfalls are always flagged — this only decides whether they're added to the list for you automatically.",
+  currencyCustom:
+    'Set a symbol for a currency that isn\'t one of the presets above. It only relabels prices — no amounts are converted.',
+  staleness: 'How old an ingredient price can get before Dishision reminds you it might be out of date.',
+  debug: 'Shows developer tools and diagnostics. Leave this off for normal use.',
+} as const;
+
 function Stepper({ value, onChange, min = 0, step = 1, format }: { value: number; onChange: (v: number) => void; min?: number; step?: number; format?: (v: number) => string }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -79,8 +103,16 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
+  const { modal, notice } = useConfirmModal();
   const debugModeEnabled = useSettingsStore((s) => s.debugMode);
   const toggleDebugMode = useSettingsStore((s) => s.toggleDebugMode);
+
+  // A small ⓘ that opens a plain-language explanation of a setting.
+  const info = (title: string, text: string) => (
+    <TouchableOpacity onPress={() => notice(title, text)} hitSlop={8} accessibilityLabel={`About ${title}`}>
+      <Text style={styles.infoDot}>ⓘ</Text>
+    </TouchableOpacity>
+  );
 
   const [weights, setWeights] = useState<RecommendationWeights | null>(null);
   const [recencyWindow, setRecencyWindowState] = useState(5);
@@ -94,6 +126,7 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
   const [customSymbol, setCustomSymbol] = useState('');
   const [staleness, setStaleness] = useState<CostStalenessDays>(90);
   const [loaded, setLoaded] = useState(false);
+  const [showSyncLog, setShowSyncLog] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -144,6 +177,10 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
     await setCurrency(db, currencyCode, customSymbol || '€');
   }
 
+  if (showSyncLog) {
+    return <SyncLogScreen onBack={() => setShowSyncLog(false)} />;
+  }
+
   if (!loaded || !weights) {
     return (
       <View style={styles.container}>
@@ -161,11 +198,17 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
       </TouchableOpacity>
       <Text style={styles.title}>Settings</Text>
 
-      <Text style={styles.sectionLabel}>RECOMMENDATION WEIGHTS</Text>
+      <View style={styles.sectionLabelRow}>
+        <Text style={styles.sectionLabel}>RECOMMENDATION WEIGHTS</Text>
+        {info('Recommendation weights', TIPS.weights)}
+      </View>
       <View style={styles.card}>
         {(Object.keys(WEIGHT_LABELS) as (keyof RecommendationWeights)[]).map((key, index) => (
           <View key={key} style={[styles.row, index > 0 && styles.rowDivider]}>
-            <Text style={styles.rowLabel}>{WEIGHT_LABELS[key]}</Text>
+            <View style={styles.labelWithInfo}>
+              <Text style={styles.rowLabel}>{WEIGHT_LABELS[key]}</Text>
+              {info(WEIGHT_LABELS[key], TIPS[key])}
+            </View>
             <Stepper value={weights[key]} step={0.05} format={(v) => v.toFixed(2)} onChange={(v) => updateWeight(key, v)} />
           </View>
         ))}
@@ -174,7 +217,10 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
       <Text style={styles.sectionLabel}>RECENCY WINDOW</Text>
       <View style={styles.card}>
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>Days to exclude recent cooks</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.rowLabel}>Days to exclude recent cooks</Text>
+            {info('Recency window', TIPS.recency)}
+          </View>
           <Stepper value={recencyWindow} step={1} min={0} format={(v) => (v === 0 ? 'Off' : `${v}d`)} onChange={updateRecencyWindow} />
         </View>
       </View>
@@ -182,7 +228,10 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
       <Text style={styles.sectionLabel}>DEFAULT SERVINGS</Text>
       <View style={styles.card}>
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>Servings</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.rowLabel}>Servings</Text>
+            {info('Default servings', TIPS.servings)}
+          </View>
           <Stepper value={servingSize} step={1} min={1} onChange={updateServingSize} />
         </View>
       </View>
@@ -190,7 +239,10 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
       <Text style={styles.sectionLabel}>COOKING MODE ALERTS</Text>
       <View style={styles.card}>
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>Vibrate</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.rowLabel}>Vibrate</Text>
+            {info('Vibrate', TIPS.vibrate)}
+          </View>
           <Switch
             value={vibrate}
             onValueChange={async (v) => {
@@ -200,7 +252,10 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
           />
         </View>
         <View style={[styles.row, styles.rowDivider]}>
-          <Text style={styles.rowLabel}>Sound</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.rowLabel}>Sound</Text>
+            {info('Sound', TIPS.sound)}
+          </View>
           <Switch
             value={sound}
             onValueChange={async (v) => {
@@ -210,7 +265,10 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
           />
         </View>
         <View style={[styles.row, styles.rowDivider]}>
-          <Text style={styles.rowLabel}>Full-screen takeover</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.rowLabel}>Full-screen takeover</Text>
+            {info('Full-screen takeover', TIPS.takeover)}
+          </View>
           <Switch
             value={takeover}
             onValueChange={async (v) => {
@@ -224,9 +282,9 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
       <Text style={styles.sectionLabel}>SHOPPING</Text>
       <View style={styles.card}>
         <View style={styles.row}>
-          <View style={styles.rowTextCol}>
+          <View style={styles.labelWithInfo}>
             <Text style={styles.rowLabel}>Auto-add shortfalls</Text>
-            <Text style={styles.rowHint}>Real shortfalls always get flagged — this only gates the automatic add (§5.7).</Text>
+            {info('Auto-add shortfalls', TIPS.autoAdd)}
           </View>
           <Switch
             value={autoAdd}
@@ -236,14 +294,12 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
             }}
           />
         </View>
-        <View style={[styles.row, styles.rowDivider]}>
-          <Text style={styles.rowLabel}>Staples</Text>
-          <Text style={styles.rowHint}>Manage from Plan → Pantry → Staples</Text>
-        </View>
       </View>
 
-      <Text style={styles.sectionLabel}>CURRENCY</Text>
-      <Text style={styles.hint}>Display-only — relabels every cost, converts nothing (§5.10).</Text>
+      <View style={styles.sectionLabelRow}>
+        <Text style={styles.sectionLabel}>CURRENCY</Text>
+        {info('Currency', 'Display-only — this relabels every price in the app. No amounts are ever converted.')}
+      </View>
       <View style={styles.chipRow}>
         {CURRENCY_PRESETS.map((preset) => (
           <TouchableOpacity
@@ -266,10 +322,14 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
           placeholderTextColor={theme.colors.ink3}
           onBlur={applyCustomSymbol}
         />
+        {info('Custom currency symbol', TIPS.currencyCustom)}
         <Text style={styles.currentCurrencyNote}>Currently {currencyCode} {currencySymbol}</Text>
       </View>
 
-      <Text style={styles.sectionLabel}>COST STALENESS THRESHOLD</Text>
+      <View style={styles.sectionLabelRow}>
+        <Text style={styles.sectionLabel}>COST STALENESS THRESHOLD</Text>
+        {info('Cost staleness threshold', TIPS.staleness)}
+      </View>
       <View style={styles.chipRow}>
         {STALENESS_OPTIONS.map((opt) => (
           <TouchableOpacity
@@ -288,15 +348,26 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
       <Text style={styles.sectionLabel}>DEVELOPER</Text>
       <View style={styles.card}>
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>Debug mode</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.rowLabel}>Debug mode</Text>
+            {info('Debug mode', TIPS.debug)}
+          </View>
           <Switch value={debugModeEnabled} onValueChange={toggleDebugMode} />
         </View>
       </View>
+
+      <Text style={styles.sectionLabel}>HOUSEHOLD</Text>
+      <TouchableOpacity style={styles.backupRow} onPress={() => setShowSyncLog(true)}>
+        <Text style={styles.backupRowText}>View sync log</Text>
+        <Text style={styles.chevron}>▸</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.backupRow} onPress={onOpenBackup}>
         <Text style={styles.backupRowText}>Backup & export</Text>
         <Text style={styles.chevron}>▸</Text>
       </TouchableOpacity>
+
+      {modal}
     </ScrollView>
   );
 }
@@ -315,6 +386,9 @@ const makeStyles = (theme: AppTheme) =>
       marginTop: theme.spacing.md,
     },
     hint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    sectionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.md },
+    labelWithInfo: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, flex: 1 },
+    infoDot: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.accentText },
     card: {
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius.card,

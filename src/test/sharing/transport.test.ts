@@ -4,10 +4,12 @@ import { PAYLOAD_VERSION, type SharePayload } from '../../sharing/payload';
 import {
   buildDeepLinkUrl,
   DeepLinkParseError,
+  formatBytes,
   isDeepLinkEligible,
   isQrEligible,
   parseDeepLinkUrl,
   payloadByteLength,
+  QR_URL_MAX_CHARS,
   suggestedFileName,
 } from '../../sharing/transport';
 
@@ -68,11 +70,13 @@ describe('deep link transport (§7.2)', () => {
     expect(() => parseDeepLinkUrl('dishision://import?d=not-valid-base64-json')).toThrow();
   });
 
-  it('flags a payload too large for a deep link (2 KB) or QR (1.2 KB)', () => {
+  it('always offers the quick link, and offers QR up to the format capacity', () => {
     const small = makePayload();
     expect(isDeepLinkEligible(small)).toBe(true);
     expect(isQrEligible(small)).toBe(true);
 
+    // Big enough to blow past a QR symbol's hard capacity: no QR possible,
+    // but the quick link is still always offered.
     const huge = makePayload({
       steps: Array.from({ length: 200 }, (_, i) => ({
         lane: null,
@@ -84,11 +88,12 @@ describe('deep link transport (§7.2)', () => {
         important: false,
       })),
     });
-    expect(payloadByteLength(huge)).toBeGreaterThan(2048);
-    expect(isDeepLinkEligible(huge)).toBe(false);
+    expect(buildDeepLinkUrl(huge).length).toBeGreaterThan(QR_URL_MAX_CHARS);
+    expect(isDeepLinkEligible(huge)).toBe(true);
     expect(isQrEligible(huge)).toBe(false);
 
-    // Something between 1.2 KB and 2 KB: deep-link eligible, not QR eligible.
+    // A medium recipe that once exceeded the old 1.2 KB QR gate now still
+    // fits a QR symbol comfortably.
     const medium = makePayload({
       steps: Array.from({ length: 7 }, (_, i) => ({
         lane: null,
@@ -102,9 +107,16 @@ describe('deep link transport (§7.2)', () => {
     });
     const bytes = payloadByteLength(medium);
     expect(bytes).toBeGreaterThan(1200);
-    expect(bytes).toBeLessThan(2048);
-    expect(isQrEligible(medium)).toBe(false);
+    expect(isQrEligible(medium)).toBe(true);
     expect(isDeepLinkEligible(medium)).toBe(true);
+  });
+});
+
+describe('formatBytes', () => {
+  it('renders a human-readable size next to the raw count', () => {
+    expect(formatBytes(512)).toBe('512 B');
+    expect(formatBytes(3072)).toBe('3.0 KB');
+    expect(formatBytes(1024 * 1024)).toBe('1.0 MB');
   });
 });
 

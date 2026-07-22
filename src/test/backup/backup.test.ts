@@ -4,7 +4,7 @@ import { ensureProfile } from '../../profile/ensureProfile';
 import { createUserIngredient } from '../../recipes/ingredientSearch';
 import { createManualRecipe, type RecipeDraft } from '../../recipes/recipeSave';
 import { setSetting } from '../../settings/setSetting';
-import { buildBackup, serializeBackup, BACKUP_VERSION } from '../../backup/exportData';
+import { buildBackup, collectPhotoUris, remapPhotoUris, serializeBackup, BACKUP_VERSION, type BackupFile } from '../../backup/exportData';
 import { BackupValidationError, parseBackup, restoreBackup } from '../../backup/restoreData';
 import { computeTableOrder, listUserTables } from '../../backup/tableOrder';
 import { createTestDb } from '../support/testDb';
@@ -130,5 +130,41 @@ describe('backup export/restore (§10)', () => {
   it('rejects malformed backup files', () => {
     expect(() => parseBackup('{not json')).toThrow(BackupValidationError);
     expect(() => parseBackup(JSON.stringify({ version: 1 }))).toThrow(BackupValidationError);
+  });
+
+  it('still accepts an older v1 backup with no embedded photos', () => {
+    const json = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), tables: {} });
+    const parsed = parseBackup(json);
+    expect(parsed.version).toBe(1);
+    expect(parsed.photos).toBeUndefined();
+  });
+});
+
+describe('backup photo bundling (pure helpers)', () => {
+  const backup: BackupFile = {
+    version: BACKUP_VERSION,
+    exportedAt: '',
+    tables: {
+      cook_log_photo: [{ id: 1, uri: 'file:///old/a.jpg' }, { id: 2, uri: 'file:///old/b.jpg' }],
+      profile: [{ id: 1, avatar_uri: 'file:///old/avatar.jpg' }],
+      recipe: [{ id: 1, photo_uri: null }],
+    },
+  };
+
+  it('collects every distinct photo URI across the photo columns', () => {
+    expect(collectPhotoUris(backup).sort()).toEqual(
+      ['file:///old/a.jpg', 'file:///old/avatar.jpg', 'file:///old/b.jpg'],
+    );
+  });
+
+  it('remaps photo URIs to their new local paths, leaving others untouched', () => {
+    const remapped = remapPhotoUris(backup, {
+      'file:///old/a.jpg': 'file:///new/a.jpg',
+      'file:///old/avatar.jpg': 'file:///new/avatar.jpg',
+    });
+    expect(remapped.tables.cook_log_photo[0].uri).toBe('file:///new/a.jpg');
+    expect(remapped.tables.cook_log_photo[1].uri).toBe('file:///old/b.jpg'); // no mapping → unchanged
+    expect(remapped.tables.profile[0].avatar_uri).toBe('file:///new/avatar.jpg');
+    expect(remapped.tables.recipe[0].photo_uri).toBeNull();
   });
 });

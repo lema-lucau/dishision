@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createTestDb } from '../support/testDb';
-import { ensureProfile, FOOD_EMOJI_POOL } from '../../profile/ensureProfile';
+import { ensureProfile, AVATAR_EMOJI_POOL } from '../../profile/ensureProfile';
 import { clearAvatarPhoto, rerollAvatarEmoji, setAvatarPhoto, updateDisplayName } from '../../profile/profileMutations';
 
 describe('profileMutations (§5.10)', () => {
@@ -29,7 +29,7 @@ describe('profileMutations (§5.10)', () => {
     // Re-roll many times; every result is in-pool and never the excluded one.
     for (let i = 0; i < 30; i++) {
       const next = await rerollAvatarEmoji(db, profile.avatar_emoji);
-      expect(FOOD_EMOJI_POOL).toContain(next);
+      expect(AVATAR_EMOJI_POOL).toContain(next);
       expect(next).not.toBe(profile.avatar_emoji);
       const row = await db.getFirstAsync<{ avatar_emoji: string }>('SELECT avatar_emoji FROM profile WHERE id = 1');
       expect(row?.avatar_emoji).toBe(next);

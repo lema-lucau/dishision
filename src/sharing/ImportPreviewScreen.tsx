@@ -15,7 +15,9 @@ import {
   type ImportMatchState,
   type UnresolvedIngredientInfo,
 } from './importRecipe';
-import type { SharePayload } from './payload';
+import { buildSharePayload, type SharePayload } from './payload';
+import { buildDetailedDiff, mergePayloads, type DetailedDiffRow, type DiffFieldKey } from './diff';
+import { RecipeDiffView } from './RecipeDiffView';
 
 interface ImportPreviewScreenProps {
   payload: SharePayload;
@@ -25,27 +27,6 @@ interface ImportPreviewScreenProps {
   onCancel: () => void;
 }
 
-const FIELD_LABELS: Record<string, string> = {
-  name: 'Name',
-  description: 'Description',
-  base_servings: 'Servings',
-  timeline_mode: 'Timeline',
-  origin_label: 'Origin',
-  origin_url: 'Origin link',
-  photo_emoji: 'Emoji',
-  lanes: 'Lanes',
-  ingredients: 'Ingredients',
-  steps: 'Steps',
-  tags: 'Tags',
-};
-
-function fieldValueLabel(value: unknown): string {
-  if (value == null) return '—';
-  if (Array.isArray(value)) return `${value.length} item${value.length === 1 ? '' : 's'}`;
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  return String(value);
-}
-
 export function ImportPreviewScreen({ payload, importedFrom = null, onImported, onCancel }: ImportPreviewScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -53,11 +34,39 @@ export function ImportPreviewScreen({ payload, importedFrom = null, onImported, 
   const [match, setMatch] = useState<ImportMatchState | null>(null);
   const [resolution, setResolution] = useState<UnresolvedIngredientInfo[] | null>(null);
   const [busy, setBusy] = useState(false);
+  // Local copy of an already-owned recipe, for the detailed diff when the
+  // incoming version differs, plus the per-field "take theirs" selections.
+  const [localPayload, setLocalPayload] = useState<SharePayload | null>(null);
+  const [detailedDiff, setDetailedDiff] = useState<DetailedDiffRow[] | null>(null);
+  const [takeIncoming, setTakeIncoming] = useState<Partial<Record<DiffFieldKey, boolean>>>({});
 
   useEffect(() => {
     matchImport(db, payload).then(setMatch);
     checkIngredientResolution(db, payload).then(setResolution);
   }, [db, payload]);
+
+  // When we already own this recipe but it differs, load our copy and build
+  // the field-level diff, defaulting every changed field to "take theirs" so
+  // the Merge button reproduces the old whole-replace behaviour untouched.
+  useEffect(() => {
+    if (match?.kind !== 'differs') {
+      setDetailedDiff(null);
+      return;
+    }
+    let cancelled = false;
+    buildSharePayload(db, match.localRecipeId, { includePhoto: false }).then((local) => {
+      if (cancelled) return;
+      const rows = buildDetailedDiff(local, payload);
+      setLocalPayload(local);
+      setDetailedDiff(rows);
+      const defaults: Partial<Record<DiffFieldKey, boolean>> = {};
+      for (const r of rows) if (r.changed) defaults[r.field] = true;
+      setTakeIncoming(defaults);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [db, match, payload]);
 
   async function run(action: () => Promise<number | void>) {
     setBusy(true);
@@ -139,28 +148,29 @@ export function ImportPreviewScreen({ payload, importedFrom = null, onImported, 
       ) : (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>This recipe has changed since you last had it</Text>
-          {match.diff
-            .filter((f) => f.changed)
-            .map((f) => (
-              <View key={f.field} style={styles.diffRow}>
-                <Text style={styles.diffField}>{FIELD_LABELS[f.field] ?? f.field}</Text>
-                <View style={styles.diffValues}>
-                  <Text style={styles.diffOld} numberOfLines={2}>
-                    {fieldValueLabel(f.local)}
-                  </Text>
-                  <Text style={styles.diffArrow}>→</Text>
-                  <Text style={styles.diffNew} numberOfLines={2}>
-                    {fieldValueLabel(f.incoming)}
-                  </Text>
-                </View>
-              </View>
-            ))}
+          <Text style={styles.cardBody}>
+            Choose which changes to take. Merge applies your selections to your copy; Keep both leaves yours untouched and adds theirs as a separate recipe.
+          </Text>
+          {!detailedDiff ? (
+            <ActivityIndicator color={theme.colors.accent} />
+          ) : (
+            <RecipeDiffView
+              rows={detailedDiff}
+              selectable
+              takeIncoming={takeIncoming}
+              onToggleField={(field, take) => setTakeIncoming((prev) => ({ ...prev, [field]: take }))}
+            />
+          )}
           <TouchableOpacity
             style={styles.primaryButton}
-            disabled={busy}
-            onPress={() => run(() => importMerge(db, match.localRecipeId, payload, importedFrom))}
+            disabled={busy || !localPayload}
+            onPress={() =>
+              run(() =>
+                importMerge(db, match.localRecipeId, mergePayloads(localPayload!, payload, takeIncoming), importedFrom),
+              )
+            }
           >
-            <Text style={styles.primaryButtonText}>{busy ? 'Merging…' : 'Merge'}</Text>
+            <Text style={styles.primaryButtonText}>{busy ? 'Merging…' : 'Merge selected changes'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.secondaryButton}
@@ -198,12 +208,6 @@ const makeStyles = (theme: AppTheme) =>
     },
     cardTitle: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.md, color: theme.colors.ink },
     cardBody: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
-    diffRow: { gap: 2, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm },
-    diffField: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.5 },
-    diffValues: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, flexWrap: 'wrap' },
-    diffOld: { flex: 1, fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, textDecorationLine: 'line-through' },
-    diffArrow: { color: theme.colors.ink3 },
-    diffNew: { flex: 1, fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
     primaryButton: {
       backgroundColor: theme.colors.accent,
       borderRadius: theme.radius.pill,

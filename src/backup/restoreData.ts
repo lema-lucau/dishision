@@ -31,7 +31,12 @@ export function parseBackup(json: string): BackupFile {
   if (!candidate.tables || typeof candidate.tables !== 'object') {
     throw new BackupValidationError('Missing table data');
   }
-  return { version: candidate.version, exportedAt: candidate.exportedAt ?? '', tables: candidate.tables };
+  return {
+    version: candidate.version,
+    exportedAt: candidate.exportedAt ?? '',
+    tables: candidate.tables,
+    photos: candidate.photos && typeof candidate.photos === 'object' ? candidate.photos : undefined,
+  };
 }
 
 async function insertRow(db: DbClient, table: string, row: Record<string, unknown>): Promise<void> {

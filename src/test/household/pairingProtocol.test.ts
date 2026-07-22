@@ -88,6 +88,8 @@ describe('pairing protocol (§5.11)', () => {
     await bChannel.receive();
     await bChannel.send({ type: 'payload_request', shareIds: [] });
     await bChannel.receive();
+    await bChannel.send({ type: 'shared_cooks', entries: [] });
+    await bChannel.receive(); // shared_cooks_ack
     await bChannel.send({ type: 'done' });
     await dispatcherPromise;
   });

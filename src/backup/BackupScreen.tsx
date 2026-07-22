@@ -9,7 +9,7 @@ import { logger } from '../debug/logStore';
 import { formatDMY } from '../lib/formatDate';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { AutoBackupEntry } from './autoBackup';
-import { restoreBackup } from './restoreData';
+import { restoreBackupWithPhotos } from './backupPhotos';
 
 interface BackupScreenProps {
   onBack: () => void;
@@ -68,7 +68,7 @@ export function BackupScreen({ onBack, onRestored }: BackupScreenProps) {
       const { pickBackupFile } = await import('./backupFile');
       const parsed = await pickBackupFile();
       if (!parsed) return; // user cancelled the picker
-      await restoreBackup(db, parsed);
+      await restoreBackupWithPhotos(db, parsed);
     });
   }
 
@@ -76,7 +76,7 @@ export function BackupScreen({ onBack, onRestored }: BackupScreenProps) {
     confirmRestore(async () => {
       const { readBackupFile } = await import('./backupFile');
       const parsed = await readBackupFile(entry.uri);
-      await restoreBackup(db, parsed);
+      await restoreBackupWithPhotos(db, parsed);
     });
   }
 
@@ -88,7 +88,7 @@ export function BackupScreen({ onBack, onRestored }: BackupScreenProps) {
       <Text style={styles.title}>Backup & export</Text>
 
       <Text style={styles.sectionLabel}>EXPORT</Text>
-      <Text style={styles.hint}>Everything on this device — recipes, logs, plans, settings, household. Local and private.</Text>
+      <Text style={styles.hint}>Everything on this device — recipes, logs, plans, settings, household, and your photos (cook-log pictures and profile picture). Local and private.</Text>
       <TouchableOpacity style={styles.primaryButton} onPress={handleExport} disabled={busy === 'export'}>
         <Text style={styles.primaryButtonText}>{busy === 'export' ? 'Exporting…' : 'Export as JSON'}</Text>
       </TouchableOpacity>
@@ -106,7 +106,12 @@ export function BackupScreen({ onBack, onRestored }: BackupScreenProps) {
         <View style={styles.card}>
           {autoBackups.map((entry, index) => (
             <View key={entry.uri} style={[styles.row, index > 0 && styles.rowDivider]}>
-              <Text style={styles.rowLabel}>{formatDMY(entry.createdAt.toISOString())}</Text>
+              <View style={styles.rowTextCol}>
+                <Text style={styles.rowLabel}>{formatDMY(entry.createdAt.toISOString())}</Text>
+                <Text style={styles.rowSub}>
+                  {entry.createdAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </View>
               <TouchableOpacity onPress={() => handleRestoreAuto(entry)} disabled={busy != null}>
                 <Text style={styles.rowAction}>Restore</Text>
               </TouchableOpacity>
@@ -148,6 +153,8 @@ const makeStyles = (theme: AppTheme) =>
     },
     row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: theme.spacing.md },
     rowDivider: { borderTopWidth: 1, borderTopColor: theme.colors.border },
+    rowTextCol: { gap: 1 },
     rowLabel: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.base, color: theme.colors.ink },
+    rowSub: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
     rowAction: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   });

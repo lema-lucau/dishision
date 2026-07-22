@@ -52,6 +52,10 @@ export async function checkIngredientResolution(db: DbClient, payload: SharePayl
   return results;
 }
 
+export async function buildDraftFromPayload(db: DbClient, payload: SharePayload): Promise<RecipeDraft> {
+  return buildDraft(db, payload);
+}
+
 async function buildDraft(db: DbClient, payload: SharePayload): Promise<RecipeDraft> {
   const ingredients: RecipeIngredientDraft[] = [];
   for (const ing of payload.ingredients) {

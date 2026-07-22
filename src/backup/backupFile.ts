@@ -6,7 +6,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
-import { buildBackup, serializeBackup, type BackupFile as BackupFileShape } from './exportData';
+import { serializeBackup, type BackupFile as BackupFileShape } from './exportData';
+import { buildBackupWithPhotos } from './backupPhotos';
 import { parseBackup } from './restoreData';
 
 function exportDir(): Directory {
@@ -16,8 +17,12 @@ function exportDir(): Directory {
 }
 
 export async function exportBackupToFile(db: DbClient): Promise<void> {
-  const backup = await buildBackup(db);
-  const file = new File(exportDir(), `dishision-backup-${new Date().toISOString().slice(0, 10)}.json`);
+  const backup = await buildBackupWithPhotos(db);
+  // dishision_backup_<DATE>_<TIME>.json, e.g. dishision_backup_2026-07-22_14-30-05.json
+  const iso = new Date().toISOString();
+  const date = iso.slice(0, 10);
+  const time = iso.slice(11, 19).replace(/:/g, '-');
+  const file = new File(exportDir(), `dishision_backup_${date}_${time}.json`);
   file.write(serializeBackup(backup));
   logger.info('db', 'Manual backup exported', { uri: file.uri });
   const available = await Sharing.isAvailableAsync();

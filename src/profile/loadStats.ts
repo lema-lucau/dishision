@@ -36,18 +36,52 @@ export interface TagDistributionEntry {
   count: number;
 }
 
+export type TrendDirection = 'up' | 'down' | 'flat';
+
+export interface Trend {
+  direction: TrendDirection;
+  /** Percentage change of the recent half vs the previous half, or null when there isn't enough data. */
+  changePct: number | null;
+}
+
 export interface Stats {
   totalCooks: number;
   distinctRecipesCooked: number;
   mostCooked: { recipeId: number; name: string; count: number } | null;
-  /** "cooked X of the last 30 days" (§5.10) — distinct calendar days, not cook count. */
+  /** Distinct calendar days cooked in the last 30 days. */
   cookedDaysLast30: number;
+  /** Total cooks (not distinct days) in the last 30 days. */
+  cooksLast30: number;
+  /** All-time average star rating across rated cooks. */
+  avgRating: number | null;
+  /** All-time total spend (cost per serving × servings made) across cooks with a known cost. */
+  totalSpend: number | null;
+  /** All-time average macros per serving across cooks with known macros. */
+  avgKcal: number | null;
+  avgMacros: { protein: number | null; carbs: number | null; fat: number | null };
+  trends: { cooks: Trend; rating: Trend; calories: Trend; spend: Trend };
   cooksPerWeek: CooksPerWeekPoint[];
   ratingDrift: RatingDriftPoint[];
   proteinDistribution: TagDistributionEntry[];
   tagDistribution: TagDistributionEntry[];
   nutritionPerWeek: NutritionWeekPoint[];
   spendPerWeek: SpendWeekPoint[];
+}
+
+// Recent-half vs previous-half comparison of a weekly series (nulls ignored).
+// A change under 5% reads as flat so tiny wobble doesn't show a misleading arrow.
+export function computeTrend(values: (number | null)[]): Trend {
+  const mid = Math.floor(values.length / 2);
+  const prev = values.slice(0, mid).filter((v): v is number => v != null);
+  const recent = values.slice(mid).filter((v): v is number => v != null);
+  if (prev.length === 0 || recent.length === 0) return { direction: 'flat', changePct: null };
+  const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const a = mean(prev);
+  const b = mean(recent);
+  if (a === 0) return { direction: b > 0 ? 'up' : 'flat', changePct: null };
+  const changePct = ((b - a) / a) * 100;
+  const direction: TrendDirection = Math.abs(changePct) < 5 ? 'flat' : changePct > 0 ? 'up' : 'down';
+  return { direction, changePct };
 }
 
 // Monday of the week containing `dateKey` (YYYY-MM-DD), as a YYYY-MM-DD key.
@@ -95,9 +129,31 @@ export async function loadStats(db: DbClient, weeks = 12, now: Date = new Date()
   }
 
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const cookedDaysLast30 = new Set(
-    logs.filter((l) => new Date(l.cooked_at).getTime() >= thirtyDaysAgo.getTime()).map((l) => l.cooked_at.slice(0, 10)),
-  ).size;
+  const logsLast30 = logs.filter((l) => new Date(l.cooked_at).getTime() >= thirtyDaysAgo.getTime());
+  const cookedDaysLast30 = new Set(logsLast30.map((l) => l.cooked_at.slice(0, 10))).size;
+  const cooksLast30 = logsLast30.length;
+
+  // All-time aggregates (across every log, not just the charted window).
+  const allStars: number[] = [];
+  const allKcal: number[] = [];
+  const allProtein: number[] = [];
+  const allCarbs: number[] = [];
+  const allFat: number[] = [];
+  let totalSpendAllTime = 0;
+  let hasSpend = false;
+  for (const log of logs) {
+    if (log.stars != null) allStars.push(log.stars);
+    const recipe = recipeById.get(log.recipe_id);
+    if (!recipe) continue;
+    if (recipe.kcalPerServing != null) allKcal.push(recipe.kcalPerServing);
+    if (recipe.proteinPerServing != null) allProtein.push(recipe.proteinPerServing);
+    if (recipe.carbsPerServing != null) allCarbs.push(recipe.carbsPerServing);
+    if (recipe.fatPerServing != null) allFat.push(recipe.fatPerServing);
+    if (recipe.costPerServing != null) {
+      totalSpendAllTime += recipe.costPerServing * log.servings_made;
+      hasSpend = true;
+    }
+  }
 
   // Build `weeks` consecutive Monday-start buckets ending on the current week.
   const currentWeekStart = mondayOfWeek(localDateKey(now.getTime()));
@@ -141,11 +197,27 @@ export async function loadStats(db: DbClient, weeks = 12, now: Date = new Date()
 
   const avg = (values: number[]): number | null => (values.length === 0 ? null : values.reduce((a, b) => a + b, 0) / values.length);
 
+  const cooksSeries = weekKeys.map((w) => cooksPerWeekMap.get(w) ?? 0);
+  const ratingSeries = weekKeys.map((w) => avg(starsPerWeek.get(w) ?? []));
+  const kcalSeries = weekKeys.map((w) => avg(kcalPerWeek.get(w) ?? []));
+  const spendSeries = weekKeys.map((w) => ((costPerServingPerWeek.get(w) ?? []).length > 0 ? spendPerWeek.get(w)! : null));
+
   return {
     totalCooks,
     distinctRecipesCooked,
     mostCooked,
     cookedDaysLast30,
+    cooksLast30,
+    avgRating: avg(allStars),
+    totalSpend: hasSpend ? totalSpendAllTime : null,
+    avgKcal: avg(allKcal),
+    avgMacros: { protein: avg(allProtein), carbs: avg(allCarbs), fat: avg(allFat) },
+    trends: {
+      cooks: computeTrend(cooksSeries),
+      rating: computeTrend(ratingSeries),
+      calories: computeTrend(kcalSeries),
+      spend: computeTrend(spendSeries),
+    },
     cooksPerWeek: weekKeys.map((weekStart) => ({ weekStart, cooks: cooksPerWeekMap.get(weekStart) ?? 0 })),
     ratingDrift: weekKeys.map((weekStart) => ({ weekStart, avgStars: avg(starsPerWeek.get(weekStart) ?? []) })),
     proteinDistribution: [...proteinCounts.entries()]

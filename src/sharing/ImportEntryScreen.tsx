@@ -4,9 +4,11 @@
 // screen just explains that route rather than duplicating a file picker.
 import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { QrScannerScreen } from './QrScannerScreen';
 import { DeepLinkParseError, parseDeepLinkUrl } from './transport';
+import { readDishisionFile } from './dishisionFile';
 import { PayloadValidationError } from './payload';
 import type { SharePayload } from './payload';
 
@@ -35,6 +37,27 @@ export function ImportEntryScreen({ onPayload, onBack }: ImportEntryScreenProps)
     }
   }
 
+  async function pickFile() {
+    setError(null);
+    try {
+      // .dishision files serialize as JSON, so the JSON mime type surfaces them
+      // in the picker; some file managers report a generic type, hence the wildcard.
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/json', 'application/octet-stream', '*/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || result.assets.length === 0) return;
+      const payload = await readDishisionFile(result.assets[0].uri);
+      onPayload(payload);
+    } catch (e) {
+      if (e instanceof PayloadValidationError) {
+        setError("That file isn't a valid Dishision recipe.");
+      } else {
+        setError('Could not read that file.');
+      }
+    }
+  }
+
   if (scanning) {
     return (
       <QrScannerScreen
@@ -56,11 +79,12 @@ export function ImportEntryScreen({ onPayload, onBack }: ImportEntryScreenProps)
         </TouchableOpacity>
         <Text style={styles.title}>Import a recipe</Text>
 
+        <Text style={styles.sectionLabel}>QR CODE</Text>
         <TouchableOpacity style={styles.scanButton} onPress={() => setScanning(true)}>
           <Text style={styles.scanButtonText}>📷 Scan a QR code</Text>
         </TouchableOpacity>
 
-        <Text style={styles.orLabel}>or paste a link</Text>
+        <Text style={styles.sectionLabel}>LINK</Text>
         <View style={styles.linkRow}>
           <TextInput
             style={styles.input}
@@ -75,11 +99,13 @@ export function ImportEntryScreen({ onPayload, onBack }: ImportEntryScreenProps)
             <Text style={styles.importButtonText}>Import</Text>
           </TouchableOpacity>
         </View>
-        {error && <Text style={styles.error}>{error}</Text>}
 
-        <Text style={styles.fileHint}>
-          Received a .dishision file instead? Open it from your file manager or messaging app — Dishision will pick it up automatically.
-        </Text>
+        <Text style={styles.sectionLabel}>FILE</Text>
+        <TouchableOpacity style={styles.fileButton} onPress={pickFile}>
+          <Text style={styles.fileButtonText}>📄 Import a .dishision file</Text>
+        </TouchableOpacity>
+
+        {error && <Text style={styles.error}>{error}</Text>}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -98,12 +124,12 @@ const makeStyles = (theme: AppTheme) =>
       alignItems: 'center',
     },
     scanButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
-    orLabel: {
+    sectionLabel: {
       fontFamily: theme.fonts.body.semiBold,
       fontSize: theme.fontSize.xs,
       color: theme.colors.ink3,
-      textAlign: 'center',
-      letterSpacing: 0.5,
+      letterSpacing: 1,
+      marginTop: theme.spacing.sm,
     },
     linkRow: { flexDirection: 'row', gap: theme.spacing.sm },
     input: {
@@ -125,6 +151,12 @@ const makeStyles = (theme: AppTheme) =>
       justifyContent: 'center',
     },
     importButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+    fileButton: {
+      backgroundColor: theme.colors.chipBg,
+      borderRadius: theme.radius.pill,
+      paddingVertical: theme.spacing.md,
+      alignItems: 'center',
+    },
+    fileButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink2 },
     error: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.red },
-    fileHint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, marginTop: theme.spacing.lg },
   });

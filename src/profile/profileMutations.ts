@@ -3,7 +3,7 @@
 // it directly.
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
-import { FOOD_EMOJI_POOL, type Profile } from './ensureProfile';
+import { AVATAR_EMOJI_POOL, type Profile } from './ensureProfile';
 
 export async function updateDisplayName(db: DbClient, name: string): Promise<void> {
   const trimmed = name.trim();
@@ -18,7 +18,7 @@ export async function updateDisplayName(db: DbClient, name: string): Promise<voi
 // Re-roll the default avatar emoji (§5.10). Avoids handing back the current one
 // so a tap always visibly changes something.
 export async function rerollAvatarEmoji(db: DbClient, current?: string): Promise<string> {
-  const choices = current ? FOOD_EMOJI_POOL.filter((e) => e !== current) : FOOD_EMOJI_POOL;
+  const choices = current ? AVATAR_EMOJI_POOL.filter((e) => e !== current) : AVATAR_EMOJI_POOL;
   const next = choices[Math.floor(Math.random() * choices.length)];
   await db.runAsync(
     "UPDATE profile SET avatar_emoji = ?, updated_at = datetime('now') WHERE id = 1",
@@ -44,4 +44,11 @@ export async function setAvatarPhoto(db: DbClient, uri: string): Promise<void> {
 export async function clearAvatarPhoto(db: DbClient): Promise<void> {
   await db.runAsync("UPDATE profile SET avatar_uri = NULL, updated_at = datetime('now') WHERE id = 1", []);
   logger.info('db', 'Cleared avatar photo, reverted to emoji');
+}
+
+// Sets a specific avatar emoji (chosen from the picker, not re-rolled) and
+// clears any photo so the emoji shows through.
+export async function setAvatarEmoji(db: DbClient, emoji: string): Promise<void> {
+  await db.runAsync("UPDATE profile SET avatar_emoji = ?, avatar_uri = NULL, updated_at = datetime('now') WHERE id = 1", [emoji]);
+  logger.info('db', 'Set avatar emoji', { emoji });
 }

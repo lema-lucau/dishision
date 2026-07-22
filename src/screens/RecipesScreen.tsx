@@ -29,7 +29,7 @@ import { useImportIntentStore } from '../sharing/importIntentStore';
 import { ImportEntryScreen } from '../sharing/ImportEntryScreen';
 import { ImportPreviewScreen } from '../sharing/ImportPreviewScreen';
 import { ManualMergeScreen } from '../sharing/ManualMergeScreen';
-import { mergeRecipeLineage } from '../sharing/importRecipe';
+import { buildDraftFromPayload, mergeRecipeLineage } from '../sharing/importRecipe';
 import type { SharePayload } from '../sharing/payload';
 import { ShareSheetScreen } from '../sharing/ShareSheetScreen';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
@@ -77,11 +77,13 @@ export function RecipesScreen({
   const [view, setView] = useState<ViewState>({ mode: 'list' });
   const [search, setSearch] = useState('');
   const [chips, setChips] = useState<ChipKey[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sort, setSort] = useState<SortKey>('name');
   const [direction, setDirection] = useState<SortDirection>('asc');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [editDraft, setEditDraft] = useState<RecipeDraft | null>(null);
   const [layout, setLayout] = useState<'list' | 'grid'>('grid');
+  const [tagsExpanded, setTagsExpanded] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<MealType>>(new Set());
   const [pageSize, setPageSize] = useState(10);
@@ -106,7 +108,7 @@ export function RecipesScreen({
   // showing an empty page silently.
   useEffect(() => {
     setSectionPages({ breakfast: 1, lunch: 1, dinner: 1, dessert: 1 });
-  }, [search, chips, sort, direction, pageSize]);
+  }, [search, chips, selectedTags, sort, direction, pageSize, favouritesOnly]);
 
   const reload = useCallback(async () => {
     const data = await loadEnrichedRecipes(db);
@@ -161,6 +163,18 @@ export function RecipesScreen({
   function toggleChip(chip: ChipKey) {
     setChips((c) => (c.includes(chip) ? c.filter((x) => x !== chip) : [...c, chip]));
   }
+
+  function toggleTag(tag: string) {
+    setSelectedTags((t) => (t.includes(tag) ? t.filter((x) => x !== tag) : [...t, tag]));
+  }
+
+  // Every distinct tag across the library (built-in and custom), for the
+  // collapsible Tags filter. Sorted case-insensitively so the chip list is stable.
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of recipes ?? []) for (const t of r.tags) set.add(t);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [recipes]);
 
   if (recipes === null) {
     return (
@@ -230,6 +244,15 @@ export function RecipesScreen({
         onBack={() => setView({ mode: 'list' })}
         onMerge={async (keepId, duplicateId, adopt) => {
           await mergeRecipeLineage(db, keepId, duplicateId, adopt);
+          await reload();
+          setView({ mode: 'detail', recipeId: keepId });
+        }}
+        onApplyAndMerge={async (keepId, duplicateId, merged) => {
+          // Apply the picked fields to the kept recipe (content only — its own
+          // share_id/lineage is preserved), then fold in the duplicate.
+          const draft = await buildDraftFromPayload(db, merged);
+          await updateManualRecipe(db, keepId, draft);
+          await mergeRecipeLineage(db, keepId, duplicateId, 'keep');
           await reload();
           setView({ mode: 'detail', recipeId: keepId });
         }}
@@ -338,7 +361,7 @@ export function RecipesScreen({
   }
 
   const scopedRecipes = favouritesOnly ? recipes.filter((r) => r.isFavourite) : recipes;
-  const result = runRecipeQuery(scopedRecipes, { search, chips, sort, direction });
+  const result = runRecipeQuery(scopedRecipes, { search, chips, tagNames: selectedTags, sort, direction });
 
   const itemsByMealType = new Map<MealType, QueryResultItem[]>();
   for (const item of result.items) {
@@ -371,6 +394,28 @@ export function RecipesScreen({
           placeholder="Search recipes, ingredients, notes…"
           placeholderTextColor={theme.colors.ink3}
         />
+        <TouchableOpacity
+          onPress={() => setFavouritesOnly((f) => !f)}
+          style={[styles.favToggle, favouritesOnly && styles.favToggleActive]}
+          accessibilityLabel="Show favourites only"
+        >
+          <Text style={[styles.favToggleText, favouritesOnly && styles.favToggleTextActive]}>
+            {favouritesOnly ? '♥' : '♡'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Evenly-spaced utility row: the three cross-cutting recipe tools. */}
+      <View style={styles.utilityRow}>
+        <TouchableOpacity style={styles.utilityItem} onPress={() => setView({ mode: 'mergeDuplicates' })}>
+          <Text style={styles.utilityText}>Merge duplicates</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.utilityItem} onPress={() => setView({ mode: 'exclusions' })}>
+          <Text style={styles.utilityText}>Exclusions</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.utilityItem} onPress={() => setView({ mode: 'ingredients' })}>
+          <Text style={styles.utilityText}>All ingredients</Text>
+        </TouchableOpacity>
       </View>
 
       {favouritesOnly && (
@@ -382,6 +427,35 @@ export function RecipesScreen({
 
       <KeyboardAvoidingView style={styles.scroll} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <TouchableOpacity
+          style={styles.filtersToggle}
+          onPress={() => setTagsExpanded((e) => !e)}
+        >
+          <Text style={styles.filtersToggleText}>
+            {tagsExpanded ? '▾' : '▸'} Tags{selectedTags.length > 0 ? ` (${selectedTags.length})` : ''}
+          </Text>
+        </TouchableOpacity>
+        {tagsExpanded && (
+          allTags.length === 0 ? (
+            <Text style={styles.emptyTagsNote}>No tags yet.</Text>
+          ) : (
+            <View style={styles.tagRow}>
+              {allTags.map((tag) => {
+                const isSelected = selectedTags.includes(tag);
+                return (
+                  <TouchableOpacity
+                    key={tag}
+                    onPress={() => toggleTag(tag)}
+                    style={[styles.tagChip, isSelected && styles.tagChipSelected]}
+                  >
+                    <Text style={[styles.tagChipText, isSelected && styles.tagChipTextSelected]}>{tag}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )
+        )}
+
         <TouchableOpacity
           style={styles.filtersToggle}
           onPress={() => setFiltersExpanded((e) => !e)}
@@ -428,19 +502,10 @@ export function RecipesScreen({
               <Text style={[styles.pageSizeButtonText, pageSize === size && styles.pageSizeButtonTextActive]}>{size}</Text>
             </TouchableOpacity>
           ))}
-          <TouchableOpacity onPress={() => setView({ mode: 'mergeDuplicates' })} style={styles.exclusionsLink}>
-            <Text style={styles.toolbarLink}>Merge duplicates</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setView({ mode: 'exclusions' })}>
-            <Text style={styles.toolbarLink}>Exclusions</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.matchCountRow}>
           <Text style={styles.matchCount}>{result.items.length} matches</Text>
-          <TouchableOpacity onPress={() => setView({ mode: 'ingredients' })}>
-            <Text style={styles.toolbarLink}>All ingredients</Text>
-          </TouchableOpacity>
         </View>
         {result.relaxed && <Text style={styles.relaxedNote}>Closest matches — not all fit your filters exactly.</Text>}
 
@@ -514,6 +579,37 @@ const makeStyles = (theme: AppTheme) =>
     color: theme.colors.ink,
     padding: 0,
   },
+  favToggle: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.chipBg,
+  },
+  favToggleActive: { backgroundColor: theme.colors.accent },
+  favToggleText: { fontSize: theme.fontSize.base, color: theme.colors.ink2 },
+  favToggleTextActive: { color: theme.colors.accentFg },
+  utilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.xs,
+  },
+  utilityItem: { flex: 1, alignItems: 'center', paddingVertical: theme.spacing.xs },
+  utilityText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText, textAlign: 'center' },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },
+  tagChip: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.chipBg,
+  },
+  tagChipSelected: { backgroundColor: theme.colors.accent },
+  tagChipText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  tagChipTextSelected: { color: theme.colors.accentFg, fontFamily: theme.fonts.body.semiBold },
+  emptyTagsNote: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic' },
   scroll: { flex: 1 },
   scrollContent: { gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
   filtersToggle: {
@@ -540,7 +636,6 @@ const makeStyles = (theme: AppTheme) =>
   layoutButtonText: { fontSize: theme.fontSize.base, color: theme.colors.ink2 },
   layoutButtonTextActive: { color: theme.colors.accentFg },
   pageSizeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-  exclusionsLink: { marginLeft: 'auto' },
   pageSizeLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2, marginRight: 2 },
   pageSizeButton: {
     paddingHorizontal: theme.spacing.md,

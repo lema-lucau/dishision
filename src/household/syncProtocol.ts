@@ -14,6 +14,7 @@ import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
 import { buildSharePayload } from '../sharing/payload';
 import { getHouseholdMember, markSynced, removeHouseholdMember, updateMemberProfile, upsertHouseholdMember } from './householdMutations';
+import { applyReceivedSharedCooks, listPendingSharedCooks, markSharedCooksSynced } from './sharedCooks';
 import { deleteVanishedCacheRows, upsertHouseholdCacheEntry } from './syncCache';
 import { SyncAuthError, type ManifestItem, type PayloadEntry, type SyncChannel, type SyncMessage } from './syncTypes';
 
@@ -36,6 +37,8 @@ export interface InitiatorSyncResult {
   droppedByPeer: boolean;
   recipesReceived: number;
   recipesRemoved: number;
+  /** Queued cooks pushed to the peer that they accepted as cook logs. */
+  sharedCooksPushed: number;
 }
 
 // The phone that tapped "Sync now" — connects out, pulls the peer's public
@@ -66,7 +69,7 @@ export async function runInitiatorSync(
     logger.info('sync', 'Peer has removed us from their household — dropping them locally too', { peerPersonId });
     await removeHouseholdMember(db, peerPersonId);
     channel.close();
-    return { droppedByPeer: true, recipesReceived: 0, recipesRemoved: 0 };
+    return { droppedByPeer: true, recipesReceived: 0, recipesRemoved: 0, sharedCooksPushed: 0 };
   }
 
   await channel.send({ type: 'manifest_request' });
@@ -82,6 +85,23 @@ export async function runInitiatorSync(
   const payloadMsg = await channel.receive();
   const entries: PayloadEntry[] = payloadMsg.type === 'payload' ? payloadMsg.entries : [];
 
+  // Push cooks queued for this peer — they land as cook logs on their side.
+  const pendingCooks = await listPendingSharedCooks(db, peerPersonId);
+  await channel.send({
+    type: 'shared_cooks',
+    entries: pendingCooks.map((c) => ({
+      recipeShareId: c.recipeShareId,
+      recipeName: c.recipeName,
+      cookedAt: c.cookedAt,
+      servingsMade: c.servingsMade,
+      servingsEaten: c.servingsEaten,
+      stars: c.stars,
+      notes: c.notes,
+    })),
+  });
+  const cookAck = await channel.receive();
+  const sharedCooksPushed = cookAck.type === 'shared_cooks_ack' ? cookAck.applied : 0;
+
   await channel.send({ type: 'done' });
   channel.close();
 
@@ -96,10 +116,16 @@ export async function runInitiatorSync(
     }
     const removed = await deleteVanishedCacheRows(db, peerPersonId, shareIds);
     await writeSyncEvent(db, peerPersonId, 'received', 'recipes', entries.length);
+    // Cooks were delivered to the peer (accepted or not, re-pushing won't help),
+    // so clear them from the outbox and record what they accepted.
+    if (pendingCooks.length > 0) {
+      await markSharedCooksSynced(db, pendingCooks.map((c) => c.id));
+      await writeSyncEvent(db, peerPersonId, 'sent', 'shared_cooks', sharedCooksPushed);
+    }
     await markSynced(db, peerPersonId);
     await db.execAsync('COMMIT');
-    logger.info('sync', 'Sync complete', { peerPersonId, received: entries.length, removed });
-    return { droppedByPeer: false, recipesReceived: entries.length, recipesRemoved: removed };
+    logger.info('sync', 'Sync complete', { peerPersonId, received: entries.length, removed, sharedCooksPushed });
+    return { droppedByPeer: false, recipesReceived: entries.length, recipesRemoved: removed, sharedCooksPushed };
   } catch (error) {
     await db.execAsync('ROLLBACK');
     logger.error('sync', 'Sync failed during commit — cache left untouched', { peerPersonId, error: String(error) });
@@ -190,6 +216,16 @@ export async function runResponderSync(
   const entries = await buildPayloadEntries(db, requested);
   await channel.send({ type: 'payload', entries });
   await writeSyncEvent(db, hello.personId, 'sent', 'recipes', entries.length);
+
+  // Receive cooks the peer logged "with" us and record them as our own cook
+  // logs (matched to our recipe by share_id; unknown recipes are skipped).
+  const cooksMsg = await channel.receive();
+  const incomingCooks = cooksMsg.type === 'shared_cooks' ? cooksMsg.entries : [];
+  const { applied, skipped } = await applyReceivedSharedCooks(db, incomingCooks);
+  await channel.send({ type: 'shared_cooks_ack', applied: applied.length, skipped });
+  if (applied.length > 0) {
+    await writeSyncEvent(db, hello.personId, 'received', 'shared_cooks', applied.length);
+  }
 
   await channel.receive(); // done
   channel.close();

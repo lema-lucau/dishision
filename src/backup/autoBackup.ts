@@ -3,7 +3,8 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
-import { buildBackup, serializeBackup } from './exportData';
+import { serializeBackup } from './exportData';
+import { buildBackupWithPhotos } from './backupPhotos';
 
 const MAX_AUTO_BACKUPS = 5;
 const FILE_PATTERN = /^backup-(\d+)\.json$/;
@@ -31,7 +32,7 @@ export function listAutoBackups(): AutoBackupEntry[] {
 }
 
 export async function writeAutoBackup(db: DbClient): Promise<void> {
-  const backup = await buildBackup(db);
+  const backup = await buildBackupWithPhotos(db);
   const file = new File(backupsDir(), `backup-${Date.now()}.json`);
   file.write(serializeBackup(backup));
   logger.info('db', 'Auto-backup written', { uri: file.uri });

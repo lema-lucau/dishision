@@ -114,6 +114,11 @@ export function TabShell({ profile, onRestored }: TabShellProps) {
             onOpenThemePicker={() => setThemePickerOpen(true)}
             onOpenHousehold={() => setHouseholdOpen(true)}
             onRestored={onRestored}
+            onOpenRecipe={(recipeId) => {
+              setRecipesInitialRecipeId(recipeId);
+              setRecipesInitialStartCooking(false);
+              setActiveTab('recipes');
+            }}
             onViewAllFavourites={() => {
               setRecipesFavouritesOnly(true);
               setActiveTab('recipes');

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createTestDb } from '../support/testDb';
-import { ensureProfile, FOOD_EMOJI_POOL } from '../../profile/ensureProfile';
+import { ensureProfile, AVATAR_EMOJI_POOL } from '../../profile/ensureProfile';
 
 describe('ensureProfile', () => {
   it('creates a single profile row on first run with a person_id and pool emoji', async () => {
@@ -11,7 +11,7 @@ describe('ensureProfile', () => {
     expect(profile.display_name).toBe('Lema');
     expect(profile.person_id).toEqual(expect.any(String));
     expect(profile.person_id.length).toBeGreaterThan(0);
-    expect(FOOD_EMOJI_POOL).toContain(profile.avatar_emoji);
+    expect(AVATAR_EMOJI_POOL).toContain(profile.avatar_emoji);
   });
 
   it('is idempotent — a second call returns the same row untouched', async () => {

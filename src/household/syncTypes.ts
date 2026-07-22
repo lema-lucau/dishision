@@ -1,5 +1,6 @@
 // §7.5 wire protocol messages. NDJSON — one of these per line.
 import type { SharePayload } from '../sharing/payload';
+import type { SharedCookEntry } from './sharedCooks';
 
 export interface ManifestItem {
   shareId: string;
@@ -23,6 +24,10 @@ export type SyncMessage =
   | { type: 'manifest'; items: ManifestItem[] }
   | { type: 'payload_request'; shareIds: string[] }
   | { type: 'payload'; entries: PayloadEntry[] }
+  // §7 shared cooks: the initiator pushes cooks it logged "with" this peer;
+  // the peer applies them as its own cook_log rows and acks how many landed.
+  | { type: 'shared_cooks'; entries: SharedCookEntry[] }
+  | { type: 'shared_cooks_ack'; applied: number; skipped: number }
   | { type: 'done' }
   | { type: 'error'; message: string }
   // §5.11 pairing — a distinct opening message from `hello` because the

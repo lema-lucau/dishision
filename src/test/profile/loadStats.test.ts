@@ -2,8 +2,21 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../db/DbClient';
 import { createUserIngredient } from '../../recipes/ingredientSearch';
 import { createManualRecipe, type RecipeDraft } from '../../recipes/recipeSave';
-import { loadStats, mondayOfWeek } from '../../profile/loadStats';
+import { computeTrend, loadStats, mondayOfWeek } from '../../profile/loadStats';
 import { createTestDb } from '../support/testDb';
+
+describe('computeTrend', () => {
+  it('reports up/down/flat from the recent vs previous half', () => {
+    expect(computeTrend([1, 1, 1, 1, 2, 2, 2, 2]).direction).toBe('up');
+    expect(computeTrend([4, 4, 4, 4, 1, 1, 1, 1]).direction).toBe('down');
+    expect(computeTrend([2, 2, 2, 2, 2, 2, 2, 2]).direction).toBe('flat');
+  });
+
+  it('ignores null weeks and reports flat without enough data', () => {
+    expect(computeTrend([null, null, null, null]).changePct).toBeNull();
+    expect(computeTrend([2, null, null, 4]).direction).toBe('up');
+  });
+});
 
 function baseDraft(overrides: Partial<RecipeDraft> = {}): RecipeDraft {
   return {

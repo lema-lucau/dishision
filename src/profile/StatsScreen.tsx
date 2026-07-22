@@ -1,56 +1,162 @@
-// §5.10 Stats: counts, trends, nutrition, money. Sparklines are plain bar
-// rows rather than a charting library — nothing on the §15.1 allowlist
-// covers charts, and 12 weeks of data reads fine as bars.
+// Profile → Stats: counts, trends, nutrition, money. Charts are hand-built
+// (bars, stacked bars, ranked bars) — nothing on the allowlist covers charts,
+// and these read fine while staying dependency-free. Every figure is derived
+// from cook_log at read time via loadStats.
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { formatCurrency } from '../lib/currency';
 import { getCurrencySymbol } from '../settings/getSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
-import { loadStats, type Stats } from './loadStats';
+import { loadStats, type Stats, type Trend } from './loadStats';
 
 interface StatsScreenProps {
   onBack: () => void;
+  /** Opens a recipe (e.g. tapping the "most cooked" card). */
+  onOpenRecipe?: (recipeId: number) => void;
 }
 
-function Sparkline({
+function weekLabel(weekStart: string): string {
+  // "Mar 3" from a YYYY-MM-DD Monday key.
+  const d = new Date(`${weekStart}T00:00:00`);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+// A vertical bar chart with a baseline and first/last week axis labels. With
+// nothing selected the header shows the overall average across every week
+// with data; tapping a bar swaps it for that bar's exact value and week
+// ("breakdown"), and tapping the same bar again returns to the average.
+function BarChart({
   points,
-  colorToken,
+  color,
   formatValue,
+  formatAverage = formatValue,
 }: {
   points: { weekStart: string; value: number | null }[];
-  colorToken: string;
+  color: string;
   formatValue: (v: number) => string;
+  /**
+   * Formats the header average specifically — defaults to formatValue, but a
+   * series like weekly cook count (where every week has a real value, even
+   * 0, rather than null-when-no-data) needs its own formatter: rounding a
+   * genuinely small average like 0.3/week down to the nearest whole cook
+   * displays "0" even though real cooks are in the window.
+   */
+  formatAverage?: (v: number) => string;
 }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const [selected, setSelected] = useState<number | null>(null);
   const max = Math.max(1, ...points.map((p) => p.value ?? 0));
+  const withData = points.filter((p) => p.value != null);
+  const average = withData.length > 0 ? withData.reduce((sum, p) => sum + (p.value ?? 0), 0) / withData.length : null;
+  const selectedPoint = selected != null ? points[selected] : null;
+
   return (
-    <View style={styles.sparkline}>
-      {points.map((p) => (
-        <View key={p.weekStart} style={styles.sparkBarWrap}>
-          <View
-            style={[
-              styles.sparkBar,
-              { height: p.value == null ? 2 : Math.max(2, (p.value / max) * 48), backgroundColor: colorToken },
-            ]}
-          />
-        </View>
-      ))}
-      <Text style={styles.sparklineLatest}>
-        {points.length > 0 && points[points.length - 1].value != null
-          ? formatValue(points[points.length - 1].value!)
-          : '—'}
-      </Text>
+    <View style={styles.chartCard}>
+      <View style={styles.chartHeaderRow}>
+        <Text style={styles.chartLatest}>
+          {selectedPoint ? (selectedPoint.value != null ? formatValue(selectedPoint.value) : '—') : average != null ? formatAverage(average) : '—'}
+        </Text>
+        <Text style={styles.chartLatestLabel}>
+          {selectedPoint ? `week of ${weekLabel(selectedPoint.weekStart)}` : withData.length > 0 ? `average over ${withData.length} week${withData.length === 1 ? '' : 's'}` : 'no data'}
+        </Text>
+      </View>
+      <View style={styles.barRow}>
+        {points.map((p, i) => (
+          <TouchableOpacity
+            key={p.weekStart}
+            style={styles.barSlot}
+            activeOpacity={0.7}
+            onPress={() => setSelected((prev) => (prev === i ? null : i))}
+          >
+            <View
+              style={[
+                styles.bar,
+                { height: p.value == null ? 2 : Math.max(3, (p.value / max) * 90), backgroundColor: color },
+                i === selected && styles.barSelected,
+              ]}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
+      <View style={styles.axisRow}>
+        <Text style={styles.axisLabel}>{points.length > 0 ? weekLabel(points[0].weekStart) : ''}</Text>
+        <Text style={styles.axisLabel}>{points.length > 0 ? weekLabel(points[points.length - 1].weekStart) : ''}</Text>
+      </View>
+      <Text style={styles.chartTapHint}>Tap a bar for that week's value, tap again for the average</Text>
     </View>
   );
 }
 
-export function StatsScreen({ onBack }: StatsScreenProps) {
+// Ranked horizontal bars for a distribution (protein types, tags).
+function RankedBars({
+  entries,
+  color,
+  onPressEntry,
+}: {
+  entries: { tag: string; count: number }[];
+  color: string;
+  onPressEntry: (entry: { tag: string; count: number }) => void;
+}) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const max = Math.max(1, ...entries.map((e) => e.count));
+  return (
+    <View style={styles.rankedCard}>
+      {entries.map((e) => (
+        <TouchableOpacity key={e.tag} style={styles.rankedRow} activeOpacity={0.7} onPress={() => onPressEntry(e)}>
+          <Text style={styles.rankedLabel} numberOfLines={1}>
+            {e.tag}
+          </Text>
+          <View style={styles.rankedTrack}>
+            <View style={[styles.rankedFill, { width: `${(e.count / max) * 100}%`, backgroundColor: color }]} />
+          </View>
+          <Text style={styles.rankedCount}>{e.count}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+function TrendPill({ label, trend, tone, onPress }: { label: string; trend: Trend; tone: 'goodUp' | 'neutral'; onPress: () => void }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const glyph = trend.direction === 'up' ? '▲' : trend.direction === 'down' ? '▼' : '▬';
+  const color =
+    tone === 'neutral'
+      ? theme.colors.accentText
+      : trend.direction === 'up'
+        ? theme.colors.green
+        : trend.direction === 'down'
+          ? theme.colors.red
+          : theme.colors.ink3;
+  return (
+    <TouchableOpacity style={styles.trendPill} activeOpacity={0.7} onPress={onPress}>
+      <Text style={styles.trendLabel}>{label}</Text>
+      <View style={styles.trendValueRow}>
+        <Text style={[styles.trendGlyph, { color }]}>{glyph}</Text>
+        <Text style={[styles.trendPct, { color }]}>
+          {trend.changePct == null ? '—' : `${Math.abs(Math.round(trend.changePct))}%`}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function trendSentence(label: string, trend: Trend): string {
+  const dir = trend.direction === 'up' ? 'higher' : trend.direction === 'down' ? 'lower' : 'about the same';
+  const magnitude = trend.changePct == null ? '' : ` (${Math.abs(Math.round(trend.changePct))}%)`;
+  if (trend.changePct == null) return `${label}: not enough data yet to show a trend.`;
+  return `${label}: your recent weeks are ${dir}${magnitude} than the weeks before.`;
+}
+
+export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
+  const { modal, notice } = useConfirmModal();
   const [stats, setStats] = useState<Stats | null>(null);
   const [currencySymbol, setCurrencySymbol] = useState('€');
 
@@ -58,6 +164,9 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
     loadStats(db).then(setStats);
     getCurrencySymbol(db).then(setCurrencySymbol);
   }, [db]);
+
+  const macros = stats?.avgMacros;
+  const macroTotal = (macros?.protein ?? 0) + (macros?.carbs ?? 0) + (macros?.fat ?? 0);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -70,86 +179,186 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
         <ActivityIndicator color={theme.colors.accent} />
       ) : (
         <>
-          <View style={styles.tileRow}>
-            <View style={styles.tile}>
-              <Text style={styles.tileValue}>{stats.totalCooks}</Text>
-              <Text style={styles.tileLabel}>total cooks</Text>
-            </View>
-            <View style={styles.tile}>
-              <Text style={styles.tileValue}>{stats.distinctRecipesCooked}</Text>
-              <Text style={styles.tileLabel}>recipes cooked</Text>
-            </View>
-            <View style={styles.tile}>
-              <Text style={styles.tileValue}>{stats.cookedDaysLast30}</Text>
-              <Text style={styles.tileLabel}>of last 30 days</Text>
-            </View>
+          {/* Headline stat cards — tap for what each one means */}
+          <View style={styles.statGrid}>
+            <TouchableOpacity
+              style={styles.statCard}
+              activeOpacity={0.7}
+              onPress={() => notice('Total cooks', `You've completed ${stats.totalCooks} cook${stats.totalCooks === 1 ? '' : 's'} in total, counting every time you finished cooking a recipe.`)}
+            >
+              <Text style={styles.statEmoji}>🍳</Text>
+              <Text style={styles.statValue}>{stats.totalCooks}</Text>
+              <Text style={styles.statLabel}>total cooks</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statCard}
+              activeOpacity={0.7}
+              onPress={() => notice('Recipes cooked', `You've cooked ${stats.distinctRecipesCooked} different recipe${stats.distinctRecipesCooked === 1 ? '' : 's'} — how much variety you've had.`)}
+            >
+              <Text style={styles.statEmoji}>📖</Text>
+              <Text style={styles.statValue}>{stats.distinctRecipesCooked}</Text>
+              <Text style={styles.statLabel}>recipes cooked</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statCard}
+              activeOpacity={0.7}
+              onPress={() => notice('Cooks in the last 30 days', `You've cooked ${stats.cooksLast30} time${stats.cooksLast30 === 1 ? '' : 's'} in the last 30 days.`)}
+            >
+              <Text style={styles.statEmoji}>🔁</Text>
+              <Text style={styles.statValue}>{stats.cooksLast30}</Text>
+              <Text style={styles.statLabel}>times cooked in the last 30 days</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statCard}
+              activeOpacity={0.7}
+              onPress={() => notice('Active cooking days', `You cooked on ${stats.cookedDaysLast30} of the last 30 days — distinct days, not total cooks.`)}
+            >
+              <Text style={styles.statEmoji}>📅</Text>
+              <Text style={styles.statValue}>{stats.cookedDaysLast30}</Text>
+              <Text style={styles.statLabel}>active cooking days (last 30)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statCard}
+              activeOpacity={0.7}
+              onPress={() => notice('Average rating', stats.avgRating != null ? `Your cooks average ${stats.avgRating.toFixed(1)} out of 5 stars across every rating you've given.` : 'Rate your cooks to see your average here.')}
+            >
+              <Text style={styles.statEmoji}>⭐</Text>
+              <Text style={styles.statValue}>{stats.avgRating != null ? stats.avgRating.toFixed(1) : '—'}</Text>
+              <Text style={styles.statLabel}>avg rating</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statCard}
+              activeOpacity={0.7}
+              onPress={() => notice('Total spend', stats.totalSpend != null ? `Estimated ${formatCurrency(stats.totalSpend, currencySymbol)} spent across your cooks, from each recipe's cost per serving × servings made.` : 'Add ingredient prices to estimate your spend.')}
+            >
+              <Text style={styles.statEmoji}>💶</Text>
+              <Text style={styles.statValue}>{stats.totalSpend != null ? formatCurrency(stats.totalSpend, currencySymbol) : '—'}</Text>
+              <Text style={styles.statLabel}>total spend</Text>
+            </TouchableOpacity>
           </View>
 
           {stats.mostCooked && (
-            <Text style={styles.mostCooked}>
-              Most cooked: <Text style={styles.mostCookedName}>{stats.mostCooked.name}</Text> ({stats.mostCooked.count}×)
-            </Text>
+            <TouchableOpacity
+              style={styles.mostCookedCard}
+              activeOpacity={0.7}
+              onPress={() => onOpenRecipe?.(stats.mostCooked!.recipeId)}
+            >
+              <Text style={styles.mostCookedEmoji}>🏆</Text>
+              <View style={styles.mostCookedText}>
+                <Text style={styles.mostCookedLabel}>MOST COOKED</Text>
+                <Text style={styles.mostCookedName} numberOfLines={1}>
+                  {stats.mostCooked.name}
+                </Text>
+              </View>
+              <Text style={styles.mostCookedCount}>{stats.mostCooked.count}×</Text>
+              <Text style={styles.mostCookedChevron}>▸</Text>
+            </TouchableOpacity>
           )}
 
+          {/* Trends */}
+          <Text style={styles.sectionLabel}>RECENT TRENDS</Text>
+          <Text style={styles.sectionHint}>Recent weeks vs the weeks before.</Text>
+          <View style={styles.trendRow}>
+            <TrendPill label="Cooks" trend={stats.trends.cooks} tone="goodUp" onPress={() => notice('Cooks trend', trendSentence('Cooks', stats.trends.cooks))} />
+            <TrendPill label="Rating" trend={stats.trends.rating} tone="goodUp" onPress={() => notice('Rating trend', trendSentence('Rating', stats.trends.rating))} />
+            <TrendPill label="Calories" trend={stats.trends.calories} tone="neutral" onPress={() => notice('Calories trend', trendSentence('Calories', stats.trends.calories))} />
+            <TrendPill label="Spend" trend={stats.trends.spend} tone="neutral" onPress={() => notice('Spend trend', trendSentence('Spend', stats.trends.spend))} />
+          </View>
+
           <Text style={styles.sectionLabel}>COOKS PER WEEK</Text>
-          <Sparkline
+          <BarChart
             points={stats.cooksPerWeek.map((p) => ({ weekStart: p.weekStart, value: p.cooks }))}
-            colorToken={theme.colors.accent}
-            formatValue={(v) => `${v}`}
+            color={theme.colors.accent}
+            formatValue={(v) => `${Math.round(v)} cook${Math.round(v) === 1 ? '' : 's'}`}
+            formatAverage={(v) => `${Number.isInteger(v) ? v : v.toFixed(1)} cooks/wk`}
           />
 
-          <Text style={styles.sectionLabel}>RATING DRIFT</Text>
-          <Sparkline
+          <Text style={styles.sectionLabel}>RATING PER WEEK</Text>
+          <BarChart
             points={stats.ratingDrift.map((p) => ({ weekStart: p.weekStart, value: p.avgStars }))}
-            colorToken={theme.colors.amber}
-            formatValue={(v) => `★${v.toFixed(1)}`}
+            color={theme.colors.amber}
+            formatValue={(v) => `★ ${v.toFixed(1)}`}
           />
 
-          <Text style={styles.sectionLabel}>AVG KCAL PER COOK, PER WEEK</Text>
-          <Sparkline
+          <Text style={styles.sectionLabel}>AVG CALORIES PER WEEK</Text>
+          <BarChart
             points={stats.nutritionPerWeek.map((p) => ({ weekStart: p.weekStart, value: p.avgKcal }))}
-            colorToken={theme.colors.green}
+            color={theme.colors.green}
             formatValue={(v) => `${Math.round(v)} kcal`}
           />
 
           <Text style={styles.sectionLabel}>SPEND PER WEEK</Text>
-          <Sparkline
+          <BarChart
             points={stats.spendPerWeek.map((p) => ({ weekStart: p.weekStart, value: p.totalSpend }))}
-            colorToken={theme.colors.accent}
+            color={theme.colors.accent}
             formatValue={(v) => formatCurrency(v, currencySymbol)}
           />
 
+          {/* Average macro split */}
+          {macros && macroTotal > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>AVG MACROS PER SERVING</Text>
+              <TouchableOpacity
+                style={styles.macroCard}
+                activeOpacity={0.7}
+                onPress={() =>
+                  notice(
+                    'Average macros',
+                    `Averaged per serving across the recipes you've cooked that have macros: ${Math.round(macros.protein ?? 0)}g protein, ${Math.round(macros.carbs ?? 0)}g carbs, ${Math.round(macros.fat ?? 0)}g fat${stats.avgKcal != null ? `, ~${Math.round(stats.avgKcal)} kcal` : ''}.`,
+                  )
+                }
+              >
+                {stats.avgKcal != null && <Text style={styles.macroKcal}>{Math.round(stats.avgKcal)} kcal average</Text>}
+                <View style={styles.macroBar}>
+                  {(macros.protein ?? 0) > 0 && (
+                    <View style={[styles.macroSeg, { flex: macros.protein ?? 0, backgroundColor: theme.colors.accent }]} />
+                  )}
+                  {(macros.carbs ?? 0) > 0 && (
+                    <View style={[styles.macroSeg, { flex: macros.carbs ?? 0, backgroundColor: theme.colors.amber }]} />
+                  )}
+                  {(macros.fat ?? 0) > 0 && (
+                    <View style={[styles.macroSeg, { flex: macros.fat ?? 0, backgroundColor: theme.colors.green }]} />
+                  )}
+                </View>
+                <View style={styles.macroLegend}>
+                  <Text style={styles.macroLegendItem}>
+                    <Text style={{ color: theme.colors.accent }}>■ </Text>Protein {Math.round(macros.protein ?? 0)}g
+                  </Text>
+                  <Text style={styles.macroLegendItem}>
+                    <Text style={{ color: theme.colors.amber }}>■ </Text>Carbs {Math.round(macros.carbs ?? 0)}g
+                  </Text>
+                  <Text style={styles.macroLegendItem}>
+                    <Text style={{ color: theme.colors.green }}>■ </Text>Fat {Math.round(macros.fat ?? 0)}g
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          )}
+
           {stats.proteinDistribution.length > 0 && (
             <>
-              <Text style={styles.sectionLabel}>PROTEIN</Text>
-              <View style={styles.chipRow}>
-                {stats.proteinDistribution.map((p) => (
-                  <View key={p.tag} style={styles.distChip}>
-                    <Text style={styles.distChipText}>
-                      {p.tag} · {p.count}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+              <Text style={styles.sectionLabel}>PROTEINS YOU COOK</Text>
+              <RankedBars
+                entries={stats.proteinDistribution}
+                color={theme.colors.accent}
+                onPressEntry={(e) => notice(`${e.tag} cooks`, `You've cooked ${e.tag} ${e.count} time${e.count === 1 ? '' : 's'}.`)}
+              />
             </>
           )}
 
           {stats.tagDistribution.length > 0 && (
             <>
-              <Text style={styles.sectionLabel}>TAGS</Text>
-              <View style={styles.chipRow}>
-                {stats.tagDistribution.map((t) => (
-                  <View key={t.tag} style={styles.distChip}>
-                    <Text style={styles.distChipText}>
-                      {t.tag} · {t.count}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+              <Text style={styles.sectionLabel}>TOP TAGS</Text>
+              <RankedBars
+                entries={stats.tagDistribution}
+                color={theme.colors.amber}
+                onPressEntry={(e) => notice(`"${e.tag}" cooks`, `You've cooked recipes tagged "${e.tag}" ${e.count} time${e.count === 1 ? '' : 's'}.`)}
+              />
             </>
           )}
         </>
       )}
+      {modal}
     </ScrollView>
   );
 }
@@ -160,46 +369,100 @@ const makeStyles = (theme: AppTheme) =>
     content: { padding: theme.spacing.base, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
     back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
     title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
-    tileRow: { flexDirection: 'row', gap: theme.spacing.sm },
-    tile: {
-      flex: 1,
+
+    statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+    statCard: {
+      width: '31%',
+      flexGrow: 1,
       backgroundColor: theme.colors.surfaceWarm,
       borderRadius: theme.radius.card,
-      padding: theme.spacing.base,
+      paddingVertical: theme.spacing.base,
+      paddingHorizontal: theme.spacing.sm,
       alignItems: 'center',
       gap: 2,
     },
-    tileValue: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.lg, color: theme.colors.ink },
-    tileLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, textAlign: 'center' },
-    mostCooked: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
-    mostCookedName: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.ink },
-    sectionLabel: {
-      fontFamily: theme.fonts.body.semiBold,
-      fontSize: theme.fontSize.xs,
-      color: theme.colors.ink3,
-      letterSpacing: 0.5,
-      marginTop: theme.spacing.sm,
-    },
-    sparkline: {
+    statEmoji: { fontSize: 24 },
+    statValue: { fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
+    statLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, textAlign: 'center' },
+
+    mostCookedCard: {
       flexDirection: 'row',
-      alignItems: 'flex-end',
-      gap: 3,
-      height: 56,
+      alignItems: 'center',
+      gap: theme.spacing.md,
+      backgroundColor: theme.colors.accentTint,
+      borderRadius: theme.radius.card,
+      padding: theme.spacing.base,
+    },
+    mostCookedEmoji: { fontSize: 28 },
+    mostCookedText: { flex: 1, gap: 2 },
+    mostCookedLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.accentText, letterSpacing: 1 },
+    mostCookedName: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.md, color: theme.colors.ink },
+    mostCookedCount: { fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.lg, color: theme.colors.accentText },
+    mostCookedChevron: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.lg, color: theme.colors.accentText },
+
+    sectionLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.5, marginTop: theme.spacing.sm },
+    sectionHint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, marginTop: -theme.spacing.xs },
+
+    trendRow: { flexDirection: 'row', gap: theme.spacing.sm },
+    trendPill: {
+      flex: 1,
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius.card,
-      padding: theme.spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingVertical: theme.spacing.sm,
+      alignItems: 'center',
+      gap: 2,
     },
-    sparkBarWrap: { flex: 1, justifyContent: 'flex-end', height: 48 },
-    sparkBar: { borderRadius: 2, minHeight: 2 },
-    sparklineLatest: {
-      position: 'absolute',
-      right: theme.spacing.sm,
-      top: theme.spacing.sm,
-      fontFamily: theme.fonts.data.medium,
-      fontSize: theme.fontSize.xs,
-      color: theme.colors.ink3,
+    trendLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    trendValueRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+    trendGlyph: { fontSize: theme.fontSize.xs },
+    trendPct: { fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.sm },
+
+    chartCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.base,
+      gap: theme.spacing.sm,
     },
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },
-    distChip: { backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.sm, paddingVertical: 4 },
-    distChipText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+    chartHeaderRow: { flexDirection: 'row', alignItems: 'baseline', gap: theme.spacing.xs },
+    chartLatest: { fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.lg, color: theme.colors.ink },
+    chartLatestLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    barRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 96, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+    barSlot: { flex: 1, justifyContent: 'flex-end', height: '100%' },
+    bar: { borderTopLeftRadius: 2, borderTopRightRadius: 2, minHeight: 2 },
+    barSelected: { opacity: 1, borderWidth: 2, borderColor: theme.colors.ink },
+    axisRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    axisLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink4 },
+    chartTapHint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink4, fontStyle: 'italic', textAlign: 'center' },
+
+    macroCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.base,
+      gap: theme.spacing.sm,
+    },
+    macroKcal: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+    macroBar: { flexDirection: 'row', height: 22, borderRadius: theme.radius.chip, overflow: 'hidden', backgroundColor: theme.colors.chipBg },
+    macroSeg: { height: '100%' },
+    macroLegend: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md },
+    macroLegendItem: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+
+    rankedCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.base,
+      gap: theme.spacing.sm,
+    },
+    rankedRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+    rankedLabel: { width: 72, fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2, textTransform: 'capitalize' },
+    rankedTrack: { flex: 1, height: 14, borderRadius: theme.radius.chip, backgroundColor: theme.colors.chipBg, overflow: 'hidden' },
+    rankedFill: { height: '100%', borderRadius: theme.radius.chip },
+    rankedCount: { width: 28, textAlign: 'right', fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink3 },
   });

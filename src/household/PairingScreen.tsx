@@ -131,7 +131,7 @@ export function PairingScreen({ profile, onBack, onPaired }: PairingScreenProps)
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <TouchableOpacity onPress={onBack}>
+      <TouchableOpacity onPress={onBack} style={styles.backButton}>
         <Text style={styles.back}>← Back</Text>
       </TouchableOpacity>
       <Text style={styles.title}>Add person</Text>
@@ -203,6 +203,7 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.bg },
     content: { padding: theme.spacing.base, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl, alignItems: 'center' },
+    backButton: { alignSelf: 'flex-start' },
     back: { alignSelf: 'flex-start', fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
     title: { alignSelf: 'flex-start', fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
     hint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, textAlign: 'center' },

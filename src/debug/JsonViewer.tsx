@@ -4,6 +4,13 @@ import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 interface JsonViewerProps {
   data: unknown;
+  /**
+   * When set, every node starts expanded (true) or collapsed (false) instead
+   * of the default depth-based rule. Toggle it via a changing React key on the
+   * viewer so all nodes re-initialise. Undefined preserves the original
+   * per-node behaviour (used by the snapshot suite).
+   */
+  expandAll?: boolean;
 }
 
 function isExpandable(value: unknown): value is Record<string, unknown> | unknown[] {
@@ -16,10 +23,10 @@ function summarize(value: Record<string, unknown> | unknown[]): string {
   return `Object{${keys.length}}`;
 }
 
-function JsonNode({ label, value, depth }: { label: string; value: unknown; depth: number }) {
+function JsonNode({ label, value, depth, expandAll }: { label: string; value: unknown; depth: number; expandAll?: boolean }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const [expanded, setExpanded] = useState(depth < 1);
+  const [expanded, setExpanded] = useState(expandAll ?? depth < 1);
 
   if (!isExpandable(value)) {
     return (
@@ -46,17 +53,17 @@ function JsonNode({ label, value, depth }: { label: string; value: unknown; dept
         <Text style={styles.summary}>{summarize(value)}</Text>
       </TouchableOpacity>
       {expanded &&
-        entries.map(([k, v]) => <JsonNode key={k} label={k} value={v} depth={depth + 1} />)}
+        entries.map(([k, v]) => <JsonNode key={k} label={k} value={v} depth={depth + 1} expandAll={expandAll} />)}
     </View>
   );
 }
 
-export function JsonViewer({ data }: JsonViewerProps) {
+export function JsonViewer({ data, expandAll }: JsonViewerProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.container}>
-      <JsonNode label="root" value={data} depth={0} />
+      <JsonNode label="root" value={data} depth={0} expandAll={expandAll} />
     </View>
   );
 }

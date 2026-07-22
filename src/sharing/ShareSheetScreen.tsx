@@ -9,7 +9,7 @@ import { logger } from '../debug/logStore';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { EnrichedRecipe } from '../recipes/loadRecipes';
 import { buildSharePayload, type SharePayload } from './payload';
-import { buildDeepLinkUrl, isDeepLinkEligible, isQrEligible, payloadByteLength } from './transport';
+import { buildDeepLinkUrl, formatBytes, isDeepLinkEligible, isQrDense, isQrEligible, payloadByteLength } from './transport';
 
 interface ShareSheetScreenProps {
   recipe: EnrichedRecipe;
@@ -37,6 +37,7 @@ export function ShareSheetScreen({ recipe, onBack }: ShareSheetScreenProps) {
   const bytes = payload ? payloadByteLength(payload) : 0;
   const deepLinkOk = payload ? isDeepLinkEligible(payload) : false;
   const qrOk = payload ? isQrEligible(payload) : false;
+  const qrDense = payload ? isQrDense(payload) : false;
   const deepLinkUrl = payload ? buildDeepLinkUrl(payload) : null;
 
   async function shareLink() {
@@ -65,7 +66,7 @@ export function ShareSheetScreen({ recipe, onBack }: ShareSheetScreenProps) {
       </TouchableOpacity>
       <Text style={styles.title}>Share "{recipe.name}"</Text>
       <Text style={styles.hint}>
-        Only the recipe itself travels — no ratings, logs, photos of past cooks, or plans (§1.1).
+        Only the recipe itself travels — no ratings, logs, photos of past cooks, or plans.
       </Text>
 
       {recipe.photoUri && (
@@ -79,18 +80,7 @@ export function ShareSheetScreen({ recipe, onBack }: ShareSheetScreenProps) {
         <ActivityIndicator color={theme.colors.accent} style={{ marginTop: theme.spacing.lg }} />
       ) : (
         <>
-          <Text style={styles.sizeNote}>{bytes} bytes</Text>
-
-          <TouchableOpacity
-            style={[styles.method, !deepLinkOk && styles.methodDisabled]}
-            disabled={!deepLinkOk}
-            onPress={shareLink}
-          >
-            <Text style={styles.methodTitle}>Share link</Text>
-            <Text style={styles.methodSubtitle}>
-              {deepLinkOk ? 'Send via any app — messages, email, anything' : "Too large for a quick link — use the file below instead"}
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.sizeNote}>{bytes} bytes — {formatBytes(bytes)}</Text>
 
           <TouchableOpacity
             style={[styles.method, !qrOk && styles.methodDisabled]}
@@ -99,14 +89,29 @@ export function ShareSheetScreen({ recipe, onBack }: ShareSheetScreenProps) {
           >
             <Text style={styles.methodTitle}>{showQr ? 'Hide QR code' : 'Show QR code'}</Text>
             <Text style={styles.methodSubtitle}>
-              {qrOk ? 'Scan on the other phone — no typing needed' : "Too large to scan reliably — use the file below instead"}
+              {qrOk ? 'Scan on the other phone — no typing needed' : 'This recipe is too large for any QR code — use the file below instead'}
             </Text>
+            {qrOk && qrDense && (
+              <Text style={styles.methodWarning}>
+                ⚠ This recipe is large, so the QR code is dense and may be difficult to scan. If it won't scan, use the link or file instead.
+              </Text>
+            )}
           </TouchableOpacity>
           {showQr && qrOk && deepLinkUrl && (
             <View style={styles.qrWrap}>
-              <QRCode value={deepLinkUrl} size={220} backgroundColor={theme.colors.surface} color={theme.colors.ink} />
+              {/* Error-correction level L maximises capacity so the largest recipes still fit. */}
+              <QRCode value={deepLinkUrl} size={240} ecl="L" backgroundColor={theme.colors.surface} color={theme.colors.ink} />
             </View>
           )}
+
+          <TouchableOpacity
+            style={[styles.method, !deepLinkOk && styles.methodDisabled]}
+            disabled={!deepLinkOk}
+            onPress={shareLink}
+          >
+            <Text style={styles.methodTitle}>Share link</Text>
+            <Text style={styles.methodSubtitle}>Send via any app — messages, email, anything</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity style={styles.method} onPress={exportFile} disabled={exporting}>
             <Text style={styles.methodTitle}>{exporting ? 'Preparing file…' : 'Export as .dishision file'}</Text>
@@ -140,6 +145,7 @@ const makeStyles = (theme: AppTheme) =>
     methodDisabled: { opacity: 0.5 },
     methodTitle: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink },
     methodSubtitle: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    methodWarning: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.xs, color: theme.colors.amberText, marginTop: 4 },
     qrWrap: { alignItems: 'center', padding: theme.spacing.base, backgroundColor: theme.colors.surface, borderRadius: theme.radius.card },
     error: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.red },
   });
