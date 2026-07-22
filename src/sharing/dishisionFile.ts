@@ -1,4 +1,4 @@
-// .preppie file transport (§7.2) — always available, required for photos.
+// .dishision file transport (§7.2) — always available, required for photos.
 // Native-only (expo-file-system + expo-sharing), split out for the same
 // reason as photos/compressPhoto.ts (§11.1): can't run under Vitest.
 import { Directory, File, Paths } from 'expo-file-system';
@@ -13,19 +13,19 @@ function exportDir(): Directory {
   return dir;
 }
 
-// Writes the payload to a temporary .preppie file and hands it to the OS
+// Writes the payload to a temporary .dishision file and hands it to the OS
 // share sheet. The file lives in cache — it's a transient export artifact,
 // not app data that needs to survive.
 export async function shareRecipeAsFile(payload: SharePayload): Promise<void> {
   const file = new File(exportDir(), suggestedFileName(payload));
   file.write(serializeSharePayload(payload));
-  logger.info('db', 'Exported recipe as .preppie file', { shareId: payload.share_id, uri: file.uri });
+  logger.info('db', 'Exported recipe as .dishision file', { shareId: payload.share_id, uri: file.uri });
   const available = await Sharing.isAvailableAsync();
   if (!available) throw new Error('Sharing is not available on this device');
   await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Share recipe' });
 }
 
-export async function readPreppieFile(uri: string): Promise<SharePayload> {
+export async function readDishisionFile(uri: string): Promise<SharePayload> {
   const text = await new File(uri).text();
   return parseSharePayload(text);
 }

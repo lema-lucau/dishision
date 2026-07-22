@@ -1,6 +1,6 @@
 // Mounted once at the app root. Catches both transports that arrive from
-// outside the app's own UI (§7.2): a preppie://import deep link, and a
-// tapped .preppie file (delivered by the OS as a content:// or file:// URL
+// outside the app's own UI (§7.2): a dishision://import deep link, and a
+// tapped .dishision file (delivered by the OS as a content:// or file:// URL
 // via the same Linking channel once app.json registers the file
 // association). Either way the result lands in importIntentStore for the
 // Recipes tab to pick up — never written straight to the DB (§7.3).
@@ -18,11 +18,11 @@ async function handleIncomingUrl(url: string): Promise<void> {
       logger.info('db', 'Received recipe via deep link', { shareId: payload.share_id });
       return;
     }
-    if (/\.preppie($|\?)/.test(url) || url.startsWith('content://') || url.startsWith('file://')) {
-      const { readPreppieFile } = await import('./preppieFile');
-      const payload = await readPreppieFile(url);
+    if (/\.dishision($|\?)/.test(url) || url.startsWith('content://') || url.startsWith('file://')) {
+      const { readDishisionFile } = await import('./dishisionFile');
+      const payload = await readDishisionFile(url);
       useImportIntentStore.getState().setPending(payload);
-      logger.info('db', 'Received recipe via .preppie file', { shareId: payload.share_id, url });
+      logger.info('db', 'Received recipe via .dishision file', { shareId: payload.share_id, url });
     }
   } catch (error) {
     logger.warn('db', 'Failed to parse incoming shared recipe', { url, error: String(error) });

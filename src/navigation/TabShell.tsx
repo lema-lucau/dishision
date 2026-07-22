@@ -37,7 +37,7 @@ export function TabShell({ profile, onRestored }: TabShellProps) {
   const insets = useSafeAreaInsets();
   const pendingImport = useImportIntentStore((s) => s.pending);
 
-  // §7.2: a recipe arriving via deep link or .preppie file jumps straight
+  // §7.2: a recipe arriving via deep link or .dishision file jumps straight
   // to the Recipes tab's import preview, whichever tab was active.
   useEffect(() => {
     if (pendingImport) setActiveTab('recipes');

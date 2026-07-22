@@ -99,7 +99,7 @@ export function BackupScreen({ onBack, onRestored }: BackupScreenProps) {
       </TouchableOpacity>
 
       <Text style={styles.sectionLabel}>AUTOMATIC BACKUPS</Text>
-      <Text style={styles.hint}>Written whenever Preppie goes to the background. Last 5 kept.</Text>
+      <Text style={styles.hint}>Written whenever Dishision goes to the background. Last 5 kept.</Text>
       {autoBackups.length === 0 ? (
         <Text style={styles.empty}>None yet.</Text>
       ) : (

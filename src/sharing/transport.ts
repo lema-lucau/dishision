@@ -1,5 +1,5 @@
 // §7.2 transport: deep link (2 KB), QR (1.2 KB, offered only when it fits),
-// and the always-available .preppie file. Size guards are on the JSON
+// and the always-available .dishision file. Size guards are on the JSON
 // payload itself, not the base64 blow-up — same convention for both rows
 // in §7.2's table.
 import { base64DecodeUtf8, base64EncodeUtf8, utf8ByteLength } from './base64';
@@ -7,7 +7,7 @@ import { parseSharePayload, serializeSharePayload, type SharePayload } from './p
 
 export const DEEP_LINK_MAX_BYTES = 2048;
 export const QR_MAX_BYTES = 1200;
-export const DEEP_LINK_SCHEME = 'preppie://import';
+export const DEEP_LINK_SCHEME = 'dishision://import';
 
 export function payloadByteLength(payload: SharePayload): number {
   return utf8ByteLength(serializeSharePayload(payload));
@@ -28,7 +28,7 @@ export function buildDeepLinkUrl(payload: SharePayload): string {
 
 export class DeepLinkParseError extends Error {}
 
-// Accepts both a full preppie://import?d=... URL and a bare d= query value,
+// Accepts both a full dishision://import?d=... URL and a bare d= query value,
 // since the QR/paste-a-link entry points hand this the same string either way.
 export function parseDeepLinkUrl(url: string): SharePayload {
   const trimmed = url.trim();
@@ -53,12 +53,12 @@ export function parseDeepLinkUrl(url: string): SharePayload {
   return parseSharePayload(json);
 }
 
-export const PREPPIE_FILE_EXTENSION = '.preppie';
+export const DISHISION_FILE_EXTENSION = '.dishision';
 
 export function suggestedFileName(payload: SharePayload): string {
   const slug = payload.recipe.name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return `${slug || 'recipe'}${PREPPIE_FILE_EXTENSION}`;
+  return `${slug || 'recipe'}${DISHISION_FILE_EXTENSION}`;
 }

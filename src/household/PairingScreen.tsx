@@ -121,7 +121,7 @@ export function PairingScreen({ profile, onBack, onPaired }: PairingScreenProps)
       const payload = JSON.parse(data) as QrPayload;
       connectAndPair(payload.address, { secret: payload.secret });
     } catch {
-      setError("That QR code doesn't look like a Preppie pairing code.");
+      setError("That QR code doesn't look like a Dishision pairing code.");
     }
   }
 

@@ -30,7 +30,7 @@ function ErrorScreen({ message }: { message: string }) {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.center}>
-      <Text style={styles.errorTitle}>Couldn't start Preppie</Text>
+      <Text style={styles.errorTitle}>Couldn't start Dishision</Text>
       <Text style={styles.errorMessage}>{message}</Text>
     </View>
   );
@@ -40,7 +40,7 @@ function ErrorScreen({ message }: { message: string }) {
 // theme's mode (§4.1 — light/dark drives the status bar).
 function ThemedRoot({ profile, db, onRestored }: { profile: Profile; db: DbClient; onRestored: () => void }) {
   const theme = useTheme();
-  // §7.2: catches an incoming preppie://import link or a tapped .preppie
+  // §7.2: catches an incoming dishision://import link or a tapped .dishision
   // file at the app root, regardless of which tab is active.
   useDeepLinkListener();
   // §10: writes an automatic local backup on every active -> background transition.

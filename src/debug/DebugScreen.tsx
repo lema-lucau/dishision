@@ -14,7 +14,7 @@ function toggle<T>(set: T[], value: T): T[] {
 }
 
 async function exportLogs(entries: LogEntry[]) {
-  const dir = new Directory(Paths.cache, 'preppie-logs');
+  const dir = new Directory(Paths.cache, 'dishision-logs');
   dir.create({ overwrite: false });
   const file = new File(dir, `debug-log-${Date.now()}.txt`);
   file.create({ overwrite: true });

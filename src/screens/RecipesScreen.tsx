@@ -137,7 +137,7 @@ export function RecipesScreen({
     getCurrencySymbol(db).then(setCurrencySymbol);
   }, [db]);
 
-  // §7.2: a recipe delivered via deep link or .preppie file jumps straight
+  // §7.2: a recipe delivered via deep link or .dishision file jumps straight
   // into the import preview — never written silently (§7.3).
   const pendingImportPayload = useImportIntentStore((s) => s.pending);
   const clearPendingImport = useImportIntentStore((s) => s.clear);

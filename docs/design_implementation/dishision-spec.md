@@ -1,11 +1,11 @@
-# Preppie — Design & Implementation Spec
+# Dishision — Design & Implementation Spec
 
 **Version:** 1.5
 **Platform:** React Native / Expo SDK 54, SQLite, Android
 **Users:** Independent profiles on separate phones, optionally linked into a household over local WiFi
 **Status:** Specification — not yet implemented
 
-> **Visual treatment & layout — see the companion `preppie-visual-redesign-spec.md` ("Warm Editorial", R-sections).** This base spec defines *what Preppie is* — data, units, recommendation engine, sharing, theme *architecture*, and screen *behaviour* — and remains authoritative for all of it. The redesign spec defines *how it looks and feels* and **supersedes the visual presentation of §4.5–4.8 and the layout of §5.2–5.10**. The token architecture (§4.1–4.4) and every behavioural rule below are unchanged and still law. Where the two disagree on visuals/layout, the redesign spec wins; on anything else, this one does.
+> **Visual treatment & layout — see the companion `dishision-visual-redesign-spec.md` ("Warm Editorial", R-sections).** This base spec defines *what Dishision is* — data, units, recommendation engine, sharing, theme *architecture*, and screen *behaviour* — and remains authoritative for all of it. The redesign spec defines *how it looks and feels* and **supersedes the visual presentation of §4.5–4.8 and the layout of §5.2–5.10**. The token architecture (§4.1–4.4) and every behavioural rule below are unchanged and still law. Where the two disagree on visuals/layout, the redesign spec wins; on anything else, this one does.
 
 ## Table of Contents
 
@@ -110,7 +110,7 @@
 
 ## 1. Product definition
 
-Preppie answers one question: *what are we cooking tonight?*
+Dishision answers one question: *what are we cooking tonight?*
 
 It is not a recipe manager that happens to make suggestions. It is a decision engine that happens to store recipes. Every architectural choice below follows from that: the home screen leads with an answer, not a search bar; the recommendation engine is the core loop; recipes exist to be cooked, and cooking produces the data that makes the next recommendation better.
 
@@ -135,7 +135,7 @@ It is not a recipe manager that happens to make suggestions. It is a decision en
 
 ### 1.3 Target devices
 
-Preppie is developed and daily-driven on two specific physical phones, not generic emulator profiles. Both are 20:9 aspect ratio, both run edge-to-edge Android gesture navigation — every screen must be sanity-checked against both.
+Dishision is developed and daily-driven on two specific physical phones, not generic emulator profiles. Both are 20:9 aspect ratio, both run edge-to-edge Android gesture navigation — every screen must be sanity-checked against both.
 
 | | Xiaomi 12 Lite | Xiaomi 13T |
 | --- | --- | --- |
@@ -649,11 +649,11 @@ Recipes need 140g of something sold in 200g bags. The shop does not sell 0.7 bag
 
 ## 4. Design system
 
-> **Visual presentation is now led by `preppie-visual-redesign-spec.md`.** The theming *architecture* and token contract in §4.1–4.4 are unchanged and authoritative. The *presentation* rules in §4.5 (typography usage), §4.6 (radius scale), and §4.8 (emoji tiles) are extended/superseded there: the redesign adds a centrally-derived visual layer (elevation, gradients, glow, photo scrim — R2) computed from these same tokens with no new per-theme slots and no component hex, plus softer photo radii (R2.5) and a category-tinted gradient photo fallback that replaces the flat emoji tile at card/hero sizes (R4).
+> **Visual presentation is now led by `dishision-visual-redesign-spec.md`.** The theming *architecture* and token contract in §4.1–4.4 are unchanged and authoritative. The *presentation* rules in §4.5 (typography usage), §4.6 (radius scale), and §4.8 (emoji tiles) are extended/superseded there: the redesign adds a centrally-derived visual layer (elevation, gradients, glow, photo scrim — R2) computed from these same tokens with no new per-theme slots and no component hex, plus softer photo radii (R2.5) and a category-tinted gradient photo fallback that replaces the flat emoji tile at card/hero sizes (R4).
 
 ### 4.1 Theming architecture
 
-Preppie ships **seven themes**, user-selectable in settings. **Hearth is the default.**
+Dishision ships **seven themes**, user-selectable in settings. **Hearth is the default.**
 
 This is cheap to build *only* because it's designed in from the first commit. Retrofitting themes onto an app with hex literals scattered through components is a week of archaeology; building on tokens from day one makes a new theme a data entry exercise.
 
@@ -1123,7 +1123,7 @@ The preview uses a fixed sample recipe (the same Thai Green Curry used throughou
 
 ## 5. Screens
 
-> **Screen *layouts* are redesigned in `preppie-visual-redesign-spec.md` (R6).** Everything in §5 below remains authoritative for **behaviour, state, and data flow** — nothing here changes. The redesign restyles the presentation: each screen opens with one editorial photo-led hero, cards float with soft shadows, recipes lead with real photos (or a gradient fallback), and **all horizontal scrolling is replaced with wrapping** (R7). Read the matching R6 subsection alongside each screen: Home → R6.1, Recipes → R6.2, Recipe detail → R6.3, Plan → R6.4, Cook log → R6.5, Me/Profile → R6.6.
+> **Screen *layouts* are redesigned in `dishision-visual-redesign-spec.md` (R6).** Everything in §5 below remains authoritative for **behaviour, state, and data flow** — nothing here changes. The redesign restyles the presentation: each screen opens with one editorial photo-led hero, cards float with soft shadows, recipes lead with real photos (or a gradient fallback), and **all horizontal scrolling is replaced with wrapping** (R7). Read the matching R6 subsection alongside each screen: Home → R6.1, Recipes → R6.2, Recipe detail → R6.3, Plan → R6.4, Cook log → R6.5, Me/Profile → R6.6.
 
 ### 5.1 Navigation
 
@@ -1663,9 +1663,9 @@ Ingredients travel with canonical_name as a string, not an ID — the recipient 
 
 | Method | Condition |
 | --- | --- |
-| Deep link | preppie://import?d=<base64> — payload < 2 KB |
+| Deep link | dishision://import?d=<base64> — payload < 2 KB |
 | QR code | payload < **1.2 KB** — offered only when it fits, explains why when it doesn't. (2 KB is technically valid QR but a version-40 grid is miserable to scan in kitchen light; 1.2 KB keeps scans instant.) |
-| File | .preppie — always available, required for photos. Format: the §7.1 JSON, verbatim, UTF-8. |
+| File | .dishision — always available, required for photos. Format: the §7.1 JSON, verbatim, UTF-8. |
 
 Photos are **off by default** at share time, opt-in per share. This keeps most recipes QR-eligible, which is a pleasant accident of the constraint.
 
@@ -2143,7 +2143,7 @@ Sessions are sized to end at a committable state. Use the current Sonnet-class m
 *Read first: §7.1–7.3*
 
 - Payload build and parse, versioned; photo_emoji travels, photo opt-in as base64
-- Deep link (2 KB), QR with 1.2 KB size guard, .preppie file
+- Deep link (2 KB), QR with 1.2 KB size guard, .dishision file
 - Import preview, share_id diff view, manual merge tool
 - **Verify:** share → tweak → reshare → import produces a diff, not a duplicate
 
@@ -2237,7 +2237,7 @@ Runtime:
   expo-keep-awake          Cooking Mode screen
   expo-image-picker        photos & avatar
   expo-image-manipulator   §8 resize/compress pipeline
-  expo-file-system         backups, exports, .preppie files
+  expo-file-system         backups, exports, .dishision files
   expo-sharing             share sheet (files, log export)
   expo-camera              QR scanning
   react-native-qrcode-svg  QR generation (+ its react-native-svg peer)
@@ -2271,13 +2271,13 @@ Deferred, not forgotten:
 
 - ~~Recipe photos in the seed~~ → No photos in v1; per-recipe emoji placeholders (§9.1), real photos post-v1 through the §8 pipeline.
 - ~~Avatar photos over sync~~ → Emoji-only over sync; photo avatars stay local (§7.4).
-- ~~Name~~ → **Preppie stays.** It's cute, and the household's other member gets a vote.
+- ~~Name~~ → **Dishision stays.** It's cute, and the household's other member gets a vote.
 
 ## 17. Changelog
 
 **v1.5**
 
-- **Visual redesign introduced as a companion spec:** `preppie-visual-redesign-spec.md` ("Warm Editorial", R-sections) — the client-approved blend of exploration directions A (Warm & Cozy) + B (Editorial). It supersedes the *visual presentation* of §4.5–4.8 and the *layout* of §5.2–5.10; all behaviour, data, and the token architecture (§4.1–4.4) are unchanged. Pointers added at the top, §4, §4.8, and §5.
+- **Visual redesign introduced as a companion spec:** `dishision-visual-redesign-spec.md` ("Warm Editorial", R-sections) — the client-approved blend of exploration directions A (Warm & Cozy) + B (Editorial). It supersedes the *visual presentation* of §4.5–4.8 and the *layout* of §5.2–5.10; all behaviour, data, and the token architecture (§4.1–4.4) are unchanged. Pointers added at the top, §4, §4.8, and §5.
 - Redesign adds a **centrally-derived visual layer** (elevation/shadows, gradients, hero glow, photo scrim — redesign R2) computed once from the existing tokens — no new per-theme slots, no component-level hex, so the §4.1/§15 architecture is unweakened.
 - **Real photos now lead**, with a category-tinted gradient fallback tile replacing the flat emoji tile at card/hero sizes (redesign R4); `photo_uri` already exists (§2.3) so no migration is required.
 - **Hard rule added: no horizontal scrolling anywhere** — rows of cards/chips/recommendations wrap (redesign R7).
@@ -2316,7 +2316,7 @@ Deferred, not forgotten:
 - Cooking Mode local notifications: scheduling/cancellation rules, permission flow, graceful fallback (§5.6)
 - Recommendation engine: primary protein defined (lowest protein tag_id, untagged exempt); duration buckets defined (<20 / 20–40 / >40) (§6.2, §6.4)
 - Household average: no-self-rating fallback (§2.5)
-- Sharing: QR threshold lowered to 1.2 KB; .preppie format specified (plain JSON, photo as base64) (§7.2)
+- Sharing: QR threshold lowered to 1.2 KB; .dishision format specified (plain JSON, photo as base64) (§7.2)
 - Household sync: full transport spec — react-native-tcp-socket, NDJSON, sync_secret auth on every message, last_known_address + Show sync code re-discovery, transactional commit (§2.3, §5.11, §7.5)
 - Avatars: emoji-only over sync (§7.4)
 - Currency setting: display-only code + symbol, default EUR (§5.10)
@@ -2325,7 +2325,7 @@ Deferred, not forgotten:
 - Slices renumbered 0–14; seed data promoted to its own slice; sessions renumbered S0–S17 with seed work split (S2 tooling + first 10, S3 library) and per-session "Read first" spec pointers (§13, §14)
 - Model guidance in §14 made version-agnostic (current Sonnet-class / Opus-class)
 - Dependency allowlist added (§15.1)
-- Open questions: photos, avatars, and name resolved — **the app is called Preppie**
+- Open questions: photos, avatars, and name resolved — **the app is called Dishision**
 
 **v1.1**
 

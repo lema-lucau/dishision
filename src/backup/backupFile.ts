@@ -17,12 +17,12 @@ function exportDir(): Directory {
 
 export async function exportBackupToFile(db: DbClient): Promise<void> {
   const backup = await buildBackup(db);
-  const file = new File(exportDir(), `preppie-backup-${new Date().toISOString().slice(0, 10)}.json`);
+  const file = new File(exportDir(), `dishision-backup-${new Date().toISOString().slice(0, 10)}.json`);
   file.write(serializeBackup(backup));
   logger.info('db', 'Manual backup exported', { uri: file.uri });
   const available = await Sharing.isAvailableAsync();
   if (!available) throw new Error('Sharing is not available on this device');
-  await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Export Preppie backup' });
+  await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Export Dishision backup' });
 }
 
 export async function readBackupFile(uri: string): Promise<BackupFileShape> {

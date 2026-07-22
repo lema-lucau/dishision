@@ -3,7 +3,7 @@ import { logger } from '../debug/logStore';
 import { migrate } from './migrate';
 import { migrations } from './migrations';
 
-const DATABASE_NAME = 'preppie.db';
+const DATABASE_NAME = 'dishision.db';
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 

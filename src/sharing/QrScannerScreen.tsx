@@ -24,7 +24,7 @@ export function QrScannerScreen({ title, onScanned, onBack }: QrScannerScreenPro
     return (
       <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.hint}>Preppie needs camera access to scan the QR code.</Text>
+        <Text style={styles.hint}>Dishision needs camera access to scan the QR code.</Text>
         <TouchableOpacity style={styles.button} onPress={requestPermission}>
           <Text style={styles.buttonText}>Allow camera</Text>
         </TouchableOpacity>

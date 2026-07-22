@@ -1,5 +1,5 @@
 // Entry point for the two transports that need active user input (§7.2):
-// paste a link, or scan a QR. The third transport, a .preppie file, arrives
+// paste a link, or scan a QR. The third transport, a .dishision file, arrives
 // passively via useDeepLinkListener when the OS hands the app a file — this
 // screen just explains that route rather than duplicating a file picker.
 import { useMemo, useState } from 'react';
@@ -28,7 +28,7 @@ export function ImportEntryScreen({ onPayload, onBack }: ImportEntryScreenProps)
       onPayload(parseDeepLinkUrl(raw));
     } catch (e) {
       if (e instanceof DeepLinkParseError || e instanceof PayloadValidationError) {
-        setError("That doesn't look like a valid Preppie recipe link.");
+        setError("That doesn't look like a valid Dishision recipe link.");
       } else {
         setError('Could not read that recipe.');
       }
@@ -66,7 +66,7 @@ export function ImportEntryScreen({ onPayload, onBack }: ImportEntryScreenProps)
             style={styles.input}
             value={link}
             onChangeText={setLink}
-            placeholder="preppie://import?d=…"
+            placeholder="dishision://import?d=…"
             placeholderTextColor={theme.colors.ink3}
             autoCapitalize="none"
             autoCorrect={false}
@@ -78,7 +78,7 @@ export function ImportEntryScreen({ onPayload, onBack }: ImportEntryScreenProps)
         {error && <Text style={styles.error}>{error}</Text>}
 
         <Text style={styles.fileHint}>
-          Received a .preppie file instead? Open it from your file manager or messaging app — Preppie will pick it up automatically.
+          Received a .dishision file instead? Open it from your file manager or messaging app — Dishision will pick it up automatically.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

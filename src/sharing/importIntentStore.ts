@@ -1,5 +1,5 @@
 // Holds a payload that arrived from outside the app's own UI — a
-// preppie://import deep link or a tapped .preppie file — until the Recipes
+// dishision://import deep link or a tapped .dishision file — until the Recipes
 // tab is ready to show the import preview (§7.3: "never write silently",
 // so this only ever queues a payload for review, never writes anything).
 import { create } from 'zustand';

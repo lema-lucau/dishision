@@ -51,7 +51,7 @@ describe('deep link transport (§7.2)', () => {
   it('round-trips a payload through build -> parse', () => {
     const payload = makePayload();
     const url = buildDeepLinkUrl(payload);
-    expect(url.startsWith('preppie://import?d=')).toBe(true);
+    expect(url.startsWith('dishision://import?d=')).toBe(true);
     const parsed = parseDeepLinkUrl(url);
     expect(parsed).toEqual(payload);
   });
@@ -64,8 +64,8 @@ describe('deep link transport (§7.2)', () => {
   });
 
   it('rejects garbage input', () => {
-    expect(() => parseDeepLinkUrl('preppie://import?d=')).toThrow(DeepLinkParseError);
-    expect(() => parseDeepLinkUrl('preppie://import?d=not-valid-base64-json')).toThrow();
+    expect(() => parseDeepLinkUrl('dishision://import?d=')).toThrow(DeepLinkParseError);
+    expect(() => parseDeepLinkUrl('dishision://import?d=not-valid-base64-json')).toThrow();
   });
 
   it('flags a payload too large for a deep link (2 KB) or QR (1.2 KB)', () => {
@@ -109,8 +109,8 @@ describe('deep link transport (§7.2)', () => {
 });
 
 describe('suggestedFileName', () => {
-  it('slugifies the recipe name and adds the .preppie extension', () => {
-    expect(suggestedFileName(makePayload())).toBe('thai-green-curry.preppie');
-    expect(suggestedFileName(makePayload({ recipe: { ...makePayload().recipe, name: "Nana's Stew!!" } }))).toBe('nana-s-stew.preppie');
+  it('slugifies the recipe name and adds the .dishision extension', () => {
+    expect(suggestedFileName(makePayload())).toBe('thai-green-curry.dishision');
+    expect(suggestedFileName(makePayload({ recipe: { ...makePayload().recipe, name: "Nana's Stew!!" } }))).toBe('nana-s-stew.dishision');
   });
 });

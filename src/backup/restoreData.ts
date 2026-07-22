@@ -25,7 +25,7 @@ export function parseBackup(json: string): BackupFile {
   }
   if (candidate.version > BACKUP_VERSION) {
     throw new BackupValidationError(
-      `This backup is from a newer version of Preppie (v${candidate.version}) and can't be restored here.`,
+      `This backup is from a newer version of Dishision (v${candidate.version}) and can't be restored here.`,
     );
   }
   if (!candidate.tables || typeof candidate.tables !== 'object') {

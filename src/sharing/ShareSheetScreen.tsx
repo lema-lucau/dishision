@@ -48,7 +48,7 @@ export function ShareSheetScreen({ recipe, onBack }: ShareSheetScreenProps) {
     if (!payload) return;
     setExporting(true);
     try {
-      const { shareRecipeAsFile } = await import('./preppieFile');
+      const { shareRecipeAsFile } = await import('./dishisionFile');
       await shareRecipeAsFile(payload);
     } catch (e) {
       logger.warn('db', 'Recipe file export failed', { error: String(e) });
@@ -109,7 +109,7 @@ export function ShareSheetScreen({ recipe, onBack }: ShareSheetScreenProps) {
           )}
 
           <TouchableOpacity style={styles.method} onPress={exportFile} disabled={exporting}>
-            <Text style={styles.methodTitle}>{exporting ? 'Preparing file…' : 'Export as .preppie file'}</Text>
+            <Text style={styles.methodTitle}>{exporting ? 'Preparing file…' : 'Export as .dishision file'}</Text>
             <Text style={styles.methodSubtitle}>Always works — required if you included a photo</Text>
           </TouchableOpacity>
 

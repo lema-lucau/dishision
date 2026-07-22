@@ -22,6 +22,16 @@ export type ThemeId =
   | 'citrus'
   | 'lavender'
   | 'newsprint'
+  | 'denim'
+  | 'aubergine'
+  | 'juniper'
+  | 'rosewater'
+  | 'peacock'
+  | 'moss'
+  | 'marigold'
+  | 'graphite'
+  | 'brick'
+  | 'coral'
   // Dark
   | 'midnightKitchen'
   | 'dusk'
@@ -29,7 +39,17 @@ export type ThemeId =
   | 'terminal'
   | 'bordeaux'
   | 'abyss'
-  | 'espresso';
+  | 'espresso'
+  | 'sapphire'
+  | 'amethyst'
+  | 'emerald'
+  | 'garnet'
+  | 'lagoon'
+  | 'saffronDusk'
+  | 'mauve'
+  | 'onyx'
+  | 'coralReef'
+  | 'fern';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -506,6 +526,436 @@ const newsprint: Theme = {
   tabBarBg: '#FFFFFF',
 };
 
+// ── Denim — light ──────────────────────────────────────────────────────────
+// Cornflower-indigo blue on warm linen — delft pottery, a kitchen-apron blue.
+// The neutrals stay warm (cream, not grey) so the blue reads as an accent
+// choice, not a shift to a cooler design system.
+const denim: Theme = {
+  id: 'denim',
+  name: 'Denim',
+  mode: 'light',
+  colors: {
+    bg: '#FAF7F1',
+    surface: '#FFFFFF',
+    surfaceWarm: '#ECE7DC',
+    chipBg: '#E6E1D3',
+    border: '#DED8C8',
+    borderStrong: '#E2DCCC',
+    accent: '#3A5A8C',
+    accentText: '#2C4670',
+    accentFg: '#F3F6FB',
+    accentTint: '#D8E1EE',
+    amber: '#C98A2E',
+    amberText: '#8C5D12',
+    amberTint: '#F0E0BE',
+    green: '#6E8F5A',
+    greenTint: '#E4EAD9',
+    red: '#B3392A',
+    redTint: '#F0D6CD',
+    ink: '#232620',
+    ink2: '#6C6A5C',
+    ink3: '#9A9684',
+    ink4: '#B6B2A0',
+    scrim: 'rgba(20,24,32,0.4)',
+  },
+  categoryColors: {
+    chicken: '#C98A2E',
+    beef: '#A3402A',
+    pork: '#CE8E82',
+    fish: '#3A5A8C',
+    veg: '#6E8F5A',
+    lamb: '#7C4E64',
+    other: '#8C8670',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Aubergine — light ──────────────────────────────────────────────────────
+// Deep eggplant purple against parchment — moody and grown-up, not pastel.
+const aubergine: Theme = {
+  id: 'aubergine',
+  name: 'Aubergine',
+  mode: 'light',
+  colors: {
+    bg: '#FAF6F5',
+    surface: '#FFFFFF',
+    surfaceWarm: '#EDE1E1',
+    chipBg: '#E7D9DA',
+    border: '#DFD0D1',
+    borderStrong: '#E3D5D6',
+    accent: '#5B3B66',
+    accentText: '#442B4D',
+    accentFg: '#F6F0F7',
+    accentTint: '#E1D2E3',
+    amber: '#C1832E',
+    amberText: '#875A12',
+    amberTint: '#EFDFC0',
+    green: '#6D8556',
+    greenTint: '#E2E6D6',
+    red: '#A73B2C',
+    redTint: '#EBD3CC',
+    ink: '#271E27',
+    ink2: '#726672',
+    ink3: '#9E9299',
+    ink4: '#B7AEB3',
+    scrim: 'rgba(39,30,39,0.38)',
+  },
+  categoryColors: {
+    chicken: '#C1832E',
+    beef: '#8E3A2C',
+    pork: '#C68C98',
+    fish: '#4A7C8E',
+    veg: '#6D8556',
+    lamb: '#5B3B66',
+    other: '#948A90',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Juniper — light ────────────────────────────────────────────────────────
+// Deep pine blue-green — gin botanicals, herb garden at dusk. Blue-leaning
+// green, distinct from Moss's warmer, yellower green.
+const juniper: Theme = {
+  id: 'juniper',
+  name: 'Juniper',
+  mode: 'light',
+  colors: {
+    bg: '#F7F8F2',
+    surface: '#FFFFFF',
+    surfaceWarm: '#E8ECDE',
+    chipBg: '#E1E7D5',
+    border: '#D9E0CB',
+    borderStrong: '#DEE4D0',
+    accent: '#2E6858',
+    accentText: '#234E42',
+    accentFg: '#EFF7F3',
+    accentTint: '#D4E4DD',
+    amber: '#C48A2E',
+    amberText: '#895D13',
+    amberTint: '#F0E0C0',
+    green: '#2E6858',
+    greenTint: '#D4E4DD',
+    red: '#AC3B26',
+    redTint: '#EDD5CB',
+    ink: '#1E2A22',
+    ink2: '#62705F',
+    ink3: '#93A08C',
+    ink4: '#AFB9A6',
+    scrim: 'rgba(20,32,26,0.4)',
+  },
+  categoryColors: {
+    chicken: '#C48A2E',
+    beef: '#A3402A',
+    pork: '#CC9280',
+    fish: '#3E7E92',
+    veg: '#2E6858',
+    lamb: '#7C5164',
+    other: '#8B927E',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Rosewater — light ──────────────────────────────────────────────────────
+// Dusty rose-mauve, mature rather than sweet — brunch bistro, blush marble.
+const rosewater: Theme = {
+  id: 'rosewater',
+  name: 'Rosewater',
+  mode: 'light',
+  colors: {
+    bg: '#FCF5F3',
+    surface: '#FFFFFF',
+    surfaceWarm: '#F1DFDB',
+    chipBg: '#EDD6D1',
+    border: '#E6CDC8',
+    borderStrong: '#EAD2CD',
+    accent: '#A85A5C',
+    accentText: '#86444A',
+    accentFg: '#FAF0EF',
+    accentTint: '#E9D2D0',
+    amber: '#C0842E',
+    amberText: '#895A13',
+    amberTint: '#EFDFC0',
+    green: '#6E8858',
+    greenTint: '#E3E8D8',
+    red: '#9E3B2C',
+    redTint: '#EAD2CB',
+    ink: '#2C2020',
+    ink2: '#7C6764',
+    ink3: '#A69390',
+    ink4: '#BFAEAB',
+    scrim: 'rgba(44,32,32,0.36)',
+  },
+  categoryColors: {
+    chicken: '#C0842E',
+    beef: '#8E3A2C',
+    pork: '#C68C86',
+    fish: '#4A7E8E',
+    veg: '#6E8858',
+    lamb: '#A85A5C',
+    other: '#998B87',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Peacock — light ────────────────────────────────────────────────────────
+// Jewel-tone teal, kept on a warm ivory ground rather than Seaglass's cool
+// grey — the difference between a ceramic glaze and a rinsed-out beach tint.
+const peacock: Theme = {
+  id: 'peacock',
+  name: 'Peacock',
+  mode: 'light',
+  colors: {
+    bg: '#F9F7F0',
+    surface: '#FFFFFF',
+    surfaceWarm: '#E7E9DA',
+    chipBg: '#DFE3D0',
+    border: '#D6DBC6',
+    borderStrong: '#DCE0CB',
+    accent: '#146B72',
+    accentText: '#0F5157',
+    accentFg: '#EAF6F6',
+    accentTint: '#CDE3E3',
+    amber: '#C68A2E',
+    amberText: '#8A5D12',
+    amberTint: '#F0E0C0',
+    green: '#5F8548',
+    greenTint: '#E0E7D2',
+    red: '#B23A26',
+    redTint: '#F0D6CC',
+    ink: '#1B2624',
+    ink2: '#5F6E6A',
+    ink3: '#8FA09B',
+    ink4: '#ADB9B4',
+    scrim: 'rgba(16,32,32,0.4)',
+  },
+  categoryColors: {
+    chicken: '#C68A2E',
+    beef: '#A3402A',
+    pork: '#CE9080',
+    fish: '#146B72',
+    veg: '#5F8548',
+    lamb: '#8B4A5C',
+    other: '#889186',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Moss — light ───────────────────────────────────────────────────────────
+// Soft warm sage-green, yellow-leaning and grounded — distinct from
+// Juniper's cooler, bluer pine.
+const moss: Theme = {
+  id: 'moss',
+  name: 'Moss',
+  mode: 'light',
+  colors: {
+    bg: '#F8F9EE',
+    surface: '#FFFFFF',
+    surfaceWarm: '#E9EBD4',
+    chipBg: '#E1E5C6',
+    border: '#D8DEBB',
+    borderStrong: '#DEE3C4',
+    accent: '#5C7538',
+    accentText: '#465A29',
+    accentFg: '#F2F5E6',
+    accentTint: '#DCE2C0',
+    amber: '#BE8A2E',
+    amberText: '#855D13',
+    amberTint: '#EEE0C0',
+    green: '#5C7538',
+    greenTint: '#DCE2C0',
+    red: '#A83E26',
+    redTint: '#EBD6CC',
+    ink: '#21260F',
+    ink2: '#656F49',
+    ink3: '#969F74',
+    ink4: '#B2B991',
+    scrim: 'rgba(30,34,15,0.38)',
+  },
+  categoryColors: {
+    chicken: '#BE8A2E',
+    beef: '#8E3E28',
+    pork: '#C8977C',
+    fish: '#43788C',
+    veg: '#5C7538',
+    lamb: '#7A5240',
+    other: '#8C8A5E',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Marigold — light ───────────────────────────────────────────────────────
+// Bold saturated marigold gold — festival flowers, turmeric. The one warm
+// anchor in this set, but pitched deeper and more saturated than Hearth or
+// Ember so it doesn't read as a re-skin of either.
+const marigold: Theme = {
+  id: 'marigold',
+  name: 'Marigold',
+  mode: 'light',
+  colors: {
+    bg: '#FFFBEF',
+    surface: '#FFFFFF',
+    surfaceWarm: '#FBF0D2',
+    chipBg: '#F8E8BC',
+    border: '#F0E0B8',
+    borderStrong: '#F4E5C2',
+    accent: '#C8890A',
+    accentText: '#96650A',
+    accentFg: '#FFF8E8',
+    accentTint: '#F5DFA8',
+    amber: '#B8571E',
+    amberText: '#833F10',
+    amberTint: '#EFD8C0',
+    green: '#6C8A3A',
+    greenTint: '#E4EACE',
+    red: '#B23A22',
+    redTint: '#F0D7CC',
+    ink: '#2E2610',
+    ink2: '#7C7048',
+    ink3: '#A69A70',
+    ink4: '#BFB490',
+    scrim: 'rgba(46,38,16,0.36)',
+  },
+  categoryColors: {
+    chicken: '#C8890A',
+    beef: '#B23A22',
+    pork: '#DDA278',
+    fish: '#437E92',
+    veg: '#6C8A3A',
+    lamb: '#8C5240',
+    other: '#A0925E',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Graphite — light ───────────────────────────────────────────────────────
+// Near-neutral warm charcoal accent — chalkboard menu, quiet monochrome
+// sophistication with a whisper of warmth rather than Newsprint's flat grey.
+const graphite: Theme = {
+  id: 'graphite',
+  name: 'Graphite',
+  mode: 'light',
+  colors: {
+    bg: '#F7F5F1',
+    surface: '#FFFFFF',
+    surfaceWarm: '#E8E4DC',
+    chipBg: '#E0DCD2',
+    border: '#D6D1C5',
+    borderStrong: '#DCD7CB',
+    accent: '#4A4038',
+    accentText: '#362D27',
+    accentFg: '#F5F3EF',
+    accentTint: '#DEDACF',
+    amber: '#B87A2E',
+    amberText: '#825313',
+    amberTint: '#EEDDBE',
+    green: '#6B7A54',
+    greenTint: '#E1E5D3',
+    red: '#A5432E',
+    redTint: '#EAD5CC',
+    ink: '#201C17',
+    ink2: '#6C6459',
+    ink3: '#999283',
+    ink4: '#B5AF9F',
+    scrim: 'rgba(32,28,23,0.4)',
+  },
+  categoryColors: {
+    chicken: '#B87A2E',
+    beef: '#8E4530',
+    pork: '#C99A82',
+    fish: '#4C7686',
+    veg: '#6B7A54',
+    lamb: '#7C5A50',
+    other: '#4A4038',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Brick — light ──────────────────────────────────────────────────────────
+// Deep venetian brick red — exposed brick, an old bakery oven. More brown
+// and architectural than Hearth's terracotta, less orange than Ember's rust.
+const brick: Theme = {
+  id: 'brick',
+  name: 'Brick',
+  mode: 'light',
+  colors: {
+    bg: '#FBF4F0',
+    surface: '#FFFFFF',
+    surfaceWarm: '#EEDDD3',
+    chipBg: '#E9D3C6',
+    border: '#E0C8BA',
+    borderStrong: '#E5CEC0',
+    accent: '#96392A',
+    accentText: '#742C20',
+    accentFg: '#FAF0EC',
+    accentTint: '#E3CDC3',
+    amber: '#B87A26',
+    amberText: '#825312',
+    amberTint: '#EEDCBE',
+    green: '#6B7F4C',
+    greenTint: '#E1E6D2',
+    red: '#96392A',
+    redTint: '#E3CDC3',
+    ink: '#291B16',
+    ink2: '#7A6459',
+    ink3: '#A69285',
+    ink4: '#BFAD9F',
+    scrim: 'rgba(41,27,22,0.4)',
+  },
+  categoryColors: {
+    chicken: '#B87A26',
+    beef: '#742C20',
+    pork: '#C9917E',
+    fish: '#42788A',
+    veg: '#6B7F4C',
+    lamb: '#7C4A46',
+    other: '#9C8A78',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
+// ── Coral — light ──────────────────────────────────────────────────────────
+// Vivid matte coral-pink — fresh salmon, a summer seafood counter. Bold and
+// playful but never neon.
+const coral: Theme = {
+  id: 'coral',
+  name: 'Coral',
+  mode: 'light',
+  colors: {
+    bg: '#FFF6F2',
+    surface: '#FFFFFF',
+    surfaceWarm: '#FCE6DC',
+    chipBg: '#FADCCE',
+    border: '#F2D5C6',
+    borderStrong: '#F6DACB',
+    accent: '#E0603F',
+    accentText: '#B84A2E',
+    accentFg: '#FFF4EF',
+    accentTint: '#F8D9CB',
+    amber: '#D9962E',
+    amberText: '#966412',
+    amberTint: '#F6E4C2',
+    green: '#5E8B52',
+    greenTint: '#E3EBD9',
+    red: '#C0392B',
+    redTint: '#F2D6CE',
+    ink: '#301E18',
+    ink2: '#806A5D',
+    ink3: '#A99486',
+    ink4: '#C0AD9F',
+    scrim: 'rgba(48,30,24,0.36)',
+  },
+  categoryColors: {
+    chicken: '#D9962E',
+    beef: '#A83A26',
+    pork: '#E0603F',
+    fish: '#4586A0',
+    veg: '#5E8B52',
+    lamb: '#8C5048',
+    other: '#9C8B7C',
+  },
+  tabBarBg: '#FFFFFF',
+};
+
 // ── Midnight Kitchen — dark (§4.3) ─────────────────────────────────────────
 // Tab bar steps one shade darker than `surface` for separation. The "red" slot
 // is an amber-toned warning to avoid two competing alarms on the dark ground.
@@ -801,6 +1251,429 @@ const espresso: Theme = {
   tabBarBg: '#120E0B',
 };
 
+// ── Sapphire — dark ────────────────────────────────────────────────────────
+// Confident jewel-blue on a warm near-black ground — the neutrals stay
+// brown-black like Espresso rather than shifting cold/navy like Abyss.
+const sapphire: Theme = {
+  id: 'sapphire',
+  name: 'Sapphire',
+  mode: 'dark',
+  colors: {
+    bg: '#17140F',
+    surface: '#211D17',
+    surfaceWarm: '#27221B',
+    chipBg: '#2C271F',
+    border: '#362F26',
+    borderStrong: '#362F26',
+    accent: '#5B84C4',
+    accentText: '#7CA0D6',
+    accentFg: '#0F1B2C',
+    accentTint: '#1E2A3D',
+    amber: '#D9A23F',
+    amberText: '#E6BA68',
+    amberTint: '#332711',
+    green: '#8FA96B',
+    greenTint: '#23301C',
+    red: '#E0594A',
+    redTint: '#331B16',
+    ink: '#EDE8DF',
+    ink2: '#B7AA98',
+    ink3: '#877C6C',
+    ink4: '#675E51',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#D9A23F',
+    beef: '#E0594A',
+    pork: '#DFA095',
+    fish: '#5B84C4',
+    veg: '#8FA96B',
+    lamb: '#B084AE',
+    other: '#B7AA98',
+  },
+  tabBarBg: '#100D0A',
+};
+
+// ── Amethyst — dark ────────────────────────────────────────────────────────
+// Confident jewel-purple, deep and moody against a warm charcoal ground.
+const amethyst: Theme = {
+  id: 'amethyst',
+  name: 'Amethyst',
+  mode: 'dark',
+  colors: {
+    bg: '#16130F',
+    surface: '#201A17',
+    surfaceWarm: '#261F1B',
+    chipBg: '#2B2420',
+    border: '#352D27',
+    borderStrong: '#352D27',
+    accent: '#A472C4',
+    accentText: '#B98FD3',
+    accentFg: '#201029',
+    accentTint: '#2E2237',
+    amber: '#D9A23F',
+    amberText: '#E6BA68',
+    amberTint: '#332711',
+    green: '#8FA96B',
+    greenTint: '#23301C',
+    red: '#E0594A',
+    redTint: '#331B16',
+    ink: '#EEE7E2',
+    ink2: '#B9A9A2',
+    ink3: '#897A75',
+    ink4: '#695C58',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#D9A23F',
+    beef: '#E0594A',
+    pork: '#DFA095',
+    fish: '#5E97B0',
+    veg: '#8FA96B',
+    lamb: '#A472C4',
+    other: '#B9A9A2',
+  },
+  tabBarBg: '#0F0C0A',
+};
+
+// ── Emerald — dark ─────────────────────────────────────────────────────────
+// Confident jewel-green, bright enough to carry contrast on a dark ground.
+const emerald: Theme = {
+  id: 'emerald',
+  name: 'Emerald',
+  mode: 'dark',
+  colors: {
+    bg: '#131611',
+    surface: '#1C201A',
+    surfaceWarm: '#222620',
+    chipBg: '#272B24',
+    border: '#31362D',
+    borderStrong: '#31362D',
+    accent: '#4FA976',
+    accentText: '#6FBD8F',
+    accentFg: '#0A2016',
+    accentTint: '#1A3324',
+    amber: '#D9A23F',
+    amberText: '#E6BA68',
+    amberTint: '#332711',
+    green: '#4FA976',
+    greenTint: '#1A3324',
+    red: '#E0594A',
+    redTint: '#331B16',
+    ink: '#E8EDE5',
+    ink2: '#ABB6A5',
+    ink3: '#7D877A',
+    ink4: '#60685D',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#D9A23F',
+    beef: '#E0594A',
+    pork: '#DFA095',
+    fish: '#5C97AC',
+    veg: '#4FA976',
+    lamb: '#B084AE',
+    other: '#ABB6A5',
+  },
+  tabBarBg: '#0D0F0B',
+};
+
+// ── Garnet — dark ──────────────────────────────────────────────────────────
+// Confident jewel-ruby red, leaning crimson rather than the orange-red of
+// Chili or Cinder.
+const garnet: Theme = {
+  id: 'garnet',
+  name: 'Garnet',
+  mode: 'dark',
+  colors: {
+    bg: '#170F0E',
+    surface: '#211815',
+    surfaceWarm: '#271C19',
+    chipBg: '#2C201C',
+    border: '#362924',
+    borderStrong: '#362924',
+    accent: '#C7454A',
+    accentText: '#D9686C',
+    accentFg: '#2A0E0F',
+    accentTint: '#3A1E1E',
+    amber: '#D9A23F',
+    amberText: '#E6BA68',
+    amberTint: '#332711',
+    green: '#8FA96B',
+    greenTint: '#23301C',
+    red: '#C7454A',
+    redTint: '#3A1E1E',
+    ink: '#F1E6E3',
+    ink2: '#BCA6A2',
+    ink3: '#8B7975',
+    ink4: '#6C5D5A',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#D9A23F',
+    beef: '#C7454A',
+    pork: '#D69299',
+    fish: '#5C93A6',
+    veg: '#8FA96B',
+    lamb: '#B0687A',
+    other: '#BCA6A2',
+  },
+  tabBarBg: '#110A09',
+};
+
+// ── Lagoon — dark ──────────────────────────────────────────────────────────
+// Confident jewel-teal, brighter than Peacock for dark-mode contrast.
+const lagoon: Theme = {
+  id: 'lagoon',
+  name: 'Lagoon',
+  mode: 'dark',
+  colors: {
+    bg: '#101613',
+    surface: '#19201C',
+    surfaceWarm: '#1F2621',
+    chipBg: '#242B25',
+    border: '#2E362F',
+    borderStrong: '#2E362F',
+    accent: '#2EB0A6',
+    accentText: '#57C4BB',
+    accentFg: '#072220',
+    accentTint: '#163330',
+    amber: '#D9A23F',
+    amberText: '#E6BA68',
+    amberTint: '#332711',
+    green: '#6FAF6B',
+    greenTint: '#1E301C',
+    red: '#E0594A',
+    redTint: '#331B16',
+    ink: '#E5EDEB',
+    ink2: '#A6B6B3',
+    ink3: '#798886',
+    ink4: '#5D6A68',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#D9A23F',
+    beef: '#E0594A',
+    pork: '#DFA095',
+    fish: '#2EB0A6',
+    veg: '#6FAF6B',
+    lamb: '#B0819E',
+    other: '#A6B6B3',
+  },
+  tabBarBg: '#0B100E',
+};
+
+// ── Saffron Dusk — dark ────────────────────────────────────────────────────
+// Warm gold glowing against a dark ground — the one warm anchor in this set.
+const saffronDusk: Theme = {
+  id: 'saffronDusk',
+  name: 'Saffron Dusk',
+  mode: 'dark',
+  colors: {
+    bg: '#191307',
+    surface: '#241C0F',
+    surfaceWarm: '#2A2112',
+    chipBg: '#302615',
+    border: '#3B2F1A',
+    borderStrong: '#3B2F1A',
+    accent: '#E0A93C',
+    accentText: '#EABE63',
+    accentFg: '#2E2004',
+    accentTint: '#3E3115',
+    amber: '#D67B3A',
+    amberText: '#E39860',
+    amberTint: '#3A2814',
+    green: '#90A155',
+    greenTint: '#262C17',
+    red: '#DD5C3D',
+    redTint: '#351E16',
+    ink: '#F4EAD9',
+    ink2: '#C3AE8C',
+    ink3: '#90805F',
+    ink4: '#6F6249',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#E0A93C',
+    beef: '#C6532F',
+    pork: '#DDA678',
+    fish: '#5C93A6',
+    veg: '#90A155',
+    lamb: '#B37860',
+    other: '#C3AE8C',
+  },
+  tabBarBg: '#120E06',
+};
+
+// ── Mauve — dark ───────────────────────────────────────────────────────────
+// Dusty rose-plum against a warm charcoal ground, softer than Garnet.
+const mauve: Theme = {
+  id: 'mauve',
+  name: 'Mauve',
+  mode: 'dark',
+  colors: {
+    bg: '#161112',
+    surface: '#201819',
+    surfaceWarm: '#261D1E',
+    chipBg: '#2B2122',
+    border: '#362A2C',
+    borderStrong: '#362A2C',
+    accent: '#C4768A',
+    accentText: '#D4909F',
+    accentFg: '#2A1116',
+    accentTint: '#3A2126',
+    amber: '#D9A23F',
+    amberText: '#E6BA68',
+    amberTint: '#332711',
+    green: '#8FA96B',
+    greenTint: '#23301C',
+    red: '#E0594A',
+    redTint: '#331B16',
+    ink: '#F1E5E7',
+    ink2: '#BDA6A9',
+    ink3: '#8C7679',
+    ink4: '#6D595C',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#D9A23F',
+    beef: '#B0503F',
+    pork: '#C4768A',
+    fish: '#5C8998',
+    veg: '#8FA96B',
+    lamb: '#A15A78',
+    other: '#BDA6A9',
+  },
+  tabBarBg: '#100B0C',
+};
+
+// ── Onyx — dark ────────────────────────────────────────────────────────────
+// Near-monochrome warm charcoal — quiet luxury, a single bronze glint of
+// saturation against an otherwise restrained ground.
+const onyx: Theme = {
+  id: 'onyx',
+  name: 'Onyx',
+  mode: 'dark',
+  colors: {
+    bg: '#131211',
+    surface: '#1C1A18',
+    surfaceWarm: '#211F1C',
+    chipBg: '#262320',
+    border: '#302C28',
+    borderStrong: '#302C28',
+    accent: '#B8935E',
+    accentText: '#C9A876',
+    accentFg: '#241A0D',
+    accentTint: '#362B1C',
+    amber: '#8C9270',
+    amberText: '#A6AC8C',
+    amberTint: '#2A2B20',
+    green: '#7C8F63',
+    greenTint: '#212617',
+    red: '#B85D48',
+    redTint: '#301D16',
+    ink: '#EAE6E0',
+    ink2: '#B3ACA3',
+    ink3: '#847E76',
+    ink4: '#66615A',
+    scrim: 'rgba(0,0,0,0.62)',
+  },
+  categoryColors: {
+    chicken: '#B8935E',
+    beef: '#A54F3C',
+    pork: '#C0998A',
+    fish: '#5C7F8A',
+    veg: '#7C8F63',
+    lamb: '#8C6E6A',
+    other: '#B3ACA3',
+  },
+  tabBarBg: '#0D0C0B',
+};
+
+// ── Coral Reef — dark ──────────────────────────────────────────────────────
+// Vivid coral, bright against a dark ground — bold contrast without neon.
+const coralReef: Theme = {
+  id: 'coralReef',
+  name: 'Coral Reef',
+  mode: 'dark',
+  colors: {
+    bg: '#180F0C',
+    surface: '#221713',
+    surfaceWarm: '#281C17',
+    chipBg: '#2D211B',
+    border: '#382A22',
+    borderStrong: '#382A22',
+    accent: '#E87A56',
+    accentText: '#EF9877',
+    accentFg: '#2E1006',
+    accentTint: '#3D2317',
+    amber: '#D9A23F',
+    amberText: '#E6BA68',
+    amberTint: '#332711',
+    green: '#86A758',
+    greenTint: '#212E18',
+    red: '#E0594A',
+    redTint: '#331B16',
+    ink: '#F3E6DF',
+    ink2: '#C0A599',
+    ink3: '#8D7669',
+    ink4: '#6D584D',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#D9A23F',
+    beef: '#C6472E',
+    pork: '#E87A56',
+    fish: '#5C97AC',
+    veg: '#86A758',
+    lamb: '#C4707C',
+    other: '#C0A599',
+  },
+  tabBarBg: '#110A08',
+};
+
+// ── Fern — dark ────────────────────────────────────────────────────────────
+// Soft warm fern green, more organic and muted than Emerald's jewel-bright.
+const fern: Theme = {
+  id: 'fern',
+  name: 'Fern',
+  mode: 'dark',
+  colors: {
+    bg: '#14150E',
+    surface: '#1D1F16',
+    surfaceWarm: '#23251A',
+    chipBg: '#282A1E',
+    border: '#333527',
+    borderStrong: '#333527',
+    accent: '#8FA75A',
+    accentText: '#A3BC72',
+    accentFg: '#191D0D',
+    accentTint: '#2C301C',
+    amber: '#CC9A44',
+    amberText: '#DBB268',
+    amberTint: '#362912',
+    green: '#8FA75A',
+    greenTint: '#2C301C',
+    red: '#C4593F',
+    redTint: '#331E17',
+    ink: '#EBEEDD',
+    ink2: '#B5BC99',
+    ink3: '#868C6C',
+    ink4: '#686C53',
+    scrim: 'rgba(0,0,0,0.6)',
+  },
+  categoryColors: {
+    chicken: '#CC9A44',
+    beef: '#A5523A',
+    pork: '#C7A17E',
+    fish: '#5A8C93',
+    veg: '#8FA75A',
+    lamb: '#9C6F63',
+    other: '#B5BC99',
+  },
+  tabBarBg: '#0F100A',
+};
+
 export const themes: Record<ThemeId, Theme> = {
   hearth,
   ember,
@@ -812,6 +1685,16 @@ export const themes: Record<ThemeId, Theme> = {
   citrus,
   lavender,
   newsprint,
+  denim,
+  aubergine,
+  juniper,
+  rosewater,
+  peacock,
+  moss,
+  marigold,
+  graphite,
+  brick,
+  coral,
   midnightKitchen,
   dusk,
   synthwave,
@@ -819,6 +1702,16 @@ export const themes: Record<ThemeId, Theme> = {
   bordeaux,
   abyss,
   espresso,
+  sapphire,
+  amethyst,
+  emerald,
+  garnet,
+  lagoon,
+  saffronDusk,
+  mauve,
+  onyx,
+  coralReef,
+  fern,
 };
 
 // Picker grid order (§4.10 step 1): default first, then the rest. Grouped by
@@ -835,6 +1728,16 @@ export const THEME_ORDER: ThemeId[] = [
   'citrus',
   'lavender',
   'newsprint',
+  'denim',
+  'aubergine',
+  'juniper',
+  'rosewater',
+  'peacock',
+  'moss',
+  'marigold',
+  'graphite',
+  'brick',
+  'coral',
   // Dark
   'midnightKitchen',
   'dusk',
@@ -843,6 +1746,16 @@ export const THEME_ORDER: ThemeId[] = [
   'bordeaux',
   'abyss',
   'espresso',
+  'sapphire',
+  'amethyst',
+  'emerald',
+  'garnet',
+  'lagoon',
+  'saffronDusk',
+  'mauve',
+  'onyx',
+  'coralReef',
+  'fern',
 ];
 
 // The picker renders these as labelled sections (§4.10). Order within each
