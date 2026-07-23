@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Sharing from 'expo-sharing';
 import { Directory, File, Paths } from 'expo-file-system';
+import { useConfirmModal } from '../components/useConfirmModal';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { JsonViewer } from './JsonViewer';
 import { useLogStore } from './logStore';
@@ -14,7 +15,7 @@ function toggle<T>(set: T[], value: T): T[] {
 }
 
 async function exportLogs(entries: LogEntry[]) {
-  const dir = new Directory(Paths.cache, 'preppie-logs');
+  const dir = new Directory(Paths.cache, 'dishision-logs');
   dir.create({ overwrite: false });
   const file = new File(dir, `debug-log-${Date.now()}.txt`);
   file.create({ overwrite: true });
@@ -26,25 +27,63 @@ async function exportLogs(entries: LogEntry[]) {
   return file;
 }
 
+// A level rendered as a coloured pill — reused in the row header and filters.
+function LevelPill({ level, active, onPress }: { level: LogLevel; active?: boolean; onPress?: () => void }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const tone = LEVEL_TONE(theme)[level];
+  const body = (
+    <View style={[styles.pill, { backgroundColor: active === false ? theme.colors.chipBg : tone.bg }, active && styles.pillRing]}>
+      <Text style={[styles.pillText, { color: active === false ? theme.colors.ink3 : tone.fg }]}>{level}</Text>
+    </View>
+  );
+  return onPress ? (
+    <TouchableOpacity onPress={onPress} hitSlop={4}>
+      {body}
+    </TouchableOpacity>
+  ) : (
+    body
+  );
+}
+
 function LogRow({ entry }: { entry: LogEntry }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [open, setOpen] = useState(false);
+  // undefined = per-node default; true/false = force expand/collapse all.
+  const [expandAll, setExpandAll] = useState<boolean | undefined>(undefined);
   const time = entry.ts.slice(11, 19);
+  const hasData = entry.data !== undefined;
 
   return (
-    <TouchableOpacity
-      style={styles.row}
-      onPress={() => setOpen((o) => !o)}
-      disabled={entry.data === undefined}
-    >
-      <Text style={styles.rowHead}>
-        {time}  <Text style={styles.category}>{entry.category}</Text>{'  '}
-        <Text style={[styles.level, styles[`level_${entry.level}`]]}>{entry.level}</Text>
-      </Text>
-      <Text style={styles.message}>{entry.message}</Text>
-      {open && entry.data !== undefined && <JsonViewer data={entry.data} />}
-    </TouchableOpacity>
+    <View style={styles.card}>
+      <TouchableOpacity style={styles.cardHead} onPress={() => setOpen((o) => !o)} disabled={!hasData} activeOpacity={0.7}>
+        <View style={styles.cardHeadTop}>
+          <Text style={styles.time}>{time}</Text>
+          <View style={styles.categoryPill}>
+            <Text style={styles.categoryPillText}>{entry.category}</Text>
+          </View>
+          <LevelPill level={entry.level} />
+          {hasData && <Text style={styles.chevron}>{open ? '▾' : '▸'}</Text>}
+        </View>
+        <Text style={styles.message}>{entry.message}</Text>
+      </TouchableOpacity>
+
+      {open && hasData && (
+        <View style={styles.dataBlock}>
+          <View style={styles.dataControls}>
+            <TouchableOpacity style={styles.miniButton} onPress={() => setExpandAll(true)}>
+              <Text style={styles.miniButtonText}>Expand all</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.miniButton} onPress={() => setExpandAll(false)}>
+              <Text style={styles.miniButtonText}>Collapse all</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Remount on expandAll change so every node re-initialises. */}
+          <JsonViewer key={String(expandAll)} data={entry.data} expandAll={expandAll} />
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -55,7 +94,9 @@ export function DebugScreen() {
   const clear = useLogStore((s) => s.clear);
   const [categories, setCategories] = useState<LogCategory[]>([]);
   const [levels, setLevels] = useState<LogLevel[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const insets = useSafeAreaInsets();
+  const { modal, confirm } = useConfirmModal();
 
   const filtered = useMemo(() => {
     return entries
@@ -65,98 +106,171 @@ export function DebugScreen() {
       .reverse();
   }, [entries, categories, levels]);
 
-  const handleDeleteAll = () => {
-    Alert.alert('Delete all logs?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete all', style: 'destructive', onPress: clear },
-    ]);
-  };
+  const levelCounts = useMemo(() => {
+    const counts: Record<LogLevel, number> = { debug: 0, info: 0, warn: 0, error: 0 };
+    for (const e of entries) counts[e.level] = (counts[e.level] ?? 0) + 1;
+    return counts;
+  }, [entries]);
+
+  const activeFilterCount = categories.length + levels.length;
+
+  function handleDeleteAll() {
+    confirm('Delete all logs?', 'This clears every log entry and cannot be undone.', 'Delete all', clear, true);
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Debug · {entries.length} logs</Text>
-
-      <View style={styles.chipRow}>
-        {LOG_CATEGORIES.map((c) => (
-          <TouchableOpacity
-            key={c}
-            style={[styles.chip, categories.includes(c) && styles.chipActive]}
-            onPress={() => setCategories((cur) => toggle(cur, c))}
-          >
-            <Text style={[styles.chipText, categories.includes(c) && styles.chipTextActive]}>
-              {c}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.header}>
+        <Text style={styles.title}>Debug</Text>
+        <Text style={styles.subtitle}>
+          {entries.length} logs · {filtered.length} shown
+        </Text>
       </View>
 
-      <View style={styles.chipRow}>
+      {/* Level summary */}
+      <View style={styles.summaryRow}>
         {LOG_LEVELS.map((l) => (
-          <TouchableOpacity
-            key={l}
-            style={[styles.chip, levels.includes(l) && styles.chipActive]}
-            onPress={() => setLevels((cur) => toggle(cur, l))}
-          >
-            <Text style={[styles.chipText, levels.includes(l) && styles.chipTextActive]}>{l}</Text>
-          </TouchableOpacity>
+          <View key={l} style={styles.summaryItem}>
+            <LevelPill level={l} />
+            <Text style={styles.summaryCount}>{levelCounts[l]}</Text>
+          </View>
         ))}
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(e) => String(e.id)}
-        renderItem={({ item }) => <LogRow entry={item} />}
-        style={styles.list}
-      />
+      {/* Collapsible filters */}
+      <TouchableOpacity style={styles.filtersToggle} onPress={() => setFiltersOpen((o) => !o)}>
+        <Text style={styles.filtersToggleText}>
+          {filtersOpen ? '▾' : '▸'} Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+        </Text>
+        {activeFilterCount > 0 && (
+          <TouchableOpacity
+            onPress={() => {
+              setCategories([]);
+              setLevels([]);
+            }}
+            hitSlop={8}
+          >
+            <Text style={styles.clearFilters}>Clear</Text>
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+
+      {filtersOpen && (
+        <View style={styles.filterPanel}>
+          <Text style={styles.filterLabel}>CATEGORY</Text>
+          <View style={styles.chipRow}>
+            {LOG_CATEGORIES.map((c) => (
+              <TouchableOpacity
+                key={c}
+                style={[styles.pill, categories.includes(c) ? styles.pillActive : styles.pillIdle]}
+                onPress={() => setCategories((cur) => toggle(cur, c))}
+              >
+                <Text style={[styles.pillText, categories.includes(c) ? styles.pillTextActive : styles.pillTextIdle]}>{c}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={styles.filterLabel}>LEVEL</Text>
+          <View style={styles.chipRow}>
+            {LOG_LEVELS.map((l) => (
+              <LevelPill key={l} level={l} active={levels.length === 0 || levels.includes(l)} onPress={() => setLevels((cur) => toggle(cur, l))} />
+            ))}
+          </View>
+        </View>
+      )}
+
+      {filtered.length === 0 ? (
+        <View style={styles.list}>
+          <Text style={styles.empty}>No logs match the current filters.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(e) => String(e.id)}
+          renderItem={({ item }) => <LogRow entry={item} />}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
         <TouchableOpacity style={styles.button} onPress={() => exportLogs(entries)}>
           <Text style={styles.buttonText}>Export</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.button, styles.buttonDanger]} onPress={handleDeleteAll}>
-          <Text style={styles.buttonText}>Delete all</Text>
+          <Text style={styles.buttonDangerText}>Delete all</Text>
         </TouchableOpacity>
       </View>
+
+      {modal}
     </View>
   );
 }
 
+// Per-level colour, drawn from the theme's semantic tokens.
+const LEVEL_TONE = (theme: AppTheme): Record<LogLevel, { bg: string; fg: string }> => ({
+  debug: { bg: theme.colors.chipBg, fg: theme.colors.ink3 },
+  info: { bg: theme.colors.accentTint, fg: theme.colors.accentText },
+  warn: { bg: theme.colors.amberTint, fg: theme.colors.amberText },
+  error: { bg: theme.colors.redTint, fg: theme.colors.red },
+});
+
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.colors.bg, padding: 16 },
-    title: { fontSize: 16, fontWeight: '700', color: theme.colors.ink, marginBottom: 8 },
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 },
-    chip: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 6,
-      backgroundColor: theme.colors.chipBg,
+    container: { flex: 1, backgroundColor: theme.colors.bg, padding: theme.spacing.base, gap: theme.spacing.sm },
+    header: { flexDirection: 'row', alignItems: 'baseline', gap: theme.spacing.sm },
+    title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
+    subtitle: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    summaryRow: { flexDirection: 'row', gap: theme.spacing.md },
+    summaryItem: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    summaryCount: { fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+
+    filtersToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    filtersToggleText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+    clearFilters: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+    filterPanel: {
+      gap: theme.spacing.xs,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.sm,
     },
-    chipActive: { backgroundColor: theme.colors.accent },
-    chipText: { fontSize: 11, color: theme.colors.ink2 },
-    chipTextActive: { color: theme.colors.accentFg },
-    list: { flex: 1, marginTop: 8 },
-    row: {
-      paddingVertical: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
+    filterLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.5, marginTop: 2 },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },
+
+    pill: { paddingHorizontal: theme.spacing.sm, paddingVertical: 3, borderRadius: theme.radius.pill },
+    pillRing: { borderWidth: 1, borderColor: theme.colors.ink4 },
+    pillIdle: { backgroundColor: theme.colors.chipBg },
+    pillActive: { backgroundColor: theme.colors.accent },
+    pillText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, textTransform: 'uppercase', letterSpacing: 0.5 },
+    pillTextIdle: { color: theme.colors.ink2 },
+    pillTextActive: { color: theme.colors.accentFg },
+
+    list: { flex: 1 },
+    listContent: { gap: theme.spacing.sm, paddingVertical: theme.spacing.xs },
+    empty: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic', textAlign: 'center', paddingVertical: theme.spacing.xl },
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.sm,
     },
-    rowHead: { fontFamily: 'monospace', fontSize: 11, color: theme.colors.ink2 },
-    category: { color: theme.colors.accentText },
-    level: { fontWeight: '700' },
-    level_debug: { color: theme.colors.ink3 },
-    level_info: { color: theme.colors.green },
-    level_warn: { color: theme.colors.amberText },
-    level_error: { color: theme.colors.red },
-    message: { fontSize: 13, color: theme.colors.ink, marginTop: 2 },
-    footer: { flexDirection: 'row', gap: 12, marginTop: 8 },
-    button: {
-      flex: 1,
-      backgroundColor: theme.colors.accent,
-      paddingVertical: 10,
-      borderRadius: 13,
-      alignItems: 'center',
-    },
-    buttonDanger: { backgroundColor: theme.colors.red },
-    buttonText: { color: theme.colors.accentFg, fontWeight: '600' },
+    cardHead: { gap: 4 },
+    cardHeadTop: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    time: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    categoryPill: { backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.sm, paddingVertical: 3 },
+    categoryPillText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink2, textTransform: 'uppercase', letterSpacing: 0.5 },
+    chevron: { marginLeft: 'auto', fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink3 },
+    message: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink },
+    dataBlock: { marginTop: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: theme.spacing.xs },
+    dataControls: { flexDirection: 'row', gap: theme.spacing.xs },
+    miniButton: { backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: 4 },
+    miniButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+
+    footer: { flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xs },
+    button: { flex: 1, backgroundColor: theme.colors.accent, paddingVertical: theme.spacing.md, borderRadius: theme.radius.card, alignItems: 'center' },
+    buttonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
+    buttonDanger: { backgroundColor: theme.colors.redTint },
+    buttonDangerText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.red },
   });

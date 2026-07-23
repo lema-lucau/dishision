@@ -609,10 +609,25 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
     <View
       style={
         {
+          "gap": 8,
           "paddingVertical": 16,
         }
       }
     >
+      <Text
+        style={
+          {
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_500Medium",
+            "fontSize": 11,
+          }
+        }
+      >
+        Total for 
+        2
+         serving
+        s
+      </Text>
       <View
         style={
           {
@@ -643,7 +658,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
               }
             }
           >
-            612
+            1224
           </Text>
           <Text
             style={
@@ -681,7 +696,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
               }
             }
           >
-            38
+            76g
           </Text>
           <Text
             style={
@@ -719,7 +734,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
               }
             }
           >
-            21
+            42g
           </Text>
           <Text
             style={
@@ -757,7 +772,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
               }
             }
           >
-            41
+            82g
           </Text>
           <Text
             style={
@@ -931,6 +946,23 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         </View>
       </View>
     </View>
+    <Text
+      style={
+        [
+          {
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          },
+          {
+            "marginTop": 18,
+          },
+        ]
+      }
+    >
+      COOK
+    </Text>
     <View
       accessibilityState={
         {
@@ -1032,18 +1064,97 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         I already cooked this
       </Text>
     </View>
-    <View
+    <Text
       style={
         [
           {
-            "flexDirection": "row",
-            "gap": 16,
-            "marginBottom": 16,
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
           },
           {
-            "marginTop": 16,
+            "marginTop": 18,
           },
         ]
+      }
+    >
+      SHOPPING LIST
+    </Text>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": false,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#F3E9DF",
+          "borderRadius": 13,
+          "opacity": 1,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#A34A2A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        + Add to shopping list (2 servings)
+      </Text>
+    </View>
+    <Text
+      style={
+        [
+          {
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          },
+          {
+            "marginTop": 18,
+          },
+        ]
+      }
+    >
+      MANAGE
+    </Text>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "gap": 16,
+          "marginBottom": 16,
+        }
       }
     >
       <View
@@ -1088,6 +1199,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -1105,6 +1218,16 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           ☆ Favourite
         </Text>
       </View>
+    </View>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "gap": 16,
+          "marginBottom": 16,
+        }
+      }
+    >
       <View
         accessibilityState={
           {
@@ -1147,6 +1270,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -1206,6 +1331,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -1221,6 +1348,67 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           }
         >
           Copy & tweak
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#F3E9DF",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#7A6E64",
+              },
+            ]
+          }
+        >
+          Share
         </Text>
       </View>
     </View>
@@ -1275,6 +1463,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -1334,6 +1524,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -1393,6 +1585,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -2024,10 +2218,25 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
     <View
       style={
         {
+          "gap": 8,
           "paddingVertical": 16,
         }
       }
     >
+      <Text
+        style={
+          {
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_500Medium",
+            "fontSize": 11,
+          }
+        }
+      >
+        Total for 
+        2
+         serving
+        s
+      </Text>
       <View
         style={
           {
@@ -2058,7 +2267,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
               }
             }
           >
-            306
+            612
           </Text>
           <Text
             style={
@@ -2096,7 +2305,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
               }
             }
           >
-            19
+            38g
           </Text>
           <Text
             style={
@@ -2134,7 +2343,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
               }
             }
           >
-            0
+            0g
           </Text>
           <Text
             style={
@@ -2172,7 +2381,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
               }
             }
           >
-            6
+            12g
           </Text>
           <Text
             style={
@@ -2348,6 +2557,23 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         </View>
       </View>
     </View>
+    <Text
+      style={
+        [
+          {
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          },
+          {
+            "marginTop": 18,
+          },
+        ]
+      }
+    >
+      COOK
+    </Text>
     <View
       accessibilityState={
         {
@@ -2449,18 +2675,97 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         I already cooked this
       </Text>
     </View>
-    <View
+    <Text
       style={
         [
           {
-            "flexDirection": "row",
-            "gap": 16,
-            "marginBottom": 16,
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
           },
           {
-            "marginTop": 16,
+            "marginTop": 18,
           },
         ]
+      }
+    >
+      SHOPPING LIST
+    </Text>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": false,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#F3E9DF",
+          "borderRadius": 13,
+          "opacity": 1,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#A34A2A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        + Add to shopping list (2 servings)
+      </Text>
+    </View>
+    <Text
+      style={
+        [
+          {
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          },
+          {
+            "marginTop": 18,
+          },
+        ]
+      }
+    >
+      MANAGE
+    </Text>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "gap": 16,
+          "marginBottom": 16,
+        }
       }
     >
       <View
@@ -2505,6 +2810,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -2522,6 +2829,16 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           ☆ Favourite
         </Text>
       </View>
+    </View>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "gap": 16,
+          "marginBottom": 16,
+        }
+      }
+    >
       <View
         accessibilityState={
           {
@@ -2564,6 +2881,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -2623,6 +2942,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -2638,6 +2959,67 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           }
         >
           Copy & tweak
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#F3E9DF",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#7A6E64",
+              },
+            ]
+          }
+        >
+          Share
         </Text>
       </View>
     </View>
@@ -2692,6 +3074,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -2751,6 +3135,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -2810,6 +3196,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -3441,10 +3829,25 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
     <View
       style={
         {
+          "gap": 8,
           "paddingVertical": 16,
         }
       }
     >
+      <Text
+        style={
+          {
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_500Medium",
+            "fontSize": 11,
+          }
+        }
+      >
+        Total for 
+        2
+         serving
+        s
+      </Text>
       <View
         style={
           {
@@ -3475,7 +3878,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
               }
             }
           >
-            612
+            1224
           </Text>
           <Text
             style={
@@ -3513,7 +3916,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
               }
             }
           >
-            38
+            76g
           </Text>
           <Text
             style={
@@ -3551,7 +3954,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
               }
             }
           >
-            21
+            42g
           </Text>
           <Text
             style={
@@ -3589,7 +3992,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
               }
             }
           >
-            41
+            82g
           </Text>
           <Text
             style={
@@ -3763,6 +4166,23 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         </View>
       </View>
     </View>
+    <Text
+      style={
+        [
+          {
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          },
+          {
+            "marginTop": 18,
+          },
+        ]
+      }
+    >
+      COOK
+    </Text>
     <View
       accessibilityState={
         {
@@ -3864,18 +4284,97 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         I already cooked this
       </Text>
     </View>
-    <View
+    <Text
       style={
         [
           {
-            "flexDirection": "row",
-            "gap": 16,
-            "marginBottom": 16,
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
           },
           {
-            "marginTop": 16,
+            "marginTop": 18,
           },
         ]
+      }
+    >
+      SHOPPING LIST
+    </Text>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": false,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#F3E9DF",
+          "borderRadius": 13,
+          "opacity": 1,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#A34A2A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        + Add to shopping list (2 servings)
+      </Text>
+    </View>
+    <Text
+      style={
+        [
+          {
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 0.5,
+          },
+          {
+            "marginTop": 18,
+          },
+        ]
+      }
+    >
+      MANAGE
+    </Text>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "gap": 16,
+          "marginBottom": 16,
+        }
       }
     >
       <View
@@ -3920,6 +4419,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -3937,6 +4438,16 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           ☆ Favourite
         </Text>
       </View>
+    </View>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "gap": 16,
+          "marginBottom": 16,
+        }
+      }
+    >
       <View
         accessibilityState={
           {
@@ -3979,6 +4490,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -4038,6 +4551,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -4053,6 +4568,67 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           }
         >
           Copy & tweak
+        </Text>
+      </View>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "stretch",
+            "backgroundColor": "#F3E9DF",
+            "borderRadius": 20,
+            "flex": 1,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
+          numberOfLines={1}
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+                "lineHeight": 14.5,
+              },
+              {
+                "color": "#7A6E64",
+              },
+            ]
+          }
+        >
+          Share
         </Text>
       </View>
     </View>
@@ -4107,6 +4683,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -4166,6 +4744,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [
@@ -4225,6 +4805,8 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={
             [

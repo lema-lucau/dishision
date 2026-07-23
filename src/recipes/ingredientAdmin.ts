@@ -6,6 +6,7 @@ import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
 import { capitalize } from '../lib/capitalize';
 import type { IngredientCategory } from '../lib/ingredientCategory';
+import { deriveCostPer100, effectiveCostPer100, loadPricesForCanonicalIds } from './ingredientPrices';
 import type { BaseUnit } from '../seed/types';
 
 export interface IngredientAdminRow {
@@ -14,6 +15,8 @@ export interface IngredientAdminRow {
   baseUnit: BaseUnit;
   packLabel: string | null;
   usageCount: number;
+  costPer100: number | null;
+  priceCount: number;
 }
 
 export interface IngredientsPage {
@@ -44,11 +47,18 @@ export async function loadIngredientsPage(
     name: string;
     base_unit: BaseUnit;
     pack_label: string | null;
+    pack_size: number | null;
+    density: number | null;
+    cost_per_100: number | null;
     usage_count: number;
+    price_count: number;
   }>(
-    `SELECT ci.id, ci.name, ci.base_unit, ci.pack_label, COUNT(ri.id) as usage_count
+    `SELECT ci.id, ci.name, ci.base_unit, ci.pack_label, ci.pack_size, ci.density, ci.cost_per_100,
+            COUNT(DISTINCT ri.id) as usage_count,
+            COUNT(DISTINCT ip.id) as price_count
      FROM canonical_ingredient ci
      LEFT JOIN recipe_ingredient ri ON ri.canonical_id = ci.id
+     LEFT JOIN ingredient_price ip ON ip.canonical_id = ci.id
      WHERE ci.name LIKE ?
      GROUP BY ci.id
      ORDER BY ${orderBy}
@@ -56,9 +66,24 @@ export async function loadIngredientsPage(
     [needle, opts.pageSize, offset],
   );
 
+  // Manual prices win over the stored cost_per_100 fallback — computed live
+  // per page rather than trusting a stored column (see ingredientPrices.ts).
+  const pricesByCanonical = await loadPricesForCanonicalIds(db, rows.map((r) => r.id));
+
   return {
     total: totalRow?.count ?? 0,
-    items: rows.map((r) => ({ id: r.id, name: r.name, baseUnit: r.base_unit, packLabel: r.pack_label, usageCount: r.usage_count })),
+    items: rows.map((r) => {
+      const manualCost = deriveCostPer100({ baseUnit: r.base_unit, packSize: r.pack_size, density: r.density }, pricesByCanonical.get(r.id) ?? []);
+      return {
+        id: r.id,
+        name: r.name,
+        baseUnit: r.base_unit,
+        packLabel: r.pack_label,
+        usageCount: r.usage_count,
+        costPer100: effectiveCostPer100(manualCost, r.cost_per_100),
+        priceCount: r.price_count,
+      };
+    }),
   };
 }
 

@@ -47,7 +47,7 @@ async function resolveOrCreateTagId(db: DbClient, name: string): Promise<number>
   return result.lastInsertRowId;
 }
 
-async function writeChildren(db: DbClient, recipeId: number, draft: RecipeDraft): Promise<void> {
+export async function writeChildren(db: DbClient, recipeId: number, draft: RecipeDraft): Promise<void> {
   await db.runAsync('DELETE FROM recipe_step WHERE recipe_id = ?', [recipeId]);
   await db.runAsync('DELETE FROM step_lane WHERE recipe_id = ?', [recipeId]);
   await db.runAsync('DELETE FROM recipe_ingredient WHERE recipe_id = ?', [recipeId]);
@@ -96,13 +96,33 @@ async function writeChildren(db: DbClient, recipeId: number, draft: RecipeDraft)
   }
 }
 
-export async function createManualRecipe(db: DbClient, draft: RecipeDraft): Promise<number> {
+// Shared by createManualRecipe and the S13 import write path (§7.3), which
+// must preserve the payload's own share_id rather than minting a fresh one.
+export interface CreateRecipeMeta {
+  shareId: string;
+  source: 'manual' | 'imported';
+  importedFrom?: string | null;
+  importedAt?: string | null;
+}
+
+export async function createRecipeFromDraft(db: DbClient, draft: RecipeDraft, meta: CreateRecipeMeta): Promise<number> {
   await db.execAsync('BEGIN');
   try {
     const result = await db.runAsync(
-      `INSERT INTO recipe (share_id, name, description, photo_emoji, base_servings, timeline_mode, source, origin_label)
-       VALUES (?, ?, ?, ?, ?, ?, 'manual', ?)`,
-      [uuidv4(), draft.name, draft.description || null, draft.photoEmoji, draft.baseServings, draft.timelineMode, draft.originLabel || null],
+      `INSERT INTO recipe (share_id, name, description, photo_emoji, base_servings, timeline_mode, source, origin_label, imported_from, imported_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        meta.shareId,
+        draft.name,
+        draft.description || null,
+        draft.photoEmoji,
+        draft.baseServings,
+        draft.timelineMode,
+        meta.source,
+        draft.originLabel || null,
+        meta.importedFrom ?? null,
+        meta.importedAt ?? null,
+      ],
     );
     const recipeId = result.lastInsertRowId;
     await writeChildren(db, recipeId, draft);
@@ -115,6 +135,10 @@ export async function createManualRecipe(db: DbClient, draft: RecipeDraft): Prom
   }
 }
 
+export async function createManualRecipe(db: DbClient, draft: RecipeDraft): Promise<number> {
+  return createRecipeFromDraft(db, draft, { shareId: uuidv4(), source: 'manual' });
+}
+
 export async function updateManualRecipe(db: DbClient, recipeId: number, draft: RecipeDraft): Promise<void> {
   await db.execAsync('BEGIN');
   try {
@@ -124,6 +148,42 @@ export async function updateManualRecipe(db: DbClient, recipeId: number, draft: 
            origin_label = ?, updated_at = datetime('now')
        WHERE id = ?`,
       [draft.name, draft.description || null, draft.photoEmoji, draft.baseServings, draft.timelineMode, draft.originLabel || null, recipeId],
+    );
+    await writeChildren(db, recipeId, draft);
+    await db.execAsync('COMMIT');
+    await invalidateMedianCostCache(db);
+  } catch (error) {
+    await db.execAsync('ROLLBACK');
+    throw error;
+  }
+}
+
+// S13 import "Merge" path (§7.3): overwrite an existing recipe's content
+// in place (same id, same share_id/lineage) with an incoming payload's
+// fields, and record that it arrived via import.
+export async function updateRecipeFromImport(
+  db: DbClient,
+  recipeId: number,
+  draft: RecipeDraft,
+  importedFrom: string | null,
+  /** When set, also adopts this share_id — the "name similar, no share_id
+   * match" merge path (§7.3): the local recipe's old lineage identity is
+   * retired in favour of the incoming payload's. Safe because that share_id
+   * is, by construction, not already in use locally (that's why it didn't
+   * match in the first place). */
+  adoptShareId?: string,
+): Promise<void> {
+  await db.execAsync('BEGIN');
+  try {
+    await db.runAsync(
+      `UPDATE recipe
+       SET name = ?, description = ?, photo_emoji = ?, base_servings = ?, timeline_mode = ?,
+           origin_label = ?, source = 'imported', imported_from = ?, imported_at = datetime('now'),
+           updated_at = datetime('now')${adoptShareId ? ', share_id = ?' : ''}
+       WHERE id = ?`,
+      adoptShareId
+        ? [draft.name, draft.description || null, draft.photoEmoji, draft.baseServings, draft.timelineMode, draft.originLabel || null, importedFrom, adoptShareId, recipeId]
+        : [draft.name, draft.description || null, draft.photoEmoji, draft.baseServings, draft.timelineMode, draft.originLabel || null, importedFrom, recipeId],
     );
     await writeChildren(db, recipeId, draft);
     await db.execAsync('COMMIT');

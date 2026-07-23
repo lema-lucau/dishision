@@ -3,12 +3,14 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useAutoBackup } from './src/backup/useAutoBackup';
 import { DbProvider } from './src/db/DbContext';
 import { openDatabase } from './src/db/openDatabase';
 import { logger } from './src/debug/logStore';
 import { TabShell } from './src/navigation/TabShell';
 import { ensureProfile, type Profile } from './src/profile/ensureProfile';
 import { runSeed } from './src/seed/seedRunner';
+import { useDeepLinkListener } from './src/sharing/useDeepLinkListener';
 import { ThemeProvider, useTheme, type AppTheme } from './src/theme/ThemeContext';
 import { useAppFonts } from './src/theme/useAppFonts';
 import type { DbClient } from './src/db/DbClient';
@@ -28,7 +30,7 @@ function ErrorScreen({ message }: { message: string }) {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.center}>
-      <Text style={styles.errorTitle}>Couldn't start Preppie</Text>
+      <Text style={styles.errorTitle}>Couldn't start Dishision</Text>
       <Text style={styles.errorMessage}>{message}</Text>
     </View>
   );
@@ -36,12 +38,17 @@ function ErrorScreen({ message }: { message: string }) {
 
 // Renders inside the ThemeProvider so the status bar can track the active
 // theme's mode (§4.1 — light/dark drives the status bar).
-function ThemedRoot({ profile }: { profile: Profile }) {
+function ThemedRoot({ profile, db, onRestored }: { profile: Profile; db: DbClient; onRestored: () => void }) {
   const theme = useTheme();
+  // §7.2: catches an incoming dishision://import link or a tapped .dishision
+  // file at the app root, regardless of which tab is active.
+  useDeepLinkListener();
+  // §10: writes an automatic local backup on every active -> background transition.
+  useAutoBackup(db);
   return (
     <>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
-      <TabShell profile={profile} />
+      <TabShell profile={profile} onRestored={onRestored} />
     </>
   );
 }
@@ -51,6 +58,11 @@ export default function App() {
   const [db, setDb] = useState<DbClient | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  // §10: bumped after a backup restore to force-remount everything under
+  // it — a restore rewrites every table out from under whatever each
+  // screen already loaded into its own local state, and a full remount is
+  // the simplest way to guarantee nothing keeps showing pre-restore data.
+  const [resetKey, setResetKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,7 +83,17 @@ export default function App() {
     return () => {
       cancelled = true;
     };
+    // Deliberately runs once — a restore must NOT re-trigger runSeed, or a
+    // deliberately-deleted seeded recipe (§9.3) would silently reappear
+    // even though the restored backup correctly omitted it.
   }, []);
+
+  async function handleRestored() {
+    if (!db) return;
+    const restoredProfile = await ensureProfile(db);
+    setProfile(restoredProfile);
+    setResetKey((k) => k + 1);
+  }
 
   if (fontsError) {
     return (
@@ -105,8 +127,8 @@ export default function App() {
     <GestureHandlerRootView style={styles.gestureRoot}>
       <SafeAreaProvider>
         <DbProvider db={db}>
-          <ThemeProvider db={db}>
-            <ThemedRoot profile={profile} />
+          <ThemeProvider db={db} key={`theme-${resetKey}`}>
+            <ThemedRoot key={`root-${resetKey}`} profile={profile} db={db} onRestored={handleRestored} />
           </ThemeProvider>
         </DbProvider>
       </SafeAreaProvider>

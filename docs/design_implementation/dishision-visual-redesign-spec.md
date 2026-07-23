@@ -1,7 +1,7 @@
-# Preppie — Visual Redesign Spec (Warm Editorial)
+# Dishision — Visual Redesign Spec (Warm Editorial)
 
 **Version:** R1.0
-**Companion to:** `preppie-spec.md` (the *base spec*) — this document does **not** replace it
+**Companion to:** `dishision-spec.md` (the *base spec*) — this document does **not** replace it
 **Platform:** React Native / Expo SDK 54
 **Status:** Specification — supersedes the *visual presentation* of the base spec's §4.5–4.8 and the *layout* of §5.2–5.10
 
@@ -9,9 +9,9 @@
 
 ## R0. What this document is (and isn't)
 
-The base spec (`preppie-spec.md`) defines **what Preppie is** — data model, units, recommendation engine, sharing, the theme *architecture*, and the behaviour of every screen. All of that stands unchanged.
+The base spec (`dishision-spec.md`) defines **what Dishision is** — data model, units, recommendation engine, sharing, the theme *architecture*, and the behaviour of every screen. All of that stands unchanged.
 
-This document defines **how Preppie looks and feels**. It exists because the first build, while functionally complete, reads as a prototype: flat cards, no depth, no focal point, emoji-in-a-grey-box, no motion. The goal is a **polished, "designed" app** — not new features.
+This document defines **how Dishision looks and feels**. It exists because the first build, while functionally complete, reads as a prototype: flat cards, no depth, no focal point, emoji-in-a-grey-box, no motion. The goal is a **polished, "designed" app** — not new features.
 
 **Precedence rules:**
 
@@ -206,7 +206,7 @@ The signature screen. Cosy hero + one editorial cover.
 │  │  [   Start cooking →   ]  │ │  ← PillButton accent (gradient+haptic)
 │  └───────────────────────────┘ │
 │                                │
-│  STILL GOOD                    │
+│  LEFTOVERS . X Servings        │
 │  ┌──────────────────────────┐  │  ← leftovers: warm rows, tinted
 │  │ 🍛  2 of Katsu curry  Eat│  │     emoji tile, Eat/Bin pills
 │  └──────────────────────────┘  │

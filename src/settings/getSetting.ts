@@ -53,3 +53,38 @@ export async function getRecommendationWeights(db: DbClient): Promise<Recommenda
     return DEFAULT_RECOMMENDATION_WEIGHTS;
   }
 }
+
+// §5.10 default serving size, used to pre-fill new recipes and the "how
+// many servings" prompts.
+export async function getDefaultServingSize(db: DbClient): Promise<number> {
+  return Number(await getSettingWithDefault(db, 'default_serving_size', '2'));
+}
+
+// §5.6 Cooking Mode alert toggles — vibrate/takeover are already read
+// directly by CookingModeScreen via getSettingWithDefault; these wrappers
+// exist for the Settings screen and keep the default values in one place.
+export async function getAlertVibrate(db: DbClient): Promise<boolean> {
+  return (await getSettingWithDefault(db, 'alert_vibrate', '1')) === '1';
+}
+export async function getAlertSound(db: DbClient): Promise<boolean> {
+  return (await getSettingWithDefault(db, 'alert_sound', '1')) === '1';
+}
+export async function getAlertTakeover(db: DbClient): Promise<boolean> {
+  return (await getSettingWithDefault(db, 'alert_takeover', '1')) === '1';
+}
+
+// §5.10 currency: code + symbol, display-only (no conversion, no rescale).
+export async function getCurrencyCode(db: DbClient): Promise<string> {
+  return getSettingWithDefault(db, 'currency_code', 'EUR');
+}
+
+export type CostStalenessDays = 60 | 90 | 180 | 0; // 0 = never
+export async function getCostStalenessDays(db: DbClient): Promise<CostStalenessDays> {
+  return Number(await getSettingWithDefault(db, 'cost_staleness_days', '90')) as CostStalenessDays;
+}
+
+// §6.9: the stale-cost prompt re-arms 30 days after being dismissed, not on
+// every app open. Stores the ISO instant it was last dismissed.
+export async function getCostPromptDismissedAt(db: DbClient): Promise<string | null> {
+  return getSetting(db, 'cost_prompt_dismissed_at');
+}

@@ -2,9 +2,14 @@ import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
 import { uuidv4 } from '../utils/uuid';
 
-// Fixed pool per §5.10 — the default avatar before a user picks a photo or
-// re-rolls.
-export const FOOD_EMOJI_POOL = [
+// Fixed pool — the default avatar before a user picks a photo or re-rolls.
+// A mix of profile-appropriate faces/cooks and the original food emojis, so
+// the placeholder can read as a person or stay playful/food-themed.
+export const AVATAR_EMOJI_POOL = [
+  // Faces & cooks
+  '🧑‍🍳', '👨‍🍳', '👩‍🍳', '🧑', '👩', '👨', '🧔', '👵', '👴', '🧑‍🦰',
+  '👩‍🦱', '👨‍🦱', '👩‍🦳', '👨‍🦳', '🙂', '😀', '😎', '🤓', '🥳', '🤠',
+  // Food
   '🍜', '🥘', '🍲', '🥗', '🍳', '🌮', '🍕', '🥐', '🍛', '🥙',
   '🍝', '🥧', '🧀', '🥑', '🍤', '🍚', '🥞', '🍔', '🍋', '🫑',
 ];
@@ -19,8 +24,8 @@ export interface Profile {
   updated_at: string;
 }
 
-function randomFoodEmoji(): string {
-  return FOOD_EMOJI_POOL[Math.floor(Math.random() * FOOD_EMOJI_POOL.length)];
+function randomAvatarEmoji(): string {
+  return AVATAR_EMOJI_POOL[Math.floor(Math.random() * AVATAR_EMOJI_POOL.length)];
 }
 
 // First-run identity creation (§5.10, S1 verify step). Idempotent: the
@@ -31,7 +36,7 @@ export async function ensureProfile(db: DbClient, defaultDisplayName = 'You'): P
   if (existing) return existing;
 
   const personId = uuidv4();
-  const avatarEmoji = randomFoodEmoji();
+  const avatarEmoji = randomAvatarEmoji();
 
   await db.runAsync(
     'INSERT INTO profile (id, person_id, display_name, avatar_emoji) VALUES (1, ?, ?, ?)',

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../db/DbClient';
 import { loadEnrichedRecipes } from '../../recipes/loadRecipes';
+import { addIngredientPrice } from '../../recipes/ingredientPrices';
 import { createTestDb } from '../support/testDb';
 
 async function insertIngredient(
@@ -72,6 +73,32 @@ describe('loadEnrichedRecipes (§2.5, §3, §4.7)', () => {
     expect(recipe.costPerServing).toBeCloseTo(1.2, 5);
     expect(recipe.macroCompleteCount).toBe(1);
     expect(recipe.totalIngredientCount).toBe(1);
+  });
+
+  it('prefers a manual ingredient price over the seeded cost_per_100, and falls back to it once removed', async () => {
+    const chickenId = await insertIngredient(db, { name: 'Chicken thigh', cost: 0.6 }); // seed fallback: €0.60/100g
+    const recipeId = await insertRecipe(db, { baseServings: 2 });
+    await db.runAsync(
+      `INSERT INTO recipe_ingredient (recipe_id, canonical_id, display_name, quantity, unit, scalable, optional, sort_order)
+       VALUES (?, ?, 'Chicken thigh', 400, 'g', 1, 0, 0)`,
+      [recipeId, chickenId],
+    );
+
+    // Seed fallback: 400g @ €0.60/100g = €2.40 / 2 servings = €1.20/serving.
+    let [recipe] = await loadEnrichedRecipes(db);
+    expect(recipe.costPerServing).toBeCloseTo(1.2, 5);
+
+    // A manual price undercutting the seed figure takes over immediately.
+    await addIngredientPrice(db, chickenId, 1000, 'g', 4); // €0.40/100g
+    [recipe] = await loadEnrichedRecipes(db);
+    // 400g @ €0.40/100g = €1.60 / 2 servings = €0.80/serving.
+    expect(recipe.costPerServing).toBeCloseTo(0.8, 5);
+
+    // Removing the manual price reverts to the untouched seed fallback.
+    const priceRow = await db.getFirstAsync<{ id: number }>('SELECT id FROM ingredient_price WHERE canonical_id = ?', [chickenId]);
+    await db.runAsync('DELETE FROM ingredient_price WHERE id = ?', [priceRow!.id]);
+    [recipe] = await loadEnrichedRecipes(db);
+    expect(recipe.costPerServing).toBeCloseTo(1.2, 5);
   });
 
   it('flags partial data when an ingredient has no canonical match ("N of M")', async () => {

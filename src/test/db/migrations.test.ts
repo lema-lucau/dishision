@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { migrations } from '../../db/migrations';
 import { createTestDb } from '../support/testDb';
+
+const LATEST_MIGRATION_VERSION = Math.max(...migrations.map((m) => m.version));
 
 const EXPECTED_TABLES = [
   'canonical_ingredient',
@@ -31,6 +34,8 @@ const EXPECTED_TABLES = [
   'household_recipe_cache',
   'household_rating',
   'sync_event',
+  'ingredient_price',
+  'shared_cook_outbox',
 ];
 
 describe('migrations', () => {
@@ -48,7 +53,7 @@ describe('migrations', () => {
   it('sets PRAGMA user_version to the latest migration', async () => {
     const db = await createTestDb();
     const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    expect(row?.user_version).toBe(4);
+    expect(row?.user_version).toBe(LATEST_MIGRATION_VERSION);
   });
 
   it('is idempotent — running migrate again on an up-to-date db is a no-op', async () => {

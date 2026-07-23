@@ -20,7 +20,7 @@ import { capitalize } from '../lib/capitalize';
 import { formatDuration } from '../lib/formatDuration';
 import { UNIT_OPTIONS } from '../lib/unitLabels';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
-import { phaseColor } from '../theme/stepColors';
+import { laneColor, phaseColor, timeTagColor } from '../theme/stepColors';
 import { createUserIngredient, searchCanonicalIngredients, type CanonicalIngredientOption } from './ingredientSearch';
 import type { RecipeDraft, RecipeIngredientDraft, RecipeStepDraft } from './recipeSave';
 import type { BaseUnit, Effort, Phase, RecipeUnit, TimelineMode } from '../seed/types';
@@ -62,6 +62,11 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
   const [saving, setSaving] = useState(false);
   const [showNewTagInput, setShowNewTagInput] = useState(false);
   const [newTagText, setNewTagText] = useState('');
+  // Ingredients and Steps default to a compact read-only view (grid / step
+  // cards) and flip into the full editor via a per-section Edit/Done toggle —
+  // scrolling a long list of full editors was the pain point.
+  const [ingredientsEditMode, setIngredientsEditMode] = useState(false);
+  const [stepsEditMode, setStepsEditMode] = useState(false);
   const { modal, notice } = useConfirmModal();
 
   // Tags already on the draft that aren't one of the fixed suggestions (either
@@ -305,7 +310,31 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
         </>
       )}
 
-      <Text style={styles.sectionTitle}>INGREDIENTS</Text>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>INGREDIENTS</Text>
+        <TouchableOpacity onPress={() => setIngredientsEditMode((e) => !e)} hitSlop={8}>
+          <Text style={styles.editLink}>{ingredientsEditMode ? 'Done' : 'Edit'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {!ingredientsEditMode ? (
+        draft.ingredients.length === 0 ? (
+          <Text style={styles.emptyNote}>No ingredients yet — tap Edit to add some.</Text>
+        ) : (
+          <View style={styles.ingredientGrid}>
+            {draft.ingredients.map((ing, index) => (
+              <View key={index} style={styles.gridCard}>
+                <Text style={styles.gridName} numberOfLines={2}>
+                  {ing.displayName || 'Unnamed'}
+                  {ing.optional ? ' (optional)' : ''}
+                </Text>
+                <Text style={styles.gridQty}>{ing.quantity ? `${ing.quantity} ${ing.unit}` : ing.unit}</Text>
+              </View>
+            ))}
+          </View>
+        )
+      ) : (
+        <>
       {draft.ingredients.map((ing, index) => {
         return (
           <View key={index} style={styles.ingredientCard}>
@@ -373,9 +402,56 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
           ))}
         </View>
       )}
+        </>
+      )}
 
       <View style={styles.stepsSection}>
-      <Text style={styles.sectionTitle}>STEPS</Text>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>STEPS</Text>
+        <TouchableOpacity onPress={() => setStepsEditMode((e) => !e)} hitSlop={8}>
+          <Text style={styles.editLink}>{stepsEditMode ? 'Done' : 'Edit'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {!stepsEditMode ? (
+        draft.steps.length === 0 ? (
+          <Text style={styles.emptyNote}>No steps yet — tap Edit to add some.</Text>
+        ) : (
+          <View style={styles.stepsStack}>
+            {draft.steps.map((step, index) => {
+              const phaseColors = phaseColor(theme, step.phase);
+              const timeColors = timeTagColor(theme);
+              const lane = step.lane ? laneColor(theme, step.lane) : null;
+              return (
+                <View key={index} style={[styles.readStepRow, { backgroundColor: phaseColors.bg }]}>
+                  <View style={styles.stepBadgeRow}>
+                    <View style={[styles.stepBadge, { backgroundColor: theme.colors.surface }]}>
+                      <Text style={[styles.stepBadgeText, { color: phaseColors.fg }]}>{capitalize(step.phase)}</Text>
+                    </View>
+                    {lane && step.lane && (
+                      <View style={[styles.stepBadge, { backgroundColor: lane.bg }]}>
+                        <Text style={[styles.stepBadgeText, { color: lane.fg }]}>{capitalize(step.lane)}</Text>
+                      </View>
+                    )}
+                    {step.durationSeconds != null && (
+                      <View style={[styles.stepBadge, { backgroundColor: timeColors.bg }]}>
+                        <Text style={[styles.stepBadgeText, { color: timeColors.fg }]}>{formatDuration(step.durationSeconds)}</Text>
+                      </View>
+                    )}
+                    {step.important && (
+                      <View style={[styles.stepBadge, styles.stepBadgeAlert]}>
+                        <Text style={[styles.stepBadgeText, styles.stepBadgeAlertText]}>⚠ Alert</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.readStepInstruction}>{step.instruction || '(no instruction yet)'}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )
+      ) : (
+        <>
       <View style={styles.stepsStack}>
       {draft.steps.map((step, index) => {
         return (
@@ -468,6 +544,8 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
           <Text style={styles.addLink}>+ Add cook step</Text>
         </TouchableOpacity>
       </View>
+        </>
+      )}
       </View>
 
       <Text style={styles.sectionTitle}>TIMELINE PREVIEW</Text>
@@ -570,6 +648,32 @@ const makeStyles = (theme: AppTheme) =>
   tagChipText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.xs, lineHeight: theme.fontSize.xs + 2, color: theme.colors.ink2 },
   tagChipTextActive: { color: theme.colors.accentFg },
   sectionTitle: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.5, marginTop: theme.spacing.sm },
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  editLink: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+  emptyNote: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic' },
+  ingredientGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+  gridCard: {
+    width: '48%',
+    gap: 2,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceWarm,
+    borderRadius: theme.radius.card,
+  },
+  gridName: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink },
+  gridQty: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+  readStepRow: { gap: theme.spacing.xs, padding: theme.spacing.sm, borderRadius: theme.radius.card },
+  stepBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: theme.spacing.xs },
+  stepBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.chipBg,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.radius.pill,
+  },
+  stepBadgeAlert: { backgroundColor: theme.colors.redTint },
+  stepBadgeText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.xs, lineHeight: theme.fontSize.xs + 2, color: theme.colors.ink2 },
+  stepBadgeAlertText: { color: theme.colors.red },
+  readStepInstruction: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink },
   inlineRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.sm },
   stepHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm },
   stepControls: { flexDirection: 'row', gap: theme.spacing.xs },

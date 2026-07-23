@@ -5,6 +5,7 @@
 import type { DbClient } from '../db/DbClient';
 import { deriveNutrition, deriveTimeSplit, durationBucket, type DurationBucket } from '../lib/derive';
 import { convertToBaseUnit } from '../lib/units';
+import { deriveCostPer100, effectiveCostPer100, loadPricesForCanonicalIds } from './ingredientPrices';
 import { primaryProteinTag } from './queryEngine';
 import type { RecipeUnit } from '../seed/types';
 
@@ -165,6 +166,29 @@ export async function loadEnrichedRecipes(
      LEFT JOIN canonical_ingredient ci ON ci.id = ri.canonical_id
      ORDER BY ri.recipe_id, ri.sort_order`,
   );
+
+  // Manual ingredient prices (§ cost per serving) take priority over the
+  // stored cost_per_100 fallback (seed data, or a flat figure from the older
+  // Cost Refresh screen) — computed live here rather than trusting a stored
+  // column, so it never drifts from the underlying price points.
+  const priceableByCanonical = new Map<number, { baseUnit: 'g' | 'ml' | 'unit'; packSize: number | null; density: number | null }>();
+  for (const row of ingredientRows) {
+    if (row.canonical_id != null && row.base_unit != null && !priceableByCanonical.has(row.canonical_id)) {
+      priceableByCanonical.set(row.canonical_id, { baseUnit: row.base_unit, packSize: row.pack_size, density: row.density });
+    }
+  }
+  const pricedCanonicalIds = [...priceableByCanonical.keys()];
+  const pricesByCanonical = await loadPricesForCanonicalIds(db, pricedCanonicalIds);
+  const manualCostByCanonical = new Map<number, number | null>();
+  const manualFreshAtByCanonical = new Map<number, string | null>();
+  for (const id of pricedCanonicalIds) {
+    const points = pricesByCanonical.get(id) ?? [];
+    const manual = deriveCostPer100(priceableByCanonical.get(id)!, points);
+    manualCostByCanonical.set(id, manual);
+    if (manual != null) {
+      manualFreshAtByCanonical.set(id, points.reduce<string | null>((max, p) => (max == null || p.createdAt > max ? p.createdAt : max), null));
+    }
+  }
   const stepRows = await db.getAllAsync<RecipeStepRow>(
     'SELECT * FROM recipe_step ORDER BY recipe_id, sort_order',
   );
@@ -274,6 +298,9 @@ export async function loadEnrichedRecipes(
           ? (pantryQty ?? 0) >= (conversion.value ?? 0)
           : pantryQty != null;
 
+      const manualCost = manualCostByCanonical.get(ing.canonical_id) ?? null;
+      const costUpdatedAt = manualCost != null ? manualFreshAtByCanonical.get(ing.canonical_id) ?? ing.cost_updated_at : ing.cost_updated_at;
+
       return {
         id: ing.id,
         canonicalId: ing.canonical_id,
@@ -287,7 +314,7 @@ export async function loadEnrichedRecipes(
         inPantry,
         packSize: ing.pack_size,
         packLabel: ing.pack_label,
-        costUpdatedAt: ing.cost_updated_at,
+        costUpdatedAt,
       };
     });
 
@@ -296,13 +323,14 @@ export async function loadEnrichedRecipes(
         ing.canonical_id != null && ing.base_unit != null
           ? convertToBaseUnit({ baseUnit: ing.base_unit, packSize: ing.pack_size, density: ing.density }, ing.quantity, ing.unit)
           : { value: null, measured: false };
+      const manualCost = ing.canonical_id != null ? manualCostByCanonical.get(ing.canonical_id) ?? null : null;
       return {
         quantityBase: conversion.value,
         kcalPer100: ing.kcal_per_100,
         proteinPer100: ing.protein_per_100,
         carbsPer100: ing.carbs_per_100,
         fatPer100: ing.fat_per_100,
-        costPer100: ing.cost_per_100,
+        costPer100: effectiveCostPer100(manualCost, ing.cost_per_100),
       };
     });
     const nutrition = deriveNutrition(nutritionInputs, recipe.base_servings);
@@ -327,9 +355,12 @@ export async function loadEnrichedRecipes(
       };
     });
 
-    const hasStaleCost = rawIngredients.some(
-      (ing) => ing.cost_updated_at != null && new Date(ing.cost_updated_at).getTime() < staleCutoff,
-    );
+    const hasStaleCost = rawIngredients.some((ing) => {
+      if (ing.canonical_id == null) return false;
+      const manualCost = manualCostByCanonical.get(ing.canonical_id) ?? null;
+      const updatedAt = manualCost != null ? manualFreshAtByCanonical.get(ing.canonical_id) ?? ing.cost_updated_at : ing.cost_updated_at;
+      return updatedAt != null && new Date(updatedAt).getTime() < staleCutoff;
+    });
 
     const stats = cookStatsByRecipe.get(recipe.id);
     const exclusionRow = exclusionByRecipe.get(recipe.id) ?? null;

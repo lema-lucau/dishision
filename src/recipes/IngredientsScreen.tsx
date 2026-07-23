@@ -6,8 +6,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
+import { formatCurrency } from '../lib/currency';
 import { INGREDIENT_CATEGORIES, INGREDIENT_CATEGORY_LABELS, type IngredientCategory } from '../lib/ingredientCategory';
 import { UNIT_LABELS, UNIT_OPTIONS } from '../lib/unitLabels';
+import { getCurrencySymbol } from '../settings/getSetting';
+import { IngredientPriceSheet } from './IngredientPriceSheet';
 import {
   createIngredient,
   deleteIngredient,
@@ -59,6 +62,8 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
   const [inUseModal, setInUseModal] = useState<{ name: string; recipes: RecipeUsingIngredient[] } | null>(null);
   const [addForm, setAddForm] = useState<NewIngredientForm | null>(null);
   const [addAdvanced, setAddAdvanced] = useState(false);
+  const [pricing, setPricing] = useState<{ id: number; name: string } | null>(null);
+  const [currencySymbol, setCurrencySymbol] = useState('€');
   const { modal, confirm, notice } = useConfirmModal();
 
   const reload = useCallback(async () => {
@@ -70,6 +75,10 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
   useEffect(() => {
     reload();
   }, [reload]);
+
+  useEffect(() => {
+    getCurrencySymbol(db).then(setCurrencySymbol);
+  }, [db]);
 
   useEffect(() => {
     setPage(1);
@@ -89,7 +98,17 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
   async function handleRowPress(item: IngredientAdminRow) {
     if (selectMode) {
       toggleSelected(item.id);
+    } else {
+      setPricing({ id: item.id, name: item.name });
     }
+  }
+
+  function costSummary(item: IngredientAdminRow): string {
+    if (item.costPer100 == null) return 'no price set';
+    const per = item.baseUnit === 'unit'
+      ? `${formatCurrency(item.costPer100 / 100, currencySymbol)} each`
+      : `${formatCurrency(item.costPer100, currencySymbol)}/100${item.baseUnit}`;
+    return item.priceCount > 0 ? `${per} · ${item.priceCount} price${item.priceCount === 1 ? '' : 's'}` : per;
   }
 
   async function handleLongPress(item: IngredientAdminRow) {
@@ -218,7 +237,9 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
                 {UNIT_LABELS[item.baseUnit as RecipeUnit]}
                 {item.packLabel ? ` · ${item.packLabel}` : ''} · used in {item.usageCount} recipe{item.usageCount === 1 ? '' : 's'}
               </Text>
+              <Text style={[styles.rowCost, item.costPer100 == null && styles.rowCostEmpty]}>{costSummary(item)}</Text>
             </View>
+            {!selectMode && <Text style={styles.rowChevron}>›</Text>}
           </TouchableOpacity>
         ))}
 
@@ -394,6 +415,16 @@ export function IngredientsScreen({ onBack, onOpenRecipe }: IngredientsScreenPro
         </View>
       )}
 
+      {pricing && (
+        <IngredientPriceSheet
+          canonicalId={pricing.id}
+          name={pricing.name}
+          currencySymbol={currencySymbol}
+          onClose={() => setPricing(null)}
+          onChanged={reload}
+        />
+      )}
+
       {modal}
     </View>
   );
@@ -452,6 +483,9 @@ const makeStyles = (theme: AppTheme) =>
     rowText: { flex: 1 },
     rowName: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.base, color: theme.colors.ink },
     rowMeta: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    rowCost: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.accentText, marginTop: 1 },
+    rowCostEmpty: { color: theme.colors.ink4 },
+    rowChevron: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.lg, color: theme.colors.ink4 },
 
     pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.xl, paddingVertical: theme.spacing.lg },
     pageButton: { paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xs },

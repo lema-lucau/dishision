@@ -96,6 +96,7 @@ async function renderDetail(recipe: EnrichedRecipe) {
       onStartCooking={noop}
       onAlreadyCookedThis={noop}
       onAddToShoppingList={noopAsync}
+      onShare={noop}
     />,
   );
 }

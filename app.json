@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "Preppie",
-    "slug": "preppie",
+    "name": "Dishision",
+    "slug": "dishision",
     "version": "1.0.0",
+    "scheme": "dishision",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +22,17 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": ["BROWSABLE", "DEFAULT"],
+          "data": [
+            { "scheme": "content", "pathPattern": ".*\\.dishision" },
+            { "scheme": "file", "pathPattern": ".*\\.dishision" }
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -31,7 +42,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Preppie uses your photos to attach a picture of what you cooked to a cook log."
+          "photosPermission": "Dishision uses your photos to attach a picture of what you cooked to a cook log."
         }
       ]
     ]

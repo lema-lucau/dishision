@@ -5,12 +5,15 @@
 // deduction, and any leftover.
 import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { DatePickerModal } from '../components/DatePickerModal';
 import { addShortfallToShoppingList, completeCook } from '../cooking/completeCook';
 import type { CookLogDraft } from '../cooking/cookLog';
 import { updateCookLog } from '../cooking/cookLog';
 import { previewCook, type CookPreview } from '../cooking/previewCook';
 import { BUILT_IN_QUICK_TAGS, loadCustomQuickTags } from '../cooking/quickTags';
 import { useDb } from '../db/DbContext';
+import { listHouseholdMembers, type HouseholdMember } from '../household/householdMutations';
+import { queueSharedCook } from '../household/sharedCooks';
 import { dateInputToIso, formatShortDate, toDateInputValue } from '../lib/formatDate';
 import { getAutoAddShortfalls } from '../settings/getSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
@@ -37,7 +40,10 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
   const [whatWentWell, setWhatWentWell] = useState('');
   const [whatToChange, setWhatToChange] = useState('');
   const [quickTags, setQuickTags] = useState<string[]>([]);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [quickTagVocab, setQuickTagVocab] = useState<string[]>(BUILT_IN_QUICK_TAGS);
+  const [householdMembers, setHouseholdMembers] = useState<HouseholdMember[]>([]);
+  const [cookedWith, setCookedWith] = useState<string[]>([]);
   const [preview, setPreview] = useState<CookPreview | null>(null);
   const [autoAddShortfalls, setAutoAddShortfalls] = useState(true);
   const [addedManually, setAddedManually] = useState<Set<number>>(new Set());
@@ -55,6 +61,14 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
   useEffect(() => {
     getAutoAddShortfalls(db).then(setAutoAddShortfalls);
   }, [db]);
+
+  useEffect(() => {
+    listHouseholdMembers(db).then(setHouseholdMembers);
+  }, [db]);
+
+  function toggleCookedWith(personId: string) {
+    setCookedWith((prev) => (prev.includes(personId) ? prev.filter((p) => p !== personId) : [...prev, personId]));
+  }
 
   useEffect(() => {
     previewCook(db, recipe.id, madeServings, eatenServings, cookedAtIso).then(setPreview);
@@ -101,6 +115,20 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
         };
         await updateCookLog(db, result.cookLogId, draft);
       }
+      // Queue this cook for each household member marked as cooked-with — it
+      // syncs to them (becoming a cook log on their device) on the next sync,
+      // or waits locally in the outbox until then.
+      for (const personId of cookedWith) {
+        await queueSharedCook(db, personId, {
+          recipeShareId: recipe.shareId,
+          recipeName: recipe.name,
+          cookedAt: cookedAtIso,
+          servingsMade: madeServings,
+          servingsEaten: eatenServings,
+          stars,
+          notes: expanded ? notes || null : null,
+        });
+      }
       onDone();
     } finally {
       setSaving(false);
@@ -138,14 +166,22 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
               );
             })}
           </View>
-          <TextInput
-            style={styles.dateInput}
-            value={cookedAtDate}
-            onChangeText={setCookedAtDate}
-            placeholder="YYYY-MM-DD"
-          />
+          <TouchableOpacity style={styles.dateInput} onPress={() => setDatePickerOpen(true)}>
+            <Text style={styles.dateInputText}>{formatShortDate(cookedAtIso)}</Text>
+            <Text style={styles.dateInputIcon}>📅</Text>
+          </TouchableOpacity>
         </View>
       )}
+
+      <DatePickerModal
+        visible={datePickerOpen}
+        value={cookedAtDate}
+        onSelect={(date) => {
+          setCookedAtDate(date);
+          setDatePickerOpen(false);
+        }}
+        onClose={() => setDatePickerOpen(false)}
+      />
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>HOW MANY SERVINGS?</Text>
@@ -209,6 +245,29 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
           )}
         </View>
       </View>
+
+      {householdMembers.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>COOKED WITH</Text>
+          <Text style={styles.cookedWithHint}>They'll get this cook in their log on the next sync.</Text>
+          <View style={styles.tagWrap}>
+            {householdMembers.map((m) => {
+              const selected = cookedWith.includes(m.personId);
+              return (
+                <TouchableOpacity
+                  key={m.personId}
+                  onPress={() => toggleCookedWith(m.personId)}
+                  style={[styles.tagChip, selected && styles.tagChipActive]}
+                >
+                  <Text style={[styles.tagChipText, selected && styles.tagChipTextActive]}>
+                    {selected ? '✓ ' : ''}{m.avatarEmoji} {m.displayName}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       {expanded && (
         <View style={styles.section}>
@@ -313,15 +372,17 @@ const makeStyles = (theme: AppTheme) =>
   dateChipText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
   dateChipTextActive: { color: theme.colors.accentFg, fontFamily: theme.fonts.body.semiBold },
   dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.card,
     paddingHorizontal: theme.spacing.base,
-    paddingVertical: theme.spacing.sm,
-    fontFamily: theme.fonts.data.medium,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.ink,
+    paddingVertical: theme.spacing.md,
   },
+  dateInputText: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.base, color: theme.colors.ink },
+  dateInputIcon: { fontSize: theme.fontSize.base },
   servingsRow: { flexDirection: 'row', gap: theme.spacing.xxl, marginTop: theme.spacing.xs },
   stepperGroup: { gap: theme.spacing.sm },
   stepperLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
@@ -340,6 +401,7 @@ const makeStyles = (theme: AppTheme) =>
   starsRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginTop: theme.spacing.xs },
   star: { fontSize: theme.fontSize.xxl, color: theme.colors.amber },
   skipLink: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, marginLeft: theme.spacing.sm },
+  cookedWithHint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
   tagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },
   tagChip: { paddingHorizontal: theme.spacing.md, paddingVertical: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
   tagChipActive: { backgroundColor: theme.colors.accent },

@@ -29,6 +29,7 @@ interface RecipeDetailScreenProps {
   onAlreadyCookedThis: () => void;
   /** Adds the recipe (at the currently selected serving count) to today's plan and the open shopping list. */
   onAddToShoppingList: (servings: number) => Promise<void>;
+  onShare: () => void;
 }
 
 export function RecipeDetailScreen({
@@ -44,6 +45,7 @@ export function RecipeDetailScreen({
   onStartCooking,
   onAlreadyCookedThis,
   onAddToShoppingList,
+  onShare,
 }: RecipeDetailScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -75,6 +77,10 @@ export function RecipeDetailScreen({
 
   const pantryCount = recipe.ingredients.filter((i) => i.inPantry).length;
   const macroComplete = recipe.macroCompleteCount === recipe.totalIngredientCount && recipe.totalIngredientCount > 0;
+
+  // Macros are stored per serving; scale them by the selected serving count so
+  // the tiles show the total you're actually making (§ macro scaling request).
+  const scaleMacro = (perServing: number | null) => (perServing == null ? null : perServing * servings);
 
   const activePercent = recipe.totalSeconds > 0 ? Math.round((recipe.activeSeconds / recipe.totalSeconds) * 100) : 0;
   const passivePercent = recipe.totalSeconds > 0 ? 100 - activePercent : 0;
@@ -140,11 +146,14 @@ export function RecipeDetailScreen({
       ))}
 
       <View style={styles.macrosSection}>
+        <Text style={styles.macrosCaption}>
+          Total for {servings} serving{servings === 1 ? '' : 's'}
+        </Text>
         <View style={styles.macrosRow}>
-          <MacroBox value={recipe.kcalPerServing} label="Kcal" />
-          <MacroBox value={recipe.proteinPerServing} label="Protein" unit="g" />
-          <MacroBox value={recipe.carbsPerServing} label="Carbs" unit="g" />
-          <MacroBox value={recipe.fatPerServing} label="Fat" unit="g" />
+          <MacroBox value={scaleMacro(recipe.kcalPerServing)} label="Kcal" />
+          <MacroBox value={scaleMacro(recipe.proteinPerServing)} label="Protein" unit="g" />
+          <MacroBox value={scaleMacro(recipe.carbsPerServing)} label="Carbs" unit="g" />
+          <MacroBox value={scaleMacro(recipe.fatPerServing)} label="Fat" unit="g" />
         </View>
       </View>
       {!macroComplete && (
@@ -220,12 +229,15 @@ export function RecipeDetailScreen({
         </View>
       )}
 
+      <Text style={[styles.sectionTitle, styles.buttonSectionLabel]}>COOK</Text>
       <TouchableOpacity style={styles.primaryButton} onPress={onStartCooking}>
         <Text style={styles.primaryButtonText}>Start cooking</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.secondaryButton} onPress={onAlreadyCookedThis}>
         <Text style={styles.secondaryButtonText}>I already cooked this</Text>
       </TouchableOpacity>
+
+      <Text style={[styles.sectionTitle, styles.buttonSectionLabel]}>SHOPPING LIST</Text>
       <TouchableOpacity style={styles.secondaryButton} onPress={handleAddToShoppingList} disabled={addingToList}>
         <Text style={styles.secondaryButtonText}>
           {addedToList
@@ -236,15 +248,19 @@ export function RecipeDetailScreen({
         </Text>
       </TouchableOpacity>
 
-      <View style={[styles.actionsRow, styles.actionsRowFirst]}>
+      <Text style={[styles.sectionTitle, styles.buttonSectionLabel]}>MANAGE</Text>
+      <View style={styles.actionsRow}>
         <ActionButton
           label={recipe.isFavourite ? '★ Favourited' : '☆ Favourite'}
           variant={recipe.isFavourite ? 'amber' : 'neutral'}
           onPress={onToggleFavourite}
           fill
         />
+      </View>
+      <View style={styles.actionsRow}>
         <ActionButton label="Edit" variant="neutral" onPress={onEdit} fill />
         <ActionButton label="Copy & tweak" variant="accent" onPress={onCopy} fill />
+        <ActionButton label="Share" variant="neutral" onPress={onShare} fill />
       </View>
       <View style={styles.actionsRow}>
         {recipe.exclusion ? (
@@ -324,7 +340,8 @@ const makeStyles = (theme: AppTheme) =>
   pantryDot: { color: theme.colors.green, width: 14 },
   ingredientName: { flex: 1, fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink },
   ingredientQty: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
-  macrosSection: { paddingVertical: theme.spacing.base },
+  macrosSection: { paddingVertical: theme.spacing.base, gap: theme.spacing.sm },
+  macrosCaption: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
   macrosRow: { flexDirection: 'row', gap: theme.spacing.sm },
   partialFlag: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.amberText },
   costLine: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
@@ -376,5 +393,5 @@ const makeStyles = (theme: AppTheme) =>
   },
   secondaryButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   actionsRow: { flexDirection: 'row', gap: theme.spacing.base, marginBottom: theme.spacing.base },
-  actionsRowFirst: { marginTop: theme.spacing.base },
+  buttonSectionLabel: { marginTop: theme.spacing.lg },
 });

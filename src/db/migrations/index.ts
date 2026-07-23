@@ -2,6 +2,8 @@ import { migration001 } from './001_initial';
 import { migration002 } from './002_capitalize_names';
 import { migration003 } from './003_shopping_sections_and_unit_prefs';
 import { migration004 } from './004_ingredient_category_and_par_level';
+import { migration005 } from './005_ingredient_prices';
+import { migration006 } from './006_shared_cooks';
 
 export interface Migration {
   version: number;
@@ -15,4 +17,6 @@ export const migrations: Migration[] = [
   { version: 2, sql: migration002 },
   { version: 3, sql: migration003 },
   { version: 4, sql: migration004 },
+  { version: 5, sql: migration005 },
+  { version: 6, sql: migration006 },
 ];
