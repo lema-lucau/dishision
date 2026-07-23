@@ -206,7 +206,7 @@ The signature screen. Cosy hero + one editorial cover.
 │  │  [   Start cooking →   ]  │ │  ← PillButton accent (gradient+haptic)
 │  └───────────────────────────┘ │
 │                                │
-│  STILL GOOD                    │
+│  LEFTOVERS . X Servings        │
 │  ┌──────────────────────────┐  │  ← leftovers: warm rows, tinted
 │  │ 🍛  2 of Katsu curry  Eat│  │     emoji tile, Eat/Bin pills
 │  └──────────────────────────┘  │

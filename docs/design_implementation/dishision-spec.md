@@ -2197,6 +2197,9 @@ Sessions are sized to end at a committable state. Use the current Sonnet-class m
 - Empty states across every screen
 - **Verify:** snapshot suite green; every screen has a designed empty state
 
+### S18 - Appearance Redesign
+- Implement the dishision-visual-redesign-spec.md in it's entirety. Make sure every single screen on the app is covered so the change looks universal. Do an audit of the spec and make sure every screen is covered. If any screen is missing, add it to the spec and ask me questions to ensure that we design the screen correctly. Once I confirm that the redesign spec looks good, then you're free to make the actual changes
+
 ## 15. Constraints and conventions
 
 Carried from Memento, plus new:
