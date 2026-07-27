@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DbProvider } from '../../db/DbContext';
 import { CookingModeScreen } from '../../recipes/CookingModeScreen';
@@ -63,8 +63,35 @@ function recipe(overrides: Partial<EnrichedRecipe> = {}): EnrichedRecipe {
   };
 }
 
+async function seedRecipe(db: Awaited<ReturnType<typeof createTestDb>>, lanes: (string | null)[]) {
+  const recipeRow = await db.runAsync(
+    `INSERT INTO recipe (share_id, name, photo_emoji, base_servings, timeline_mode, source) VALUES ('share-1', 'Thai Green Curry', '🍛', 2, 'parallel', 'manual')`,
+  );
+  const recipeId = recipeRow.lastInsertRowId;
+  const laneIds = new Map<string, number>();
+  for (const [i, lane] of lanes.entries()) {
+    if (lane && !laneIds.has(lane)) {
+      const row = await db.runAsync('INSERT INTO step_lane (recipe_id, name, sort_order) VALUES (?, ?, ?)', [
+        recipeId,
+        lane,
+        i,
+      ]);
+      laneIds.set(lane, row.lastInsertRowId);
+    }
+  }
+  const stepIds: number[] = [];
+  for (const [i, lane] of lanes.entries()) {
+    const row = await db.runAsync(
+      `INSERT INTO recipe_step (recipe_id, lane_id, phase, instruction, duration_seconds, effort, sort_order) VALUES (?, ?, 'cook', ?, ?, 'active', ?)`,
+      [recipeId, lane ? laneIds.get(lane)! : null, `Step ${i + 1}`, 120 + i * 60, i],
+    );
+    stepIds.push(row.lastInsertRowId);
+  }
+  return { recipeId, stepIds };
+}
+
 describe('CookingModeScreen (§5.6, §11.2 snapshot suite)', () => {
-  it('renders the running cook phase after auto-starting a session (no timed prep, no unfinished session)', async () => {
+  it('opens in the ready state — clock at zero, Start cooking as the gate', async () => {
     const db = await createTestDb();
     const recipeRow = await db.runAsync(
       `INSERT INTO recipe (share_id, name, photo_emoji, base_servings, timeline_mode, source) VALUES ('share-1', 'Thai Green Curry', '🍛', 2, 'sequential', 'manual')`,
@@ -97,7 +124,93 @@ describe('CookingModeScreen (§5.6, §11.2 snapshot suite)', () => {
       </SafeAreaProvider>,
     );
 
-    await waitFor(() => expect(JSON.stringify(result.toJSON())).toContain('Fry the paste'));
+    await waitFor(() => expect(result.getByTestId('start-cooking')).toBeTruthy());
+    expect(JSON.stringify(result.toJSON())).toContain('Fry the paste');
+    // A single-lane recipe gets no tab strip — tabs are for parallel cooking.
+    expect(result.queryByTestId('lane-tabs')).toBeNull();
     expect(result.toJSON()).toMatchSnapshot();
+  });
+
+  it('starts the clock only when Start cooking is tapped', async () => {
+    const db = await createTestDb();
+    const { recipeId, stepIds } = await seedRecipe(db, [null, null]);
+
+    const result = await render(
+      <SafeAreaProvider>
+        <DbProvider db={db}>
+          <CookingModeScreen
+            recipe={recipe({
+              id: recipeId,
+              steps: stepIds.map((id, i) => ({
+                id,
+                phase: 'cook' as const,
+                instruction: `Step ${i + 1}`,
+                durationSeconds: 120 + i * 60,
+                startOffsetSeconds: i * 120,
+                effort: 'active' as const,
+                important: false,
+                laneName: null,
+              })),
+            })}
+            onExit={() => {}}
+            onComplete={() => {}}
+          />
+        </DbProvider>
+      </SafeAreaProvider>,
+    );
+
+    await waitFor(() => expect(result.getByTestId('start-cooking')).toBeTruthy());
+    const before = await db.getFirstAsync<{ paused_at: string | null }>('SELECT paused_at FROM cooking_session');
+    expect(before?.paused_at).not.toBeNull();
+
+    fireEvent.press(result.getByTestId('start-cooking'));
+
+    await waitFor(async () => {
+      const after = await db.getFirstAsync<{ paused_at: string | null }>('SELECT paused_at FROM cooking_session');
+      expect(after?.paused_at).toBeNull();
+    });
+    // Once running, the gate is gone and the cook controls take over.
+    await waitFor(() => expect(result.queryByTestId('start-cooking')).toBeNull());
+    expect(result.getByTestId('pause-toggle')).toBeTruthy();
+  });
+
+  it('shows one tab per lane on a parallel recipe, and pins the lane the cook picks', async () => {
+    const db = await createTestDb();
+    const { recipeId, stepIds } = await seedRecipe(db, ['Curry', 'Rice', 'Curry']);
+    const laneNames = ['Curry', 'Rice', 'Curry'];
+
+    const result = await render(
+      <SafeAreaProvider>
+        <DbProvider db={db}>
+          <CookingModeScreen
+            recipe={recipe({
+              id: recipeId,
+              timelineMode: 'parallel',
+              steps: stepIds.map((id, i) => ({
+                id,
+                phase: 'cook' as const,
+                instruction: `Step ${i + 1}`,
+                durationSeconds: 120 + i * 60,
+                startOffsetSeconds: i * 120,
+                effort: 'active' as const,
+                important: false,
+                laneName: laneNames[i],
+              })),
+            })}
+            onExit={() => {}}
+            onComplete={() => {}}
+          />
+        </DbProvider>
+      </SafeAreaProvider>,
+    );
+
+    await waitFor(() => expect(result.getByTestId('lane-tabs')).toBeTruthy());
+    expect(result.getByTestId('lane-tab-Curry')).toBeTruthy();
+    expect(result.getByTestId('lane-tab-Rice')).toBeTruthy();
+    expect(result.toJSON()).toMatchSnapshot();
+
+    // Picking a lane shows that lane's first step.
+    fireEvent.press(result.getByTestId('lane-tab-Rice'));
+    await waitFor(() => expect(JSON.stringify(result.toJSON())).toContain('Step 2'));
   });
 });

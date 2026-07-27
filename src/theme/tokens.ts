@@ -36,6 +36,7 @@ export const fontSize = {
   md: 16,
   lg: 20,
   xl: 24,
+  hero: 30, // editorial serif headlines (redesign R2.6)
   xxl: 32,
   cookingMode: 44,
 } as const;
@@ -55,6 +56,10 @@ export const radius = {
   tile: 10,
   card: 13,
   pill: 20,
+  // Additive, for the redesign's photo surfaces only (R2.5) — existing
+  // components keep their current radii.
+  photo: 16,
+  hero: 24,
 } as const;
 
 export type Fonts = typeof fonts;
