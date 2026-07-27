@@ -2,6 +2,8 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
+import { RatingBreakdownSheet } from '../household/RatingBreakdownSheet';
+import type { RatingBreakdown } from '../household/opinionSync';
 import { capitalize } from '../lib/capitalize';
 import { formatCurrency } from '../lib/currency';
 import { formatDuration } from '../lib/formatDuration';
@@ -30,6 +32,8 @@ interface RecipeDetailScreenProps {
   /** Adds the recipe (at the currently selected serving count) to today's plan and the open shopping list. */
   onAddToShoppingList: (servings: number) => Promise<void>;
   onShare: () => void;
+  /** §7.6 mine + household ratings for this recipe's share_id; null while loading. */
+  ratingBreakdown?: RatingBreakdown | null;
 }
 
 export function RecipeDetailScreen({
@@ -46,6 +50,7 @@ export function RecipeDetailScreen({
   onAlreadyCookedThis,
   onAddToShoppingList,
   onShare,
+  ratingBreakdown,
 }: RecipeDetailScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -53,7 +58,11 @@ export function RecipeDetailScreen({
   const [stepsExpanded, setStepsExpanded] = useState(false);
   const [addingToList, setAddingToList] = useState(false);
   const [addedToList, setAddedToList] = useState(false);
+  const [ratingSheetOpen, setRatingSheetOpen] = useState(false);
   const { modal, confirm } = useConfirmModal();
+
+  const householdRatingCount = ratingBreakdown?.household.length ?? 0;
+  const showRatingChip = recipe.avgRating != null || householdRatingCount > 0;
 
   async function handleAddToShoppingList() {
     setAddingToList(true);
@@ -100,10 +109,13 @@ export function RecipeDetailScreen({
       </View>
 
       <View style={styles.metaRow}>
-        {recipe.avgRating != null && (
-          <View style={styles.metaChip}>
-            <Text style={styles.metaChipText}>★{recipe.avgRating.toFixed(1)}</Text>
-          </View>
+        {showRatingChip && (
+          <TouchableOpacity style={[styles.metaChip, styles.ratingChip]} onPress={() => setRatingSheetOpen(true)}>
+            <Text style={styles.metaChipText}>
+              ★{recipe.avgRating != null ? recipe.avgRating.toFixed(1) : '—'}
+            </Text>
+            {householdRatingCount > 0 && <Text style={styles.ratingChipHousehold}>+{householdRatingCount}</Text>}
+          </TouchableOpacity>
         )}
         {recipe.tags.map((t) => (
           <View key={t} style={styles.metaChip}>
@@ -282,6 +294,15 @@ export function RecipeDetailScreen({
       </View>
 
       {modal}
+
+      {ratingBreakdown && (
+        <RatingBreakdownSheet
+          visible={ratingSheetOpen}
+          recipeName={recipe.name}
+          breakdown={ratingBreakdown}
+          onClose={() => setRatingSheetOpen(false)}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -308,6 +329,13 @@ const makeStyles = (theme: AppTheme) =>
     fontSize: theme.fontSize.xs,
     lineHeight: theme.fontSize.xs + 2,
     color: theme.colors.ink2,
+  },
+  ratingChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.accentTint },
+  ratingChipHousehold: {
+    fontFamily: theme.fonts.data.semiBold,
+    fontSize: theme.fontSize.xs,
+    lineHeight: theme.fontSize.xs + 2,
+    color: theme.colors.accentText,
   },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: {

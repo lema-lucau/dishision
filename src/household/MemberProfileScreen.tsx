@@ -32,6 +32,8 @@ export function MemberProfileScreen({ member, me, onBack, onRemoved, onViewAll, 
   const [syncError, setSyncError] = useState<string | null>(null);
   const [showAddressFix, setShowAddressFix] = useState(false);
   const [addressDraft, setAddressDraft] = useState(member.lastKnownAddress ?? '');
+  const [sendingRatings, setSendingRatings] = useState(false);
+  const [ratingsStatus, setRatingsStatus] = useState<string | null>(null);
 
   useEffect(() => {
     loadHouseholdCacheRecipes(db, member.personId).then((recipes) => {
@@ -68,6 +70,39 @@ export function MemberProfileScreen({ member, me, onBack, onRemoved, onViewAll, 
       setShowAddressFix(true);
     } finally {
       setSyncing(false);
+    }
+  }
+
+  // §7.6 Send my ratings — a separate, explicit act from a recipe sync.
+  // Connects out just like Sync now, but pushes only {share_id, stars} for
+  // every public recipe I've rated (opinionSync.listMyPublicRatings).
+  async function sendRatings(address: string | null) {
+    if (!address) {
+      setShowAddressFix(true);
+      return;
+    }
+    setSendingRatings(true);
+    setRatingsStatus(null);
+    setSyncError(null);
+    try {
+      const { host, port } = parseAddress(address);
+      const { connectToPeer } = await import('./tcpChannel');
+      const { runRatingsInitiator } = await import('./syncProtocol');
+      const channel = await connectToPeer(host, port);
+      const result = await runRatingsInitiator(db, channel, me, member.personId, member.syncSecret);
+      await updateLastKnownAddress(db, member.personId, address);
+      setShowAddressFix(false);
+      setRatingsStatus(
+        result.ratingsSent === 0
+          ? 'No rated public recipes to send yet.'
+          : `Sent ${result.ratingsSent} rating${result.ratingsSent === 1 ? '' : 's'} to ${member.displayName}.`,
+      );
+    } catch (error) {
+      logger.warn('sync', 'Send ratings failed', { personId: member.personId, error: String(error) });
+      setSyncError(`Can't reach ${member.displayName} — ask them to open their Household screen.`);
+      setShowAddressFix(true);
+    } finally {
+      setSendingRatings(false);
     }
   }
 
@@ -147,8 +182,10 @@ export function MemberProfileScreen({ member, me, onBack, onRemoved, onViewAll, 
         <Text style={styles.primaryButtonText}>{syncing ? 'Syncing…' : 'Sync now'}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.secondaryButtonDisabled} disabled>
-        <Text style={styles.secondaryButtonDisabledText}>Send my ratings (coming soon)</Text>
+      {ratingsStatus && <Text style={styles.ratingsStatus}>{ratingsStatus}</Text>}
+
+      <TouchableOpacity style={styles.secondaryButton} onPress={() => sendRatings(member.lastKnownAddress)} disabled={sendingRatings}>
+        <Text style={styles.secondaryButtonText}>{sendingRatings ? 'Sending…' : 'Send my ratings'}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.dangerButton} onPress={confirmRemove}>
@@ -201,8 +238,14 @@ const makeStyles = (theme: AppTheme) =>
     addressRetryButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentFg },
     primaryButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.pill, paddingVertical: theme.spacing.md, alignItems: 'center' },
     primaryButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
-    secondaryButtonDisabled: { backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, paddingVertical: theme.spacing.md, alignItems: 'center', opacity: 0.6 },
-    secondaryButtonDisabledText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink3 },
+    secondaryButton: {
+      backgroundColor: theme.colors.chipBg,
+      borderRadius: theme.radius.pill,
+      paddingVertical: theme.spacing.md,
+      alignItems: 'center',
+    },
+    secondaryButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.accentText },
+    ratingsStatus: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.green, textAlign: 'center' },
     dangerButton: { backgroundColor: theme.colors.redTint, borderRadius: theme.radius.pill, paddingVertical: theme.spacing.md, alignItems: 'center' },
     dangerButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.red },
   });

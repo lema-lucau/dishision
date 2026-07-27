@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDb } from '../db/DbContext';
+import { loadRatingBreakdown, type RatingBreakdown } from '../household/opinionSync';
 import { localDateKey } from '../lib/formatDate';
 import { addRecipeToShoppingList } from '../plan/shoppingListGeneration';
 import { createPlannedMeal } from '../plan/planMutations';
@@ -73,6 +74,7 @@ export function RecipesScreen({
   const db = useDb();
   const [favouritesOnly, setFavouritesOnly] = useState(initialFavouritesOnly);
   const [recipes, setRecipes] = useState<EnrichedRecipe[] | null>(null);
+  const [ratingBreakdown, setRatingBreakdown] = useState<RatingBreakdown | null>(null);
   const [currencySymbol, setCurrencySymbol] = useState('€');
   const [view, setView] = useState<ViewState>({ mode: 'list' });
   const [search, setSearch] = useState('');
@@ -138,6 +140,28 @@ export function RecipesScreen({
   useEffect(() => {
     getCurrencySymbol(db).then(setCurrencySymbol);
   }, [db]);
+
+  // §7.6: load the rating breakdown (mine + any household ratings for this
+  // recipe's share_id) whenever the detail screen is open. Re-runs when the
+  // recipe list reloads (a fresh cook changes my derived rating).
+  useEffect(() => {
+    if (view.mode !== 'detail' || recipes == null) {
+      setRatingBreakdown(null);
+      return;
+    }
+    const recipe = recipes.find((r) => r.id === view.recipeId);
+    if (!recipe) {
+      setRatingBreakdown(null);
+      return;
+    }
+    let cancelled = false;
+    loadRatingBreakdown(db, recipe.shareId, recipe.avgRating).then((breakdown) => {
+      if (!cancelled) setRatingBreakdown(breakdown);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [view, recipes, db]);
 
   // §7.2: a recipe delivered via deep link or .dishision file jumps straight
   // into the import preview — never written silently (§7.3).
@@ -291,6 +315,7 @@ export function RecipesScreen({
       <RecipeDetailScreen
         recipe={recipe}
         currencySymbol={currencySymbol}
+        ratingBreakdown={ratingBreakdown}
         onBack={() => setView({ mode: 'list' })}
         onEdit={() => setView({ mode: 'edit', recipeId: recipe.id })}
         onCopy={async () => {

@@ -1531,4 +1531,308 @@ export const recipes: RecipeFixture[] = [
       { lane: 'chicken', phase: 'cook', instruction: 'Scatter spring onion over before serving.', effort: 'active', startOffsetSeconds: 1950 },
     ],
   },
+
+  // ===================================================================
+  // Air fryer (S17)
+  // ===================================================================
+
+  // -------------------------------------------------------------------
+  // 45. Air Fryer Crispy Chicken Breast
+  // -------------------------------------------------------------------
+  {
+    seedId: 'airfryer-crispy-chicken-breast',
+    name: 'Air Fryer Crispy Chicken Breast',
+    description: 'Juicy chicken with crisp edges, served with wedges and greens — all from the air fryer.',
+    photoEmoji: '🍗',
+    baseServings: 2,
+    timelineMode: 'sequential',
+    tags: ['chicken', 'airfryer', 'healthy', 'dinner'],
+    ingredients: [
+      { canonicalName: 'chicken breast', displayName: 'chicken breast', quantity: 2, unit: 'unit' },
+      { canonicalName: 'potato', displayName: 'potato, cut into wedges', quantity: 500, unit: 'g' },
+      { canonicalName: 'broccoli', displayName: 'broccoli, in florets', quantity: 200, unit: 'g' },
+      { canonicalName: 'olive oil', displayName: 'olive oil', quantity: 2, unit: 'tbsp' },
+      { canonicalName: 'paprika', displayName: 'paprika', quantity: 1, unit: 'tsp', scalable: false },
+      { canonicalName: 'garlic powder', displayName: 'garlic powder', quantity: 1, unit: 'tsp', scalable: false },
+      { canonicalName: 'salt', displayName: 'salt', quantity: 1, unit: 'tsp', scalable: false },
+      { canonicalName: 'black pepper', displayName: 'black pepper', quantity: 0.5, unit: 'tsp', scalable: false },
+    ],
+    steps: [
+      { phase: 'prep', instruction: 'Cut the potatoes into wedges and break the broccoli into florets.', effort: 'active' },
+      { phase: 'prep', instruction: 'Toss the chicken and wedges with oil, paprika, garlic powder, salt and pepper.', effort: 'active' },
+      { phase: 'cook', instruction: 'Air fry the wedges at 200°C, shaking halfway.', durationSeconds: 1200, effort: 'passive' },
+      { phase: 'cook', instruction: 'Add the chicken breasts and air fry until cooked through (74°C internal).', durationSeconds: 900, effort: 'passive', important: true },
+      { phase: 'cook', instruction: 'Add the broccoli for the last few minutes until tender-crisp.', durationSeconds: 360, effort: 'passive' },
+      { phase: 'cook', instruction: 'Rest the chicken briefly, then serve with the wedges and broccoli.', durationSeconds: 180, effort: 'passive' },
+    ],
+  },
+
+  // -------------------------------------------------------------------
+  // 46. Air Fryer Potato Wedges
+  // -------------------------------------------------------------------
+  {
+    seedId: 'airfryer-potato-wedges',
+    name: 'Air Fryer Potato Wedges',
+    description: 'Crunchy outside, fluffy inside — the perfect side in half the oven time.',
+    photoEmoji: '🍟',
+    baseServings: 2,
+    timelineMode: 'sequential',
+    tags: ['veg', 'airfryer', 'dinner'],
+    ingredients: [
+      { canonicalName: 'potato', displayName: 'potato, cut into wedges', quantity: 600, unit: 'g' },
+      { canonicalName: 'olive oil', displayName: 'olive oil', quantity: 2, unit: 'tbsp' },
+      { canonicalName: 'paprika', displayName: 'smoked paprika', quantity: 1, unit: 'tsp', scalable: false },
+      { canonicalName: 'garlic powder', displayName: 'garlic powder', quantity: 1, unit: 'tsp', scalable: false },
+      { canonicalName: 'salt', displayName: 'salt', quantity: 1, unit: 'tsp', scalable: false },
+    ],
+    steps: [
+      { phase: 'prep', instruction: 'Cut the potatoes into even wedges and pat dry.', effort: 'active' },
+      { phase: 'prep', instruction: 'Toss with oil, paprika, garlic powder and salt until evenly coated.', effort: 'active' },
+      { phase: 'cook', instruction: 'Air fry at 200°C, shaking the basket every 8 minutes, until golden and crisp.', durationSeconds: 1500, effort: 'passive', important: true },
+      { phase: 'cook', instruction: 'Tip out and season with a little more salt while hot.', effort: 'active' },
+    ],
+  },
+
+  // -------------------------------------------------------------------
+  // 47. Air Fryer Salmon
+  // -------------------------------------------------------------------
+  {
+    seedId: 'airfryer-salmon',
+    name: 'Air Fryer Salmon',
+    description: 'Ten-minute salmon with a lemony finish and quick green beans.',
+    photoEmoji: '🐟',
+    baseServings: 2,
+    timelineMode: 'sequential',
+    tags: ['fish', 'airfryer', 'healthy', 'dinner'],
+    ingredients: [
+      { canonicalName: 'salmon fillet', displayName: 'salmon fillet', quantity: 2, unit: 'unit' },
+      { canonicalName: 'green beans', displayName: 'green beans, trimmed', quantity: 200, unit: 'g' },
+      { canonicalName: 'olive oil', displayName: 'olive oil', quantity: 1, unit: 'tbsp' },
+      { canonicalName: 'lemon', displayName: 'lemon', quantity: 1, unit: 'unit', scalable: false },
+      { canonicalName: 'salt', displayName: 'salt', quantity: 0.5, unit: 'tsp', scalable: false },
+      { canonicalName: 'black pepper', displayName: 'black pepper', quantity: 0.5, unit: 'tsp', scalable: false },
+    ],
+    steps: [
+      { phase: 'prep', instruction: 'Pat the salmon dry, rub with oil, and season with salt and pepper.', effort: 'active' },
+      { phase: 'prep', instruction: 'Trim the green beans and toss with a little oil.', effort: 'active' },
+      { phase: 'cook', instruction: 'Air fry the salmon skin-side down at 190°C until it flakes easily.', durationSeconds: 600, effort: 'passive', important: true },
+      { phase: 'cook', instruction: 'Add the green beans alongside for the last few minutes.', durationSeconds: 300, effort: 'passive' },
+      { phase: 'cook', instruction: 'Squeeze lemon over the salmon and serve.', effort: 'active' },
+    ],
+  },
+
+  // -------------------------------------------------------------------
+  // 48. Air Fryer Chicken Wings
+  // -------------------------------------------------------------------
+  {
+    seedId: 'airfryer-chicken-wings',
+    name: 'Air Fryer Chicken Wings',
+    description: 'Extra-crispy wings with no deep fryer and no mess.',
+    photoEmoji: '🍖',
+    baseServings: 2,
+    timelineMode: 'sequential',
+    tags: ['chicken', 'airfryer', 'comfort', 'dinner'],
+    ingredients: [
+      { canonicalName: 'chicken wings', displayName: 'chicken wings', quantity: 800, unit: 'g' },
+      { canonicalName: 'olive oil', displayName: 'olive oil', quantity: 1, unit: 'tbsp' },
+      { canonicalName: 'paprika', displayName: 'paprika', quantity: 2, unit: 'tsp', scalable: false },
+      { canonicalName: 'garlic powder', displayName: 'garlic powder', quantity: 1, unit: 'tsp', scalable: false },
+      { canonicalName: 'salt', displayName: 'salt', quantity: 1, unit: 'tsp', scalable: false },
+      { canonicalName: 'black pepper', displayName: 'black pepper', quantity: 0.5, unit: 'tsp', scalable: false },
+      { canonicalName: 'honey', displayName: 'honey, to glaze', quantity: 1, unit: 'tbsp', optional: true },
+    ],
+    steps: [
+      { phase: 'prep', instruction: 'Pat the wings very dry — this is the secret to crispiness.', effort: 'active' },
+      { phase: 'prep', instruction: 'Toss with oil, paprika, garlic powder, salt and pepper.', effort: 'active' },
+      { phase: 'cook', instruction: 'Air fry at 200°C, turning halfway, until deep golden and crisp.', durationSeconds: 1440, effort: 'passive', important: true },
+      { phase: 'cook', instruction: 'Optionally toss in honey and air fry 2 minutes more to glaze.', durationSeconds: 120, effort: 'passive' },
+      { phase: 'cook', instruction: 'Serve hot with your dip of choice.', effort: 'active' },
+    ],
+  },
+
+  // ===================================================================
+  // Desserts (S17)
+  // ===================================================================
+
+  // -------------------------------------------------------------------
+  // 49. Chocolate Brownies (easy)
+  // -------------------------------------------------------------------
+  {
+    seedId: 'chocolate-brownies',
+    name: 'Chocolate Brownies',
+    description: 'Fudgy in the middle, crackly on top — a reliable one-bowl bake.',
+    photoEmoji: '🍫',
+    baseServings: 9,
+    timelineMode: 'sequential',
+    tags: ['dessert', 'baking', 'comfort'],
+    ingredients: [
+      { canonicalName: 'dark chocolate', displayName: 'dark chocolate, broken up', quantity: 200, unit: 'g' },
+      { canonicalName: 'butter', displayName: 'butter', quantity: 175, unit: 'g' },
+      { canonicalName: 'caster sugar', displayName: 'caster sugar', quantity: 250, unit: 'g' },
+      { canonicalName: 'eggs', displayName: 'egg', quantity: 3, unit: 'unit' },
+      { canonicalName: 'plain flour', displayName: 'plain flour', quantity: 110, unit: 'g' },
+      { canonicalName: 'cocoa powder', displayName: 'cocoa powder', quantity: 40, unit: 'g' },
+      { canonicalName: 'vanilla extract', displayName: 'vanilla extract', quantity: 1, unit: 'tsp', scalable: false },
+      { canonicalName: 'salt', displayName: 'salt', quantity: 0.25, unit: 'tsp', scalable: false },
+    ],
+    steps: [
+      { phase: 'prep', instruction: 'Heat the oven to 180°C and line a square tin.', effort: 'active' },
+      { phase: 'cook', instruction: 'Melt the chocolate and butter together gently, then cool slightly.', durationSeconds: 300, effort: 'active' },
+      { phase: 'prep', instruction: 'Whisk the eggs, sugar and vanilla until pale and thick.', durationSeconds: 240, effort: 'active' },
+      { phase: 'prep', instruction: 'Fold in the melted chocolate, then the flour, cocoa and salt.', effort: 'active' },
+      { phase: 'cook', instruction: 'Pour into the tin and bake until set with a slight wobble.', durationSeconds: 1500, effort: 'passive', important: true },
+      { phase: 'cook', instruction: 'Cool fully in the tin before cutting into squares.', durationSeconds: 1800, effort: 'passive' },
+    ],
+  },
+
+  // -------------------------------------------------------------------
+  // 50. Vanilla Cupcakes (medium)
+  // -------------------------------------------------------------------
+  {
+    seedId: 'vanilla-cupcakes',
+    name: 'Vanilla Cupcakes',
+    description: 'Light sponge cupcakes with a simple buttercream swirl.',
+    photoEmoji: '🧁',
+    baseServings: 12,
+    timelineMode: 'sequential',
+    tags: ['dessert', 'baking'],
+    ingredients: [
+      { canonicalName: 'self-raising flour', displayName: 'self-raising flour', quantity: 200, unit: 'g' },
+      { canonicalName: 'caster sugar', displayName: 'caster sugar', quantity: 200, unit: 'g' },
+      { canonicalName: 'butter', displayName: 'softened butter', quantity: 200, unit: 'g' },
+      { canonicalName: 'eggs', displayName: 'egg', quantity: 4, unit: 'unit' },
+      { canonicalName: 'vanilla extract', displayName: 'vanilla extract', quantity: 2, unit: 'tsp', scalable: false },
+      { canonicalName: 'milk', displayName: 'milk', quantity: 2, unit: 'tbsp' },
+      { canonicalName: 'icing sugar', displayName: 'icing sugar, for the buttercream', quantity: 250, unit: 'g' },
+    ],
+    steps: [
+      { phase: 'prep', instruction: 'Heat the oven to 180°C and line a muffin tin with cases.', effort: 'active' },
+      { phase: 'prep', instruction: 'Cream the butter and caster sugar until pale and fluffy.', durationSeconds: 240, effort: 'active' },
+      { phase: 'prep', instruction: 'Beat in the eggs one at a time, then the vanilla and flour, loosening with milk.', effort: 'active' },
+      { phase: 'cook', instruction: 'Divide between the cases and bake until risen and springy.', durationSeconds: 1200, effort: 'passive', important: true },
+      { phase: 'cook', instruction: 'Cool the cupcakes completely on a rack.', durationSeconds: 1800, effort: 'passive' },
+      { phase: 'cook', instruction: 'Beat the remaining butter with icing sugar and a little vanilla, then pipe onto the cooled cakes.', durationSeconds: 300, effort: 'active' },
+    ],
+  },
+
+  // -------------------------------------------------------------------
+  // 51. Plain Muffins (easy)
+  // -------------------------------------------------------------------
+  {
+    seedId: 'plain-muffins',
+    name: 'Plain Muffins',
+    description: 'A quick fold-together muffin batter — the base for endless variations.',
+    photoEmoji: '🧁',
+    baseServings: 12,
+    timelineMode: 'sequential',
+    tags: ['dessert', 'baking', 'breakfast'],
+    ingredients: [
+      { canonicalName: 'self-raising flour', displayName: 'self-raising flour', quantity: 300, unit: 'g' },
+      { canonicalName: 'caster sugar', displayName: 'caster sugar', quantity: 150, unit: 'g' },
+      { canonicalName: 'baking powder', displayName: 'baking powder', quantity: 2, unit: 'tsp', scalable: false },
+      { canonicalName: 'eggs', displayName: 'egg', quantity: 2, unit: 'unit' },
+      { canonicalName: 'milk', displayName: 'milk', quantity: 250, unit: 'ml' },
+      { canonicalName: 'sunflower oil', displayName: 'sunflower oil', quantity: 100, unit: 'ml' },
+      { canonicalName: 'vanilla extract', displayName: 'vanilla extract', quantity: 1, unit: 'tsp', scalable: false },
+    ],
+    steps: [
+      { phase: 'prep', instruction: 'Heat the oven to 190°C and line a muffin tin.', effort: 'active' },
+      { phase: 'prep', instruction: 'Whisk the flour, sugar and baking powder in a large bowl.', effort: 'active' },
+      { phase: 'prep', instruction: 'Beat the eggs, milk, oil and vanilla, then fold into the dry mix — do not overmix.', effort: 'active' },
+      { phase: 'cook', instruction: 'Divide between the cases and bake until domed and golden.', durationSeconds: 1320, effort: 'passive', important: true },
+      { phase: 'cook', instruction: 'Cool in the tin for a few minutes, then transfer to a rack.', durationSeconds: 600, effort: 'passive' },
+    ],
+  },
+
+  // -------------------------------------------------------------------
+  // 52. Blueberry Muffins (easy)
+  // -------------------------------------------------------------------
+  {
+    seedId: 'blueberry-muffins',
+    name: 'Blueberry Muffins',
+    description: 'Bakery-style muffins bursting with blueberries.',
+    photoEmoji: '🫐',
+    baseServings: 12,
+    timelineMode: 'sequential',
+    tags: ['dessert', 'baking', 'breakfast'],
+    ingredients: [
+      { canonicalName: 'self-raising flour', displayName: 'self-raising flour', quantity: 300, unit: 'g' },
+      { canonicalName: 'caster sugar', displayName: 'caster sugar', quantity: 150, unit: 'g' },
+      { canonicalName: 'baking powder', displayName: 'baking powder', quantity: 2, unit: 'tsp', scalable: false },
+      { canonicalName: 'eggs', displayName: 'egg', quantity: 2, unit: 'unit' },
+      { canonicalName: 'milk', displayName: 'milk', quantity: 250, unit: 'ml' },
+      { canonicalName: 'sunflower oil', displayName: 'sunflower oil', quantity: 100, unit: 'ml' },
+      { canonicalName: 'vanilla extract', displayName: 'vanilla extract', quantity: 1, unit: 'tsp', scalable: false },
+      { canonicalName: 'blueberries', displayName: 'blueberries', quantity: 200, unit: 'g' },
+      { canonicalName: 'lemon', displayName: 'lemon, zested', quantity: 1, unit: 'unit', scalable: false, optional: true },
+    ],
+    steps: [
+      { phase: 'prep', instruction: 'Heat the oven to 190°C and line a muffin tin.', effort: 'active' },
+      { phase: 'prep', instruction: 'Whisk the flour, sugar and baking powder together.', effort: 'active' },
+      { phase: 'prep', instruction: 'Beat the eggs, milk, oil and vanilla, fold into the dry mix, then gently fold in the blueberries and lemon zest.', effort: 'active' },
+      { phase: 'cook', instruction: 'Divide between the cases and bake until risen and golden.', durationSeconds: 1380, effort: 'passive', important: true },
+      { phase: 'cook', instruction: 'Cool in the tin briefly, then move to a rack.', durationSeconds: 600, effort: 'passive' },
+    ],
+  },
+
+  // -------------------------------------------------------------------
+  // 53. Molten Chocolate Lava Cakes (medium)
+  // -------------------------------------------------------------------
+  {
+    seedId: 'chocolate-lava-cakes',
+    name: 'Molten Chocolate Lava Cakes',
+    description: 'Individual cakes with a soft, flowing centre — timing is everything.',
+    photoEmoji: '🎂',
+    baseServings: 4,
+    timelineMode: 'sequential',
+    tags: ['dessert', 'baking', 'comfort'],
+    ingredients: [
+      { canonicalName: 'dark chocolate', displayName: 'dark chocolate', quantity: 150, unit: 'g' },
+      { canonicalName: 'butter', displayName: 'butter, plus extra for the moulds', quantity: 120, unit: 'g' },
+      { canonicalName: 'eggs', displayName: 'egg', quantity: 3, unit: 'unit' },
+      { canonicalName: 'caster sugar', displayName: 'caster sugar', quantity: 90, unit: 'g' },
+      { canonicalName: 'plain flour', displayName: 'plain flour', quantity: 50, unit: 'g' },
+      { canonicalName: 'cocoa powder', displayName: 'cocoa powder, for dusting', quantity: 10, unit: 'g', scalable: false },
+    ],
+    steps: [
+      { phase: 'prep', instruction: 'Butter four ramekins and dust with cocoa; heat the oven to 200°C.', effort: 'active' },
+      { phase: 'cook', instruction: 'Melt the chocolate and butter together, then cool slightly.', durationSeconds: 300, effort: 'active' },
+      { phase: 'prep', instruction: 'Whisk the eggs and sugar until thick, then fold in the chocolate and flour.', durationSeconds: 240, effort: 'active' },
+      { phase: 'prep', instruction: 'Divide between the ramekins.', effort: 'active' },
+      { phase: 'cook', instruction: 'Bake until the tops are set but the centres still wobble — do not overbake.', durationSeconds: 720, effort: 'passive', important: true },
+      { phase: 'cook', instruction: 'Rest for one minute, then turn out and serve immediately.', durationSeconds: 60, effort: 'passive' },
+    ],
+  },
+
+  // -------------------------------------------------------------------
+  // 54. Baked Vanilla Cheesecake (challenging)
+  // -------------------------------------------------------------------
+  {
+    seedId: 'baked-vanilla-cheesecake',
+    name: 'Baked Vanilla Cheesecake',
+    description: 'A rich, slow-baked cheesecake on a biscuit base — worth the wait and the chilling.',
+    photoEmoji: '🍰',
+    baseServings: 10,
+    timelineMode: 'sequential',
+    tags: ['dessert', 'baking', 'comfort'],
+    ingredients: [
+      { canonicalName: 'digestive biscuits', displayName: 'digestive biscuits, crushed', quantity: 250, unit: 'g' },
+      { canonicalName: 'butter', displayName: 'butter, melted', quantity: 100, unit: 'g' },
+      { canonicalName: 'cream cheese', displayName: 'full-fat cream cheese', quantity: 600, unit: 'g' },
+      { canonicalName: 'caster sugar', displayName: 'caster sugar', quantity: 150, unit: 'g' },
+      { canonicalName: 'eggs', displayName: 'egg', quantity: 3, unit: 'unit' },
+      { canonicalName: 'double cream', displayName: 'double cream', quantity: 200, unit: 'ml' },
+      { canonicalName: 'vanilla extract', displayName: 'vanilla extract', quantity: 2, unit: 'tsp', scalable: false },
+      { canonicalName: 'plain flour', displayName: 'plain flour', quantity: 2, unit: 'tbsp' },
+    ],
+    steps: [
+      { phase: 'prep', instruction: 'Crush the biscuits and mix with melted butter; press into a lined springform tin.', effort: 'active' },
+      { phase: 'cook', instruction: 'Chill the base while the oven heats to 160°C.', durationSeconds: 900, effort: 'passive' },
+      { phase: 'prep', instruction: 'Beat the cream cheese and sugar smooth, then beat in the eggs, cream, vanilla and flour.', durationSeconds: 300, effort: 'active' },
+      { phase: 'prep', instruction: 'Pour the filling over the base and smooth the top.', effort: 'active' },
+      { phase: 'cook', instruction: 'Bake low and slow until set at the edges with a slight wobble in the centre.', durationSeconds: 3000, effort: 'passive', important: true },
+      { phase: 'cook', instruction: 'Turn the oven off and let the cheesecake cool inside with the door ajar.', durationSeconds: 3600, effort: 'passive' },
+      { phase: 'cook', instruction: 'Chill in the fridge for at least 4 hours, ideally overnight, before serving.', durationSeconds: 14400, effort: 'passive', important: true },
+    ],
+  },
 ];

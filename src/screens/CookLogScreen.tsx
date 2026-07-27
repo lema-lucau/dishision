@@ -342,7 +342,14 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
             <ActivityIndicator color={theme.colors.accent} />
           </View>
         ) : searched.length === 0 ? (
-          <Text style={styles.emptyText}>No cooks logged yet.</Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>{logs.length === 0 ? '📖' : '🔍'}</Text>
+            <Text style={styles.emptyText}>
+              {logs.length === 0
+                ? 'Your cook log is empty. Cook something and it lands here — every cook builds better suggestions.'
+                : 'No cooks match your search or filters.'}
+            </Text>
+          </View>
         ) : layout === 'grid' ? (
           <View style={styles.grid}>
             {pageItems.map((log) => (
@@ -1125,7 +1132,17 @@ const makeStyles = (theme: AppTheme) =>
   pageSizeButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
   pageSizeButtonTextActive: { color: theme.colors.accentFg },
   matchCount: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
-  emptyText: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic' },
+  emptyCard: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceWarm,
+    borderRadius: theme.radius.card,
+    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.base,
+    marginTop: theme.spacing.md,
+  },
+  emptyIcon: { fontSize: theme.fontSize.xxl },
+  emptyText: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic', textAlign: 'center', paddingHorizontal: theme.spacing.lg },
   list: { gap: theme.spacing.sm },
   row: {
     flexDirection: 'row',

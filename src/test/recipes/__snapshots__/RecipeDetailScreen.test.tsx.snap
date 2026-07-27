@@ -139,11 +139,42 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
       }
     >
       <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
         style={
           {
+            "alignItems": "center",
             "alignSelf": "flex-start",
-            "backgroundColor": "#F3E9DF",
+            "backgroundColor": "#F4E0D7",
             "borderRadius": 20,
+            "flexDirection": "row",
+            "gap": 4,
+            "opacity": 1,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
           }
@@ -1748,11 +1779,42 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
       }
     >
       <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
         style={
           {
+            "alignItems": "center",
             "alignSelf": "flex-start",
-            "backgroundColor": "#F3E9DF",
+            "backgroundColor": "#F4E0D7",
             "borderRadius": 20,
+            "flexDirection": "row",
+            "gap": 4,
+            "opacity": 1,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
           }
@@ -3359,11 +3421,42 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
       }
     >
       <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
         style={
           {
+            "alignItems": "center",
             "alignSelf": "flex-start",
-            "backgroundColor": "#F3E9DF",
+            "backgroundColor": "#F4E0D7",
             "borderRadius": 20,
+            "flexDirection": "row",
+            "gap": 4,
+            "opacity": 1,
             "paddingHorizontal": 8,
             "paddingVertical": 4,
           }
