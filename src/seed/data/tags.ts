@@ -37,4 +37,8 @@ export const tags: TagFixture[] = [
   { seedId: 'tag-oven', name: 'oven', type: 'equipment' },
   { seedId: 'tag-one-pot', name: 'one-pot', type: 'equipment' },
   { seedId: 'tag-traybake', name: 'traybake', type: 'equipment' },
+  { seedId: 'tag-airfryer', name: 'airfryer', type: 'equipment' },
+
+  // extra styles for the dessert batch (S17)
+  { seedId: 'tag-baking', name: 'baking', type: 'style' },
 ];

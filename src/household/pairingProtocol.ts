@@ -4,7 +4,7 @@
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
 import { upsertHouseholdMember } from './householdMutations';
-import { runResponderSync, type LocalIdentity } from './syncProtocol';
+import { runRatingsResponder, runResponderSync, type LocalIdentity } from './syncProtocol';
 import type { SyncChannel, SyncMessage } from './syncTypes';
 
 type PairHelloMessage = Extract<SyncMessage, { type: 'pair_hello' }>;
@@ -94,6 +94,10 @@ export async function handleIncomingConnection(
   }
   if (first.type === 'hello') {
     await runResponderSync(db, channel, me, first);
+    return;
+  }
+  if (first.type === 'ratings_hello') {
+    await runRatingsResponder(db, channel, first);
     return;
   }
   channel.close();

@@ -2190,11 +2190,11 @@ Sessions are sized to end at a committable state. Use the current Sonnet-class m
 
 *Read first: §4.7, §11.2 (snapshot list)*
 
-- Remaining six themes: Ember, Seaglass, Clay, Risograph, Midnight Kitchen, Dusk (§4.3 — all pinned, no design work left, just token entry)
-- Theme picker: grid (§4.10 step 1) → full-preview screen rendering the real recipe detail component in the tapped theme (§4.10 step 2) → Apply
 - Risograph's hard-border and body-face-override cases (§4.3, §4.5) — the two structural edge cases in the token system
-- Full snapshot suite (§11.2), all seven themes
+- Full snapshot suite (§11.2), all themes
 - Empty states across every screen
+- Add some new recipes focused on the air fryer. Make an Airfryer tag that you can search by. Things like crispy chicken breast (served with veg and wedges/potatoes), wedges, etc. Also add some dessert recipes too like brownies, cupcakes, muffins (plain and blueberry options), various desserts ranging from easy, medium, or more challenging/time consuming
+- Create a README.md in the root of the repo, explaining the details and features of the app. Include the file structure so anyone editing will know where to go to make relevant changes. Do this as the very last steps so that eveything will be up to date
 - **Verify:** snapshot suite green; every screen has a designed empty state
 
 ### S18 - Appearance Redesign

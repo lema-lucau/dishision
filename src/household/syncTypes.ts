@@ -1,5 +1,6 @@
 // §7.5 wire protocol messages. NDJSON — one of these per line.
 import type { SharePayload } from '../sharing/payload';
+import type { RatingEntry } from './opinionSync';
 import type { SharedCookEntry } from './sharedCooks';
 
 export interface ManifestItem {
@@ -30,6 +31,14 @@ export type SyncMessage =
   | { type: 'shared_cooks_ack'; applied: number; skipped: number }
   | { type: 'done' }
   | { type: 'error'; message: string }
+  // §7.6 opinion sync — a distinct opening message from `hello`, because
+  // sending ratings is a separate explicit act, never folded into a recipe
+  // sync. Authenticated by the same pair secret; the initiator pushes its
+  // {share_id, stars} and the responder stores them in household_rating.
+  | { type: 'ratings_hello'; personId: string; secret: string }
+  | { type: 'ratings_hello_ack'; personId: string }
+  | { type: 'ratings'; entries: RatingEntry[] }
+  | { type: 'ratings_ack'; stored: number }
   // §5.11 pairing — a distinct opening message from `hello` because the
   // connecting phone isn't a known household_member yet: it proves itself
   // with either the QR's secret directly, or the fallback 6-digit code.

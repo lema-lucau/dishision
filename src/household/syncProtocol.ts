@@ -14,6 +14,7 @@ import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
 import { buildSharePayload } from '../sharing/payload';
 import { getHouseholdMember, markSynced, removeHouseholdMember, updateMemberProfile, upsertHouseholdMember } from './householdMutations';
+import { applyReceivedRatings, listMyPublicRatings } from './opinionSync';
 import { applyReceivedSharedCooks, listPendingSharedCooks, markSharedCooksSynced } from './sharedCooks';
 import { deleteVanishedCacheRows, upsertHouseholdCacheEntry } from './syncCache';
 import { SyncAuthError, type ManifestItem, type PayloadEntry, type SyncChannel, type SyncMessage } from './syncTypes';
@@ -227,6 +228,92 @@ export async function runResponderSync(
     await writeSyncEvent(db, hello.personId, 'received', 'shared_cooks', applied.length);
   }
 
+  await channel.receive(); // done
+  channel.close();
+}
+
+export interface RatingsSendResult {
+  ratingsSent: number;
+}
+
+// §7.6 Send my ratings — the initiator. A separate connection from a recipe
+// sync (opinions cross only on an explicit send, never as a side effect,
+// §15). Pushes {share_id, stars} for every public rated recipe and nothing
+// else. One-directional: the peer stores, acks the count, and sends nothing
+// back of its own.
+export async function runRatingsInitiator(
+  db: DbClient,
+  channel: SyncChannel,
+  me: LocalIdentity,
+  peerPersonId: string,
+  sharedSecret: string,
+): Promise<RatingsSendResult> {
+  await channel.send({ type: 'ratings_hello', personId: me.personId, secret: sharedSecret });
+  const ack = await channel.receive();
+  if (ack.type !== 'ratings_hello_ack') {
+    logger.warn('sync', 'Ratings send rejected by peer (bad secret or not paired)', { peerPersonId });
+    throw new SyncAuthError('Peer rejected the connection');
+  }
+
+  const ratings = await listMyPublicRatings(db);
+  await channel.send({ type: 'ratings', entries: ratings });
+  const result = await channel.receive();
+  const stored = result.type === 'ratings_ack' ? result.stored : 0;
+
+  await channel.send({ type: 'done' });
+  channel.close();
+
+  await writeSyncEvent(db, peerPersonId, 'sent', 'ratings', ratings.length);
+  logger.info('sync', 'Sent ratings', { peerPersonId, sent: ratings.length, storedByPeer: stored });
+  return { ratingsSent: ratings.length };
+}
+
+// §7.6 the receiving side. Validates the secret exactly like the recipe-sync
+// responder, then upserts the incoming ratings under the initiator's
+// person_id. Orphan ratings (no matching local recipe) are kept, not dropped
+// (opinionSync.applyReceivedRatings).
+export async function runRatingsResponder(
+  db: DbClient,
+  channel: SyncChannel,
+  /** Passed when the incoming-connection dispatcher already consumed the
+   * opening message (pairingProtocol.ts). */
+  prefetchedHello?: SyncMessage,
+): Promise<void> {
+  const hello = prefetchedHello ?? (await channel.receive());
+  if (hello.type !== 'ratings_hello') {
+    channel.close();
+    return;
+  }
+  const authenticated = await validateSecret(db, hello.personId, hello.secret);
+  if (!authenticated) {
+    logger.warn('sync', 'Rejected ratings send: missing or wrong secret', { personId: hello.personId });
+    await writeSyncEvent(db, hello.personId, 'received', 'auth_rejected', 0);
+    channel.close();
+    return;
+  }
+
+  await channel.send({ type: 'ratings_hello_ack', personId: hello.personId });
+
+  const ratingsMsg = await channel.receive();
+  const entries = ratingsMsg.type === 'ratings' ? ratingsMsg.entries : [];
+
+  // §7.6 is inherently atomic-enough (a single upsert per row, idempotent on
+  // re-send), but wrap it so a mid-batch failure can't leave a half-applied
+  // snapshot.
+  await db.execAsync('BEGIN');
+  let stored = 0;
+  try {
+    stored = await applyReceivedRatings(db, hello.personId, entries);
+    await writeSyncEvent(db, hello.personId, 'received', 'ratings', stored);
+    await db.execAsync('COMMIT');
+  } catch (error) {
+    await db.execAsync('ROLLBACK');
+    logger.error('sync', 'Storing ratings failed — nothing committed', { personId: hello.personId, error: String(error) });
+    channel.close();
+    return;
+  }
+
+  await channel.send({ type: 'ratings_ack', stored });
   await channel.receive(); // done
   channel.close();
 }
