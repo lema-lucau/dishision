@@ -174,6 +174,63 @@ describe('CookingModeScreen (§5.6, §11.2 snapshot suite)', () => {
     expect(result.getByTestId('pause-toggle')).toBeTruthy();
   });
 
+  it('asks before → commits a step, and cancelling leaves the live step where it was', async () => {
+    const db = await createTestDb();
+    const { recipeId, stepIds } = await seedRecipe(db, [null, null]);
+
+    const result = await render(
+      <SafeAreaProvider>
+        <DbProvider db={db}>
+          <CookingModeScreen
+            recipe={recipe({
+              id: recipeId,
+              steps: stepIds.map((id, i) => ({
+                id,
+                phase: 'cook' as const,
+                instruction: `Step ${i + 1}`,
+                durationSeconds: 600,
+                startOffsetSeconds: i * 600,
+                effort: 'active' as const,
+                important: false,
+                laneName: null,
+              })),
+            })}
+            onExit={() => {}}
+            onComplete={() => {}}
+          />
+        </DbProvider>
+      </SafeAreaProvider>,
+    );
+
+    await waitFor(() => expect(result.getByTestId('start-cooking')).toBeTruthy());
+    fireEvent.press(result.getByTestId('start-cooking'));
+    await waitFor(() => expect(result.getByTestId('step-forward')).toBeTruthy());
+
+    fireEvent.press(result.getByTestId('step-forward'));
+    await waitFor(() => expect(result.getByText('Move on to the next step?')).toBeTruthy());
+
+    // Cancel: nothing commits — the live step and the step's completion are
+    // exactly where they were.
+    fireEvent.press(result.getByText('Cancel'));
+    await waitFor(() => expect(result.queryByText('Move on to the next step?')).toBeNull());
+    const held = await db.getFirstAsync<{ current_step_id: number }>('SELECT current_step_id FROM cooking_session');
+    expect(held?.current_step_id).toBe(stepIds[0]);
+    const uncompleted = await db.getFirstAsync<{ completed_at: string | null }>(
+      'SELECT completed_at FROM cooking_session_step WHERE step_id = ?',
+      [stepIds[0]],
+    );
+    expect(uncompleted?.completed_at).toBeNull();
+
+    // Confirming does what → always did.
+    fireEvent.press(result.getByTestId('step-forward'));
+    await waitFor(() => expect(result.getByText('Move on')).toBeTruthy());
+    fireEvent.press(result.getByText('Move on'));
+    await waitFor(async () => {
+      const moved = await db.getFirstAsync<{ current_step_id: number }>('SELECT current_step_id FROM cooking_session');
+      expect(moved?.current_step_id).toBe(stepIds[1]);
+    });
+  });
+
   it('shows one tab per lane on a parallel recipe, and pins the lane the cook picks', async () => {
     const db = await createTestDb();
     const { recipeId, stepIds } = await seedRecipe(db, ['Curry', 'Rice', 'Curry']);

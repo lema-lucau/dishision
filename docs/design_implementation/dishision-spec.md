@@ -148,6 +148,8 @@ Dishision is developed and daily-driven on two specific physical phones, not gen
 
 The 13T is physically larger with meaningfully higher pixel density and a taller screen — fixed-pixel paddings/font sizes tuned on one device can look cramped or oversized on the other. Prefer relative/flex-based layout and `useWindowDimensions`/`Dimensions` for anything that must adapt; avoid hardcoded absolute heights on scrollable or button-bearing screens.
 
+**One ABI.** Both target phones are `arm64-v8a`, so that is the only architecture the app builds. `expo-build-properties` pins `android.buildArchs` to `["arm64-v8a"]` in `app.json` (§15.1), overriding the default four-ABI list — smaller APKs and faster builds, at the cost of not running on armeabi-v7a or x86 emulators. If an x86_64 emulator is ever needed for testing, add it back to that array deliberately rather than reverting to the default.
+
 **Safe areas, always.** Both phones use edge-to-edge gesture navigation with no persistent system chrome reserving space — the app must reserve its own. Any screen with content near the top or bottom edge (footers, floating action rows, headers not already inside a nav header, and *especially* full-bleed screens like Cooking Mode (§5.6) that hide the tab bar) must pull insets from `useSafeAreaInsets` (`react-native-safe-area-context`, §15.1) rather than guessing a fixed padding value. A control that renders at a fixed distance from the bottom of the viewport will sit under the gesture nav bar on one or both devices — this has already bitten the Debug screen and Cooking Mode's control row once each; treat it as a standing checklist item for every new bottom-anchored control, not a one-off fix.
 
 ## 2. Data model
@@ -1317,7 +1319,8 @@ Pantry presence shown two ways: a header line ("You have 6 of 8") and a dot per 
 - Tabs come from `step_lane` in `sort_order`. Steps with `lane_id IS NULL` form an implicit **Main** lane.
 - **The tab strip only appears when the clocked timeline has two or more lanes.** A single-lane recipe — most of the library — renders exactly as it does today, with no extra chrome. Tabs are a feature of parallel cooking, not a tax on simple cooking.
 - Each tab shows its lane name, its **lane timer**, and a state marker that is never colour-only (§15): `●` running · `⚠` overdue · `✓` done · `○` not started yet.
-- `←` / `→` and the NEXT peek are **scoped to the visible lane** — they walk that lane's steps, not the merged timeline. The ☰ sheet keeps the whole recipe, now grouped by lane with the same markers.
+- `←` / `→` and the NEXT peek are **scoped to the visible lane** — they walk that lane's steps, not the merged timeline.
+- **`→` past the live step asks first.** Inside what is already live, `←`/`→` are free — they commit nothing, so they stay instant. Moving *beyond* the live step is different: it marks the current step done, moves the timeline on, and nudges drift, and there is no undo for a completed step. So it raises a confirm — *"Move on to the next step?"*, naming the step being closed and the one being opened, with **Cancel** and **Move on**. Tapping ahead of yourself with wet hands is the normal case, not the exceptional one (§1.1), and the master clock keeps running behind the dialog. The ☰ sheet keeps the whole recipe, now grouped by lane with the same markers.
 - Prep is lane-agnostic: the untimed prep checklist is a pre-session surface and shows no tabs.
 
 **Three clock readouts, one clock:**
@@ -2321,6 +2324,11 @@ Runtime:
                                  not just transitively, or the app crashes outside Expo Go with a
                                  TurboModule signature-mismatch error (§5.9)
 
+Build config:
+  expo-build-properties    native build settings via config plugin. Currently sets one thing:
+                             android.buildArchs = ["arm64-v8a"] (§1.3 — both target phones are
+                             arm64; the other three ABIs are dead weight in every build)
+
 Dev / test:
   vitest, better-sqlite3, jest-expo,
   @testing-library/react-native
@@ -2346,7 +2354,7 @@ Deferred, not forgotten:
 - **Recipe sections are editable** (§5.4, new §5.4.1): a single-select Section control on the recipe form moves a recipe between the Recipes tab's Breakfast/Lunch/Dinner/Dessert sections. Mutually exclusive, tag-backed, no schema change, no share-envelope change.
 - **Cooking Mode reworked** (§5.6), two changes:
   - **Ready state** — the master clock no longer starts on entry. The session opens paused at zero with **Start cooking** as the gate, and schedules no notifications until then. Implemented as the existing paused state, so persistence and resume are unchanged.
-  - **Lane tabs** — recipes with two or more lanes get a tab strip, a derived per-lane timer beside the overall clock, lane-scoped ←/→ and peek, and **auto-switch** to whichever lane falls due. Manual selection pins the view; only takeover-class alerts override the pin. One master clock still drives everything — lane timers are projections, so drift maths, notification scheduling, and the schema are all untouched.
+  - **Lane tabs** — recipes with two or more lanes get a tab strip, a derived per-lane timer beside the overall clock, lane-scoped ←/→ and peek, and **auto-switch** to whichever lane falls due. `→` past the live step now confirms before committing, since that path completes a step and cannot be undone. Manual selection pins the view; only takeover-class alerts override the pin. One master clock still drives everything — lane timers are projections, so drift maths, notification scheduling, and the schema are all untouched.
 - Both land inside **S18** (§14) as its only behavioural additions; Cooking Mode remains Exempt from the visual language (redesign R6.8.1). Tests added in §11.2 for lane projection, attention resolution, ready-state scheduling and resume, and the section control's tag collapse.
 
 **v1.6**

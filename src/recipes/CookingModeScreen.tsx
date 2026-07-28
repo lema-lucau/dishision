@@ -99,7 +99,7 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   useKeepAwake();
   const db = useDb();
   const insets = useSafeAreaInsets();
-  const { modal: infoModal, notice } = useConfirmModal();
+  const { modal: infoModal, notice, confirm } = useConfirmModal();
   const setTabBarHidden = useUiChromeStore((s) => s.setTabBarHidden);
 
   // Cooking Mode is the one screen in the app that wants every pixel of
@@ -409,10 +409,27 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
     if (nextIndex <= liveIndex) {
       setViewingStepId(next === laneLiveStepId ? null : next);
       setPinnedLaneKey(visibleLaneKey);
-    } else {
-      handleAdvance(next, false);
-      setViewingStepId(null);
+      return;
     }
+
+    // Past the live step, → is not a peek: it marks the current step done and
+    // moves the timeline on. That is easy to fire by accident with wet hands
+    // three steps ahead of yourself, and there is no undo for a completed
+    // step — so it asks first. Peeking backward and forward inside what's
+    // already live stays instant, because nothing there commits.
+    const leaving = session.currentStepId != null ? stepById.get(session.currentStepId) : null;
+    const arriving = stepById.get(next);
+    confirm(
+      'Move on to the next step?',
+      leaving
+        ? `“${leaving.instruction}” gets marked done and the timeline moves on to “${arriving?.instruction ?? 'the next step'}”.`
+        : 'The timeline moves on to the next step.',
+      'Move on',
+      () => {
+        handleAdvance(next, false);
+        setViewingStepId(null);
+      },
+    );
   }
 
   // "Back to live" (§5.6) — drops both the step peek and the lane pin, so the
@@ -614,10 +631,10 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
             <TouchableOpacity onPress={isPaused ? handleResumeRunning : handlePause} style={styles.controlButton} testID="pause-toggle">
               {isPaused ? <PlayIcon size={22} color={theme.colors.accentText} /> : <PauseIcon size={22} color={theme.colors.accentText} />}
             </TouchableOpacity>
-            <TouchableOpacity onPress={handlePeekBack} style={styles.controlButton}>
+            <TouchableOpacity onPress={handlePeekBack} style={styles.controlButton} testID="step-back">
               <ChevronLeftIcon size={26} color={theme.colors.accentText} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={handlePeekForward} style={styles.controlButton}>
+            <TouchableOpacity onPress={handlePeekForward} style={styles.controlButton} testID="step-forward">
               <ChevronRightIcon size={26} color={theme.colors.accentText} />
             </TouchableOpacity>
           </>

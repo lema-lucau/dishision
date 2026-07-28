@@ -16,6 +16,7 @@
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
     "@expo-google-fonts/public-sans": "^0.4.2",
     "expo": "~54.0.35",
+    "expo-build-properties": "~1.0.10",
     "expo-camera": "~17.0.10",
     "expo-crypto": "~15.0.9",
     "expo-document-picker": "~14.0.8",
