@@ -43,6 +43,18 @@ export async function clearExclusion(db: DbClient, recipeId: number): Promise<vo
   await db.runAsync('DELETE FROM recipe_exclusion WHERE recipe_id = ?', [recipeId]);
 }
 
+// Bulk un-exclude (§5.4). Scoped to one kind on purpose: clearing tonight's
+// dismissals must not also resurrect everything you swore off permanently.
+// Returns how many rows went, so the caller can report it honestly.
+export async function clearExclusionsOfKind(
+  db: DbClient,
+  kind: 'never_again' | 'not_tonight',
+): Promise<number> {
+  const result = await db.runAsync('DELETE FROM recipe_exclusion WHERE kind = ?', [kind]);
+  logger.info('db', 'Exclusions cleared in bulk', { kind, cleared: result.changes });
+  return result.changes;
+}
+
 export async function deleteRecipe(db: DbClient, recipeId: number): Promise<void> {
   await db.runAsync('DELETE FROM recipe WHERE id = ?', [recipeId]);
   await invalidateMedianCostCache(db);
