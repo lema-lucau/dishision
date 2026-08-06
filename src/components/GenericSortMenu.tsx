@@ -4,6 +4,7 @@
 // (Cook Log, Sync log) don't need their own copy of this UI.
 import { useMemo } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 export type SortDirection = 'asc' | 'desc';
@@ -27,10 +28,11 @@ export function GenericSortMenu<K extends string>({
 }: GenericSortMenuProps<K>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: theme.spacing.base + insets.bottom }]}>
           <View style={styles.headerRow}>
             <Text style={styles.title}>Sort by</Text>
             <TouchableOpacity

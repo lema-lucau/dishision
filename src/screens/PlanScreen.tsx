@@ -6,6 +6,7 @@
 // keeps the other in sync (a "new month entered" in one updates the other).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MonthYearJumpModal } from '../components/MonthYearJumpModal';
 import { RecipePickerModal } from '../components/RecipePickerModal';
 import { useConfirmModal } from '../components/useConfirmModal';
@@ -74,6 +75,7 @@ interface PlanScreenProps {
 export function PlanScreen({ onOpenCookLog, onOpenRecipe }: PlanScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const db = useDb();
   const today = new Date();
 
@@ -356,7 +358,7 @@ export function PlanScreen({ onOpenCookLog, onOpenRecipe }: PlanScreenProps) {
 
       <Modal visible={selectedDate != null} transparent animationType="fade" onRequestClose={() => setSelectedDate(null)}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setSelectedDate(null)}>
-          <View style={styles.sheet}>
+          <View style={[styles.sheet, { paddingBottom: theme.spacing.base + insets.bottom }]}>
             <Text style={styles.sheetTitle}>{selectedDate ? formatDayHeading(selectedDate) : ''}</Text>
             <ScrollView>
               {selectedPlanned.length === 0 && selectedCooked.length === 0 && (
@@ -446,7 +448,7 @@ export function PlanScreen({ onOpenCookLog, onOpenRecipe }: PlanScreenProps) {
 
       <Modal visible={mealForm != null && !recipePickerOpen} transparent animationType="fade" onRequestClose={() => setMealForm(null)}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setMealForm(null)}>
-          <TouchableOpacity activeOpacity={1} style={styles.formSheet}>
+          <TouchableOpacity activeOpacity={1} style={[styles.formSheet, { paddingBottom: theme.spacing.lg + insets.bottom }]}>
             <Text style={styles.sheetTitle}>{mealForm?.mode === 'create' ? 'Plan a meal' : 'Edit planned meal'}</Text>
 
             <TouchableOpacity style={styles.recipePickButton} onPress={() => setRecipePickerOpen(true)}>

@@ -66,6 +66,7 @@ function baseRecipe(): EnrichedRecipe {
     exclusion: null,
     hasStaleCost: false,
     logNotes: [],
+    householdRatings: [],
   };
 }
 

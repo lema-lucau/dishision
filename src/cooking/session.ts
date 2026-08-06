@@ -3,6 +3,7 @@
 // never on a per-second tick (§2.3 write cadence comment, §15).
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { recipeName } from '../debug/logNames';
 import { computeElapsedSeconds, type SessionCheckpoint, type StepRuntimeState } from './sessionClock';
 
 export interface CookingSessionRow {
@@ -63,14 +64,46 @@ export async function startSession(
   phase: 'prep' | 'cook',
   currentStepId: number | null,
   now: string = new Date().toISOString(),
+  // §5.6 ready state: the clock does not start on entry. A ready session IS a
+  // paused session, which is why persistence, resume, and "pause cancels all
+  // notifications" all apply to it for free.
+  ready = false,
 ): Promise<number> {
   const result = await db.runAsync(
     `INSERT INTO cooking_session (recipe_id, servings, phase, started_at, elapsed_seconds, paused_at, drift_seconds, current_step_id, updated_at)
-     VALUES (?, ?, ?, ?, 0, NULL, 0, ?, ?)`,
-    [recipeId, servings, phase, now, currentStepId, now],
+     VALUES (?, ?, ?, ?, 0, ?, 0, ?, ?)`,
+    [recipeId, servings, phase, now, ready ? now : null, currentStepId, now],
   );
-  logger.info('engine', 'Cooking session started', { recipeId, sessionId: result.lastInsertRowId });
+  logger.info('engine', 'Cooking session started', { recipeId, recipeName: await recipeName(db, recipeId), sessionId: result.lastInsertRowId, ready });
   return result.lastInsertRowId;
+}
+
+/** A session sitting in the ready state (§5.6): created, paused, nothing
+ *  elapsed. Killing the app here and reopening must land back here, never
+ *  mid-cook. */
+export function isReadySession(session: CookingSessionRow): boolean {
+  return session.pausedAt != null && session.elapsedSeconds === 0;
+}
+
+/** Ready → running. Rebases the session onto the instant the cook actually
+ *  tapped Start, so the minutes spent reading the first step never leak into
+ *  elapsed time or into a step's recorded start offset. */
+export async function beginClock(
+  db: DbClient,
+  session: CookingSessionRow,
+  now: string = new Date().toISOString(),
+): Promise<void> {
+  await db.runAsync(
+    'UPDATE cooking_session SET started_at = ?, elapsed_seconds = 0, paused_at = NULL, updated_at = ? WHERE id = ?',
+    [now, now, session.id],
+  );
+  // The first step was marked started when the ready session was built; its
+  // start is the same instant the clock now begins at.
+  await db.runAsync('UPDATE cooking_session_step SET started_at = ? WHERE session_id = ? AND completed_at IS NULL', [
+    now,
+    session.id,
+  ]);
+  logger.info('engine', 'Cooking clock started', { sessionId: session.id });
 }
 
 // "Start over" replaces rather than resumes — the old session is simply gone.

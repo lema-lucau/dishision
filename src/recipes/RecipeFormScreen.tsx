@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { ListRow, Sheet } from '../components/ui';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { capitalize } from '../lib/capitalize';
@@ -22,9 +23,11 @@ import { UNIT_OPTIONS } from '../lib/unitLabels';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { laneColor, phaseColor, timeTagColor } from '../theme/stepColors';
 import { createUserIngredient, searchCanonicalIngredients, type CanonicalIngredientOption } from './ingredientSearch';
+import { MEAL_TYPES, MEAL_TYPE_LABELS, isMealTag, sectionFromTags, withSection, type MealType } from './mealType';
 import type { RecipeDraft, RecipeIngredientDraft, RecipeStepDraft } from './recipeSave';
 import type { BaseUnit, Effort, Phase, RecipeUnit, TimelineMode } from '../seed/types';
 import { EmojiPicker } from './EmojiPicker';
+import { RecipePhotoField } from './RecipePhotoField';
 
 const TAG_SUGGESTIONS = ['chicken', 'beef', 'pork', 'fish', 'lamb', 'veg', 'healthy', 'comfort', 'hob', 'oven', 'one-pot', 'traybake'];
 
@@ -62,6 +65,7 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
   const [saving, setSaving] = useState(false);
   const [showNewTagInput, setShowNewTagInput] = useState(false);
   const [newTagText, setNewTagText] = useState('');
+  const [showSectionSheet, setShowSectionSheet] = useState(false);
   // Ingredients and Steps default to a compact read-only view (grid / step
   // cards) and flip into the full editor via a per-section Edit/Done toggle —
   // scrolling a long list of full editors was the pain point.
@@ -71,9 +75,11 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
 
   // Tags already on the draft that aren't one of the fixed suggestions (either
   // typed in here, or loaded from an existing recipe's custom tags) — shown as
-  // their own chips so they can be toggled off too.
+  // their own chips so they can be toggled off too. Meal tags are excluded:
+  // the Section control (§5.4.1) owns those now, and showing them here as
+  // multi-select chips is exactly the confusion it exists to remove.
   const customTagsInDraft = draft.tags.filter(
-    (t) => !TAG_SUGGESTIONS.some((s) => s.toLowerCase() === t.toLowerCase()),
+    (t) => !isMealTag(t) && !TAG_SUGGESTIONS.some((s) => s.toLowerCase() === t.toLowerCase()),
   );
   const tagChips = [...TAG_SUGGESTIONS, ...customTagsInDraft];
 
@@ -171,6 +177,14 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
     });
   }
 
+  // §5.4.1: single-select, mutually exclusive. `withSection` strips every
+  // other meal tag, so a recipe edited from Dinner to Lunch moves sections
+  // rather than appearing in both.
+  function chooseSection(section: MealType) {
+    update({ tags: withSection(draft.tags, section) });
+    setShowSectionSheet(false);
+  }
+
   function toggleTag(tag: string) {
     const isSelected = draft.tags.some((t) => t.toLowerCase() === tag.toLowerCase());
     update({
@@ -202,6 +216,7 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
   }
 
   const totalSeconds = draft.steps.reduce((acc, s) => acc + (s.durationSeconds ?? 0), 0);
+  const currentSection = sectionFromTags(draft.tags);
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -210,6 +225,12 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
         <Text style={styles.back}>← Cancel</Text>
       </TouchableOpacity>
       <Text style={styles.title}>{title}</Text>
+
+      <RecipePhotoField
+        photoUri={draft.photoUri ?? null}
+        photoEmoji={draft.photoEmoji || '🍽️'}
+        onChange={(photoUri) => update({ photoUri })}
+      />
 
       <EmojiPicker value={draft.photoEmoji || '🍽️'} onChange={(e) => update({ photoEmoji: e })} />
 
@@ -227,6 +248,15 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
         value={draft.description}
         onChangeText={(v) => update({ description: v })}
         placeholder="Weeknight staple."
+      />
+
+      <ListRow
+        label="Section"
+        sublabel="Where it sits in your recipe list"
+        value={MEAL_TYPE_LABELS[currentSection]}
+        onPress={() => setShowSectionSheet(true)}
+        last
+        testID="section-row"
       />
 
       <View style={styles.row}>
@@ -584,6 +614,28 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
         <Text style={styles.primaryButtonText}>{saving ? 'Saving…' : 'Save recipe'}</Text>
       </TouchableOpacity>
 
+      <Sheet
+        visible={showSectionSheet}
+        onRequestClose={() => setShowSectionSheet(false)}
+        title="Section"
+        testID="section-sheet"
+      >
+        {MEAL_TYPES.map((section, index) => (
+          <ListRow
+            key={section}
+            label={MEAL_TYPE_LABELS[section]}
+            onPress={() => chooseSection(section)}
+            chevron={false}
+            last={index === MEAL_TYPES.length - 1}
+            trailing={
+              section === currentSection ? <Text style={styles.sectionCheck}>✓</Text> : undefined
+            }
+            style={section === currentSection ? styles.sectionRowSelected : undefined}
+            testID={`section-option-${section}`}
+          />
+        ))}
+      </Sheet>
+
       {modal}
     </ScrollView>
     </KeyboardAvoidingView>
@@ -608,6 +660,12 @@ const makeStyles = (theme: AppTheme) =>
     color: theme.colors.ink,
     backgroundColor: theme.colors.surface,
   },
+  sectionRowSelected: {
+    backgroundColor: theme.colors.accentTint,
+    borderRadius: theme.radius.card,
+    paddingHorizontal: theme.spacing.md,
+  },
+  sectionCheck: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.md, color: theme.colors.accentText },
   row: { flexDirection: 'row', gap: theme.spacing.base, marginBottom: theme.spacing.base },
   flexHalf: { flex: 1 },
   flex1: { flex: 1 },

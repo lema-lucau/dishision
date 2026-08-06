@@ -9,12 +9,15 @@ import { formatCurrency } from '../lib/currency';
 import { formatDuration } from '../lib/formatDuration';
 import { formatScaledQuantity, scaleQuantity } from '../lib/scaling';
 import { pluralizeUnit } from '../lib/unitLabels';
+import { HeroCover } from '../components/ui';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import { RECIPE_PHOTO_ASPECT } from '../theme/tokens';
 import { laneColor, phaseColor, timeTagColor } from '../theme/stepColors';
 import { ActionButton } from './ActionButton';
-import { EmojiTile } from './EmojiTile';
+import { HouseholdRatingChip } from './HouseholdRatingChip';
 import type { EnrichedRecipe } from './loadRecipes';
 import { MacroBox } from './MacroBox';
+import { recipePhotoSubject } from './recipePhotoSubject';
 import { TimeSplitBar } from './TimeSplitBar';
 
 interface RecipeDetailScreenProps {
@@ -91,22 +94,14 @@ export function RecipeDetailScreen({
   // the tiles show the total you're actually making (§ macro scaling request).
   const scaleMacro = (perServing: number | null) => (perServing == null ? null : perServing * servings);
 
-  const activePercent = recipe.totalSeconds > 0 ? Math.round((recipe.activeSeconds / recipe.totalSeconds) * 100) : 0;
-  const passivePercent = recipe.totalSeconds > 0 ? 100 - activePercent : 0;
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <TouchableOpacity onPress={onBack}>
         <Text style={styles.back}>← Back</Text>
       </TouchableOpacity>
 
-      <View style={styles.headerRow}>
-        <EmojiTile emoji={recipe.photoEmoji} size={64} emojiSize={40} />
-        <View style={styles.headerText}>
-          <Text style={styles.title}>{recipe.name}</Text>
-          {recipe.description ? <Text style={styles.description}>{recipe.description}</Text> : null}
-        </View>
-      </View>
+      <HeroCover recipe={recipePhotoSubject(recipe)} aspectRatio={RECIPE_PHOTO_ASPECT} title={recipe.name} radius="photo" />
+      {recipe.description ? <Text style={styles.description}>{recipe.description}</Text> : null}
 
       <View style={styles.metaRow}>
         {showRatingChip && (
@@ -125,9 +120,10 @@ export function RecipeDetailScreen({
         <View style={styles.metaChip}>
           <Text style={styles.metaChipText}>Cooked {recipe.timesCooked}×</Text>
         </View>
+        <HouseholdRatingChip ratings={recipe.householdRatings} variant="full" />
       </View>
 
-      <TimeSplitBar activeSeconds={recipe.activeSeconds} passiveSeconds={recipe.passiveSeconds} />
+      <TimeSplitBar activeSeconds={recipe.activeSeconds} passiveSeconds={recipe.passiveSeconds} hero />
 
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>INGREDIENTS</Text>
@@ -181,30 +177,14 @@ export function RecipeDetailScreen({
       )}
 
       <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>TIMELINE</Text>
+        <Text style={styles.sectionTitle}>STEPS</Text>
         {recipe.steps.length > 0 && (
           <TouchableOpacity onPress={() => setStepsExpanded((e) => !e)}>
             <Text style={styles.viewStepsLink}>{stepsExpanded ? 'Hide steps' : 'View steps'}</Text>
           </TouchableOpacity>
         )}
       </View>
-      <View style={styles.timelinePreview}>
-        {recipe.totalSeconds === 0 && <Text style={styles.pantrySummary}>No timed steps yet.</Text>}
-        {recipe.totalSeconds > 0 && (
-          <View style={styles.timelineBarTrack}>
-            {recipe.activeSeconds > 0 && (
-              <View style={[styles.timelineBarFill, { flex: recipe.activeSeconds, backgroundColor: theme.colors.accent }]}>
-                <Text style={styles.timelinePercentText}>{activePercent}%</Text>
-              </View>
-            )}
-            {recipe.passiveSeconds > 0 && (
-              <View style={[styles.timelineBarFill, { flex: recipe.passiveSeconds, backgroundColor: theme.colors.amber }]}>
-                <Text style={styles.timelinePercentText}>{passivePercent}%</Text>
-              </View>
-            )}
-          </View>
-        )}
-      </View>
+      {recipe.totalSeconds === 0 && <Text style={styles.pantrySummary}>No timed steps yet.</Text>}
 
       {stepsExpanded && (
         <View style={styles.stepsList}>
@@ -312,9 +292,6 @@ const makeStyles = (theme: AppTheme) =>
   container: { flex: 1, backgroundColor: theme.colors.bg },
   content: { padding: theme.spacing.base, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
   back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
-  headerRow: { flexDirection: 'row', gap: theme.spacing.md, alignItems: 'center' },
-  headerText: { flex: 1 },
-  title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
   description: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink2 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: theme.spacing.xs },
   metaChip: {
@@ -373,14 +350,6 @@ const makeStyles = (theme: AppTheme) =>
   macrosRow: { flexDirection: 'row', gap: theme.spacing.sm },
   partialFlag: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.amberText },
   costLine: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
-  timelinePreview: { gap: theme.spacing.xs },
-  timelineBarTrack: { flexDirection: 'row', height: 24, borderRadius: theme.radius.chip, overflow: 'hidden' },
-  timelineBarFill: { minWidth: 24, alignItems: 'center', justifyContent: 'center' },
-  timelinePercentText: {
-    fontFamily: theme.fonts.data.semiBold,
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.accentFg,
-  },
   stepsList: { gap: theme.spacing.sm },
   stepRow: {
     gap: theme.spacing.xs,

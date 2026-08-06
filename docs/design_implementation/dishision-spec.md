@@ -1,6 +1,6 @@
 # Dishision — Design & Implementation Spec
 
-**Version:** 1.5
+**Version:** 1.7
 **Platform:** React Native / Expo SDK 54, SQLite, Android
 **Users:** Independent profiles on separate phones, optionally linked into a household over local WiFi
 **Status:** Specification — not yet implemented
@@ -42,6 +42,7 @@
     5.2 Home  
     5.3 "I'm feeling…" picker  
     5.4 Recipes  
+        5.4.1 Section control (recipe form)  
     5.5 Recipe detail  
     5.6 Cooking Mode  
     5.7 Cook complete  
@@ -146,6 +147,8 @@ Dishision is developed and daily-driven on two specific physical phones, not gen
 | Android | 12 → 14, HyperOS | 13, HyperOS |
 
 The 13T is physically larger with meaningfully higher pixel density and a taller screen — fixed-pixel paddings/font sizes tuned on one device can look cramped or oversized on the other. Prefer relative/flex-based layout and `useWindowDimensions`/`Dimensions` for anything that must adapt; avoid hardcoded absolute heights on scrollable or button-bearing screens.
+
+**One ABI.** Both target phones are `arm64-v8a`, so that is the only architecture the app builds. `expo-build-properties` pins `android.buildArchs` to `["arm64-v8a"]` in `app.json` (§15.1), overriding the default four-ABI list — smaller APKs and faster builds, at the cost of not running on armeabi-v7a or x86 emulators. If an x86_64 emulator is ever needed for testing, add it back to that array deliberately rather than reverting to the default.
 
 **Safe areas, always.** Both phones use edge-to-edge gesture navigation with no persistent system chrome reserving space — the app must reserve its own. Any screen with content near the top or bottom edge (footers, floating action rows, headers not already inside a nav header, and *especially* full-bleed screens like Cooking Mode (§5.6) that hide the tab bar) must pull insets from `useSafeAreaInsets` (`react-native-safe-area-context`, §15.1) rather than guessing a fixed padding value. A control that renders at a fixed distance from the bottom of the viewport will sit under the gesture nav bar on one or both devices — this has already bitten the Debug screen and Cooking Mode's control row once each; treat it as a standing checklist item for every new bottom-anchored control, not a one-off fix.
 
@@ -1221,6 +1224,17 @@ List rows: photo/emoji tile, name, one-line description, time split bar, rating,
 
 **Exclusions view:** accessible from the filter bar. Two sections — Never again (permanent) and Not tonight (expiring). Un-exclude on each row.
 
+**Sections (meal type):** the list is grouped into collapsible sections — **Breakfast · Lunch · Dinner · Dessert** — and a recipe's section is decided by its `meal` tag, with `dinner` as the default when it carries none (the app's core scope, §1). This is a **tag, not a schema column**, and that does not change.
+
+A recipe's section is **directly editable from the recipe form** (§5.4.1). Until now the only way to move a recipe between sections was to guess which free-text tag chip drove the grouping, which is exactly the kind of hidden cause §1.1 forbids.
+
+#### 5.4.1 Section control (recipe form)
+
+- A single-select **Section** control sits at the top of the form's Basics block — the four meal types, defaulting to **Dinner** on a new recipe.
+- It is **mutually exclusive**: choosing one removes every other meal tag from the draft, so a recipe can never appear in two sections. Any meal tags beyond the first on an imported or legacy recipe are collapsed to the priority-order winner (breakfast → lunch → dinner → dessert) the first time the recipe is saved from the form.
+- It writes the ordinary `meal` tag, so the same value keeps driving the "I'm feeling…" chips, filters, and the share envelope's tag list. **No schema change, no migration, no envelope change.**
+- The free-text tag chips stay exactly as they are for everything else; the four meal tags simply stop appearing among them, because the Section control now owns them. A recipe edited to a new section moves between sections on save.
+
 ### 5.5 Recipe detail
 
 ```
@@ -1265,21 +1279,32 @@ Pantry presence shown two ways: a header line ("You have 6 of 8") and a dot per 
 
 **Prep phase:** untimed by default — a checklist, tap to tick. If steps define durations, it runs timed like the cook phase. A subtle progress indicator ticks up.
 
+**Ready state — the clock does not start on entry.** After the resume/start-over decision and the prep checklist, Cooking Mode opens **paused at zero**: the overall clock reads `0:00`, each lane shows its first step, nothing counts down, and **no notifications are scheduled**. A single **Start cooking** button begins the master clock.
+
+*Why:* entry is when you are still finding the garlic and getting the pan out. A clock that started itself while you read the first step makes every drift number after it a lie, and drift is the one thing this screen asks you to trust.
+
+- The session row is created on entry with `paused_at` set — the ready state **is** the existing paused state, so persistence, resume-after-kill, and "pause cancels all notifications" all apply unchanged and **no schema change is needed**. Tapping **Start cooking** is the existing resume transition.
+- Killing the app in the ready state and reopening lands back in the ready state at `0:00`, not mid-cook.
+- **Exit** from the ready state leaves nothing running; the 12-hour staleness rule applies as normal.
+
 **Cook phase:**
 
 ```
 ┌─────────────────────────────────┐
-│ ▓▓▓▓▓▓▓▓▓░░░░░░░░  12:04 / 32:00│
+│ ▓▓▓▓▓▓▓▓▓░░░░░░░░  12:04 / 32:00│  ← OVERALL clock (master)
 │                    ⚠ 4 min behind│
-│                                 │
+│ ┌─────────┬─────────┬─────────┐ │
+│ │● Curry  │◉ Rice   │○ Salad  │ │  ← LANE TABS (≥2 lanes only)
+│ │  2:00   │  8:40 ⚠ │  —      │ │     lane timer under each label
+│ └─────────┴─────────┴─────────┘ │
 │                                 │
 │   Add the curry paste and       │  ← 44px, dominant
 │   fry until fragrant            │
 │                                 │
-│   ▶ 2:00                        │  ← step timer
+│   ▶ 2:00                        │  ← step timer (this lane's step)
 │                                 │
 │   ─────────────────────────     │
-│   NEXT · Pour in coconut milk   │  ← peek
+│   NEXT · Pour in coconut milk   │  ← peek, within this lane
 │                                 │
 │  [ ⏸ ]  [ ← ]  [ → ]  [ ☰ ]     │
 │                                 │
@@ -1289,9 +1314,35 @@ Pantry presence shown two ways: a header line ("You have 6 of 8") and a dot per 
 └─────────────────────────────────┘
 ```
 
+**Lanes and tabs:**
+
+- Tabs come from `step_lane` in `sort_order`. Steps with `lane_id IS NULL` form an implicit **Main** lane.
+- **The tab strip only appears when the clocked timeline has two or more lanes.** A single-lane recipe — most of the library — renders exactly as it does today, with no extra chrome. Tabs are a feature of parallel cooking, not a tax on simple cooking.
+- Each tab shows its lane name, its **lane timer**, and a state marker that is never colour-only (§15): `●` running · `⚠` overdue · `✓` done · `○` not started yet.
+- `←` / `→` and the NEXT peek are **scoped to the visible lane** — they walk that lane's steps, not the merged timeline.
+- **`→` past the live step asks first.** Inside what is already live, `←`/`→` are free — they commit nothing, so they stay instant. Moving *beyond* the live step is different: it marks the current step done, moves the timeline on, and nudges drift, and there is no undo for a completed step. So it raises a confirm — *"Move on to the next step?"*, naming the step being closed and the one being opened, with **Cancel** and **Move on**. Tapping ahead of yourself with wet hands is the normal case, not the exceptional one (§1.1), and the master clock keeps running behind the dialog. The ☰ sheet keeps the whole recipe, now grouped by lane with the same markers.
+- Prep is lane-agnostic: the untimed prep checklist is a pre-session surface and shows no tabs.
+
+**Three clock readouts, one clock:**
+
+| Readout | What it shows | Source |
+| --- | --- | --- |
+| **Overall** | `elapsed / ETA` plus the drift banner. The only clock that pauses — pausing pauses the whole cook. | The master clock, unchanged |
+| **Lane** | Time remaining in that lane's live step; if its live step is untimed, time until the lane's next step is due. `N of M` steps beneath. `done` when the lane is finished. | Derived |
+| **Step** | Remaining time on the displayed step, as today. | Derived |
+
+**The lane timers are derived, not independent.** There is still exactly one clock and one `started_at`; a lane timer is a projection of it. Nothing new is stored, drift maths is untouched, and no migration is required. A lane's **live step** is derived as its first step with no `completed_at` in `cooking_session_step`; `cooking_session.current_step_id` continues to mean the globally live step and keeps its existing resume and notification semantics.
+
+**Lane switching — the app moves, not the cook:**
+
+- When a step in a lane falls due (or a passive timer in that lane ends), the app **switches the visible tab to that lane itself** and fires the existing alert. You should never have to remember that the rice needs draining.
+- Selecting a tab by hand, or peeking with `←`, **pins** the view to that lane — the same rule that already protects manual step navigation from auto-advance. A pinned view is not auto-switched away; **Back to live** (the existing "Go to current step" affordance, relabelled) releases the pin.
+- The one exception: a **takeover-class alert** (passive step ending, or a step flagged `important`) always wins and releases the pin, because those are exactly the interruptions the cook asked to be given. Takeover already claims the whole screen today; this only makes the tab underneath agree with it.
+- Auto-switching is a view change, not a commit: it never completes a step and never fires a haptic of its own beyond the alert that caused it.
+
 **Clock behaviour:**
 
-- One master clock drives everything. Steps auto-advance on start_offset_seconds.
+- One master clock drives everything, and it does not run until **Start cooking** is tapped. Steps auto-advance on start_offset_seconds.
 - **Sequential timelines:** for `timeline_mode='sequential'`, `start_offset_seconds` is **derived at read time** as the cumulative sum of prior steps' durations in sort order (untimed steps contribute 0) — never authored, never stored. Authored offsets are a `parallel`-mode concept.
 - Tap ← / → to move manually at any time.
 - Falling behind: the app shows ⚠ 4 min behind, shifts the ETA and all **unstarted** steps forward by the drift.
@@ -1853,7 +1904,10 @@ Two runners is a deliberate trade: Vitest for the 90% that's pure logic (fast, w
 - Chip rules (§5.3): each predicate, the 60% enablement threshold, "Uses what I have" with optional and unmeasured ingredients
 - Drift maths (§5.6): unstarted steps shift, running steps hold
 - Sequential offset derivation (§5.6): cumulative sum, untimed steps contribute 0, parallel recipes untouched
-- Notification schedule maths (§5.6): the pure function from (session state, steps) → set of (step_id, fire_at); pause/resume/drift each produce the correct reschedule set
+- Notification schedule maths (§5.6): the pure function from (session state, steps) → set of (step_id, fire_at); pause/resume/drift each produce the correct reschedule set; the **ready state schedules nothing**
+- Lane projection (§5.6): steps → lanes in sort order, `lane_id IS NULL` folds into Main, a lane's live step is its first uncompleted step, lane timer resolves for timed / untimed / finished lanes, and a one-lane recipe reports "no tab strip"
+- Attention resolution (§5.6): given (elapsed, steps, runtime, pinned lane) → which lane the view should be on; a pinned lane holds against an ordinary due step and yields to a takeover-class alert
+- Section control (§5.4.1): setting a section strips every other meal tag; a recipe with two meal tags collapses to the priority-order winner; a recipe with none reads as Dinner
 - Payload build/parse (§7.1): round-trip identity, version rejection
 
 **Integration — real SQLite:**
@@ -1868,7 +1922,7 @@ Two runners is a deliberate trade: Vitest for the 90% that's pure logic (fast, w
 - Import diff (§7.3): share → tweak → import → diff, not duplicate
 - Orphan ratings (§7.6): receive rating for absent recipe → import that recipe → rating attaches
 - Median cache invalidation (§6.8): change a cost → cache nulls → next read recomputes
-- Cooking session persistence (§5.6): write session → simulate kill → resume lands on the right step
+- Cooking session persistence (§5.6): write session → simulate kill → resume lands on the right step; a session killed in the **ready state** resumes at `0:00`, still ready, never mid-cook
 - Sync auth (§7.5): a request with a wrong sync_secret is rejected and writes nothing
 - Sync atomicity (§7.5): a failure at step 5 leaves household_recipe_cache byte-identical
 - Household removal (§5.11): remove → cache and ratings cascade away
@@ -2059,6 +2113,7 @@ Sessions are sized to end at a committable state. Use the current Sonnet-class m
 *Read first: §5.4, §9.4*
 
 - Manual CRUD, ingredient picker with canonical resolution, emoji picker (default 🍽️)
+- **Section control** (§5.4.1): single-select meal type at the top of Basics, mutually exclusive, writes the `meal` tag — no schema change
 - "Add this ingredient" flow for unmatched names
 - Copy-and-tweak
 - Form-based step editor: instruction, duration, offset (parallel only — sequential offsets are derived, §5.6), lane, effort, important
@@ -2090,7 +2145,9 @@ Sessions are sized to end at a committable state. Use the current Sonnet-class m
 
 - cooking_session persistence, survives kill and restart, event-driven writes only
 - Resume vs start-over, 12-hour staleness
+- Ready state on entry — session created paused at zero, **Start cooking** begins the master clock, nothing scheduled until then
 - Master clock, auto-advance, manual override; sequential offset derivation
+- Lane tabs (≥2 lanes only), derived lane timers, lane-scoped ←/→ and peek, auto-switch on attention with pin + **Back to live**
 - Drift: shift unstarted steps and ETA only; running timers hold their real end times
 - Foreground alerts (vibrate/sound/takeover, three toggles) **and** local notifications per §5.6: schedule on passive/important step start, cancel/reschedule on pause/resume/advance/drift/complete; permission on first entry with graceful fallback
 - Keep-awake, 44px type, full step list sheet
@@ -2198,7 +2255,16 @@ Sessions are sized to end at a committable state. Use the current Sonnet-class m
 - **Verify:** snapshot suite green; every screen has a designed empty state
 
 ### S18 - Appearance Redesign
-- Implement the dishision-visual-redesign-spec.md in it's entirety. Make sure every single screen on the app is covered so the change looks universal. Do an audit of the spec and make sure every screen is covered. If any screen is missing, add it to the spec and ask me questions to ensure that we design the screen correctly. Once I confirm that the redesign spec looks good, then you're free to make the actual changes
+
+*Read first: `dishision-visual-redesign-spec.md` in full, especially R6.7 (coverage map) and R9 (rollout)*
+
+- Implement the dishision-visual-redesign-spec.md in it's entirety. Make sure every single screen on the app is covered so the change looks universal. Do an audit of the spec and make sure every screen is covered. If any screen is missing, add it to the spec and ask me questions to ensure that we design the screens correctly. Once I confirm that the redesign spec looks good, then you're free to make the actual changes
+- **Audit outcome (redesign spec R1.1):** the audit found ~45 surfaces against R1.0's six. Every surface now carries a tier — **Editorial** (the six primary screens), **Chrome** (calm card treatment, no hero — the utility screens), **Exempt** (Cooking Mode and PhotoViewer, each with a stated reason). Client decisions recorded: utility screens are chrome-only; Cooking Mode is exempt bar elevation and pill buttons, because §1.1's hostile-environment rule outranks polish; all thirteen modals unify behind one `<Sheet>`; Debug gets light chrome but keeps its mono density.
+- Rollout order is redesign R9: foundation → primitives → Home → Editorial tier → shared chrome → Chrome tier → violation sweep → on-device verify
+- **Two behavioural additions ride along with this slice** (the only ones — everything else in S18 is presentation):
+  - **Section control on the recipe form** (§5.4.1) — a single-select meal type so a recipe can be moved between the Recipes tab's sections directly, instead of by guessing which tag drives the grouping. Tag-backed; no schema change.
+  - **Cooking Mode rework** (§5.6) — the clock no longer starts on entry (ready state + **Start cooking**), and parallel recipes gain **lane tabs** with a derived per-lane timer alongside the overall clock, plus auto-switch to whichever lane needs attention. One master clock still; lane timers are projections, so no migration and the drift/notification maths is untouched. Cooking Mode stays **Exempt** from the editorial language (redesign R6.8.1) — this is function, not polish.
+- **Verify:** every screen in the R6.7 coverage map renders correctly in Hearth and in a dark theme on both target devices (§1.3); zero `horizontal` scroll views and zero component hex literals outside the sanctioned R2.4 `onPhoto` tokens; the full behavioural test suite passes **untouched** — a redesign that needs a behavioural test rewritten has changed something it shouldn't
 
 ## 15. Constraints and conventions
 
@@ -2258,6 +2324,11 @@ Runtime:
                                  not just transitively, or the app crashes outside Expo Go with a
                                  TurboModule signature-mismatch error (§5.9)
 
+Build config:
+  expo-build-properties    native build settings via config plugin. Currently sets one thing:
+                             android.buildArchs = ["arm64-v8a"] (§1.3 — both target phones are
+                             arm64; the other three ABIs are dead weight in every build)
+
 Dev / test:
   vitest, better-sqlite3, jest-expo,
   @testing-library/react-native
@@ -2277,6 +2348,19 @@ Deferred, not forgotten:
 - ~~Name~~ → **Dishision stays.** It's cute, and the household's other member gets a vote.
 
 ## 17. Changelog
+
+**v1.7**
+
+- **Recipe sections are editable** (§5.4, new §5.4.1): a single-select Section control on the recipe form moves a recipe between the Recipes tab's Breakfast/Lunch/Dinner/Dessert sections. Mutually exclusive, tag-backed, no schema change, no share-envelope change.
+- **Cooking Mode reworked** (§5.6), two changes:
+  - **Ready state** — the master clock no longer starts on entry. The session opens paused at zero with **Start cooking** as the gate, and schedules no notifications until then. Implemented as the existing paused state, so persistence and resume are unchanged.
+  - **Lane tabs** — recipes with two or more lanes get a tab strip, a derived per-lane timer beside the overall clock, lane-scoped ←/→ and peek, and **auto-switch** to whichever lane falls due. `→` past the live step now confirms before committing, since that path completes a step and cannot be undone. Manual selection pins the view; only takeover-class alerts override the pin. One master clock still drives everything — lane timers are projections, so drift maths, notification scheduling, and the schema are all untouched.
+- Both land inside **S18** (§14) as its only behavioural additions; Cooking Mode remains Exempt from the visual language (redesign R6.8.1). Tests added in §11.2 for lane projection, attention resolution, ready-state scheduling and resume, and the section control's tag collapse.
+
+**v1.6**
+
+- **S18 Appearance Redesign** (§14) expanded with the coverage audit's outcome, the three-tier model, the client's four scoping decisions, and explicit verification criteria. The redesign spec moves to **R1.1**, which assigns a tier and a rule to every one of the app's ~45 surfaces — R1.0 covered six.
+- No data, behaviour, or token-architecture change. §4.1–4.4 and every rule in §15 are untouched.
 
 **v1.5**
 

@@ -4,6 +4,7 @@
 // needs "choose one of my recipes" doesn't reinvent it.
 import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { EnrichedRecipe } from '../recipes/loadRecipes';
 import { EmojiTile } from '../recipes/EmojiTile';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
@@ -19,6 +20,7 @@ interface RecipePickerModalProps {
 export function RecipePickerModal({ visible, recipes, title = 'Choose a recipe', onSelect, onClose }: RecipePickerModalProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
 
   const filtered = query.trim()
@@ -29,7 +31,7 @@ export function RecipePickerModal({ visible, recipes, title = 'Choose a recipe',
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
-        <TouchableOpacity activeOpacity={1} style={styles.sheet}>
+        <TouchableOpacity activeOpacity={1} style={[styles.sheet, { paddingBottom: theme.spacing.base + insets.bottom }]}>
           <Text style={styles.title}>{title}</Text>
           <TextInput
             style={styles.search}

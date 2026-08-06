@@ -8,6 +8,7 @@
 // staple nobody has set a par level for yet behaves unchanged.
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { canonicalIngredientName } from '../debug/logNames';
 import type { BaseUnit } from '../seed/types';
 
 export interface StapleRow {
@@ -55,17 +56,17 @@ export async function loadStaples(db: DbClient): Promise<StapleRow[]> {
 
 export async function setStapleParLevel(db: DbClient, canonicalId: number, parLevel: number | null): Promise<void> {
   await db.runAsync('UPDATE staple SET par_level = ? WHERE canonical_id = ?', [parLevel, canonicalId]);
-  logger.info('db', 'Staple par level set', { canonicalId, parLevel });
+  logger.info('db', 'Staple par level set', { canonicalId, name: await canonicalIngredientName(db, canonicalId), parLevel });
 }
 
 export async function addStaple(db: DbClient, canonicalId: number): Promise<void> {
   await db.runAsync('INSERT OR IGNORE INTO staple (canonical_id) VALUES (?)', [canonicalId]);
-  logger.info('db', 'Staple added', { canonicalId });
+  logger.info('db', 'Staple added', { canonicalId, name: await canonicalIngredientName(db, canonicalId) });
 }
 
 export async function removeStaple(db: DbClient, canonicalId: number): Promise<void> {
   await db.runAsync('DELETE FROM staple WHERE canonical_id = ?', [canonicalId]);
-  logger.info('db', 'Staple removed', { canonicalId });
+  logger.info('db', 'Staple removed', { canonicalId, name: await canonicalIngredientName(db, canonicalId) });
 }
 
 export async function removeStaples(db: DbClient, canonicalIds: number[]): Promise<void> {

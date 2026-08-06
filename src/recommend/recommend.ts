@@ -7,6 +7,7 @@ import type { EnrichedRecipe } from '../recipes/loadRecipes';
 import type { RecommendationWeights } from '../settings/getSetting';
 import { pickDiverse } from './diversity';
 import { applyHardFilters } from './hardFilters';
+import { MEAL_CATEGORIES, type MealCategory } from './mealCategories';
 import { relaxationLadder, RELAXATION_LABEL } from './relaxationLadder';
 import { effectiveWeights, scoreRecipe } from './score';
 
@@ -15,6 +16,8 @@ export interface RecommendContext {
   recencyWindowDays: number;
   yesterdaysPrimaryProtein: string | null;
   weights: RecommendationWeights;
+  /** Meal categories the engine may suggest (user setting). Defaults to all four. */
+  allowedCategories?: MealCategory[];
   /** Injectable for deterministic tests; defaults to Math.random in real use. */
   random?: () => number;
   /**
@@ -58,6 +61,7 @@ export function computeRecommendations(allRecipes: EnrichedRecipe[], ctx: Recomm
       now: ctx.now,
       recencyWindowDays: windowDays,
       yesterdaysPrimaryProtein: ctx.yesterdaysPrimaryProtein,
+      allowedCategories: ctx.allowedCategories ?? MEAL_CATEGORIES,
     });
     ladderSteps.push({ windowDays, survivorCount: survivors.length });
     usedWindowDays = windowDays;

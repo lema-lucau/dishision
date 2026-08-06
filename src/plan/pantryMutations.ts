@@ -7,6 +7,7 @@
 // on top.
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { canonicalIngredientName } from '../debug/logNames';
 import { convertDisplayUnitToBase, type DisplayUnit } from '../lib/displayUnit';
 import { loadUnitPreferences } from './unitPreference';
 import type { BaseUnit } from '../seed/types';
@@ -86,7 +87,7 @@ export async function setPantryQuantity(db: DbClient, canonicalId: number, quant
       delta,
     ]);
   }
-  logger.info('pantry', 'Pantry quantity set manually', { canonicalId, quantity, delta });
+  logger.info('pantry', 'Pantry quantity set manually', { canonicalId, name: await canonicalIngredientName(db, canonicalId), quantity, delta });
 }
 
 // Same as setPantryQuantity, but takes a value typed in an arbitrary

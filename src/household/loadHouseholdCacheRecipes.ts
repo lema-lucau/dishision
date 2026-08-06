@@ -106,6 +106,7 @@ export async function loadHouseholdCacheRecipes(db: DbClient, personId: string):
       exclusion: null,
       hasStaleCost: false,
       logNotes: [],
+      householdRatings: [], // a cached recipe carries no synced ratings of its own
       favouritedAt: row.favourited_at,
       payload,
     };

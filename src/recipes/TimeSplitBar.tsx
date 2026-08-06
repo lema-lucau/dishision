@@ -10,13 +10,19 @@ interface TimeSplitBarProps {
   activeSeconds: number;
   passiveSeconds: number;
   compact?: boolean;
+  /** Recipe detail's treatment: a tall track carrying its own percentages, and
+   * the total set as a headline. This is the app's most distinctive element
+   * (redesign R6) — on the one screen dedicated to a single dish it gets to
+   * behave like a signature rather than a footnote. */
+  hero?: boolean;
 }
 
-export function TimeSplitBar({ activeSeconds, passiveSeconds, compact }: TimeSplitBarProps) {
+export function TimeSplitBar({ activeSeconds, passiveSeconds, compact, hero }: TimeSplitBarProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const total = activeSeconds + passiveSeconds;
   const activeFraction = total > 0 ? activeSeconds / total : 0;
+  const activePercent = total > 0 ? Math.round(activeFraction * 100) : 0;
 
   if (total === 0) {
     return (
@@ -31,28 +37,41 @@ export function TimeSplitBar({ activeSeconds, passiveSeconds, compact }: TimeSpl
       {!compact && (
         <View style={styles.headerRow}>
           <Text style={styles.headerLabel}>TIME</Text>
-          <Text style={styles.headerValue}>{formatDuration(total)}</Text>
+          <Text style={[styles.headerValue, hero && styles.headerValueHero]}>{formatDuration(total)}</Text>
         </View>
       )}
-      <View style={[styles.track, compact && styles.trackCompact]}>
-        {activeSeconds > 0 && <View style={[styles.activeFill, { flex: activeFraction || 0.0001 }]} />}
-        {passiveSeconds > 0 && <View style={[styles.passiveFill, { flex: 1 - activeFraction || 0.0001 }]} />}
+      <View style={[styles.track, compact && styles.trackCompact, hero && styles.trackHero]}>
+        {activeSeconds > 0 && (
+          <View style={[styles.activeFill, hero && styles.fillHero, { flex: activeFraction || 0.0001 }]}>
+            {hero && <Text style={styles.fillPercent}>{activePercent}%</Text>}
+          </View>
+        )}
+        {passiveSeconds > 0 && (
+          <View style={[styles.passiveFill, hero && styles.fillHero, { flex: 1 - activeFraction || 0.0001 }]}>
+            {hero && <Text style={styles.fillPercent}>{100 - activePercent}%</Text>}
+          </View>
+        )}
       </View>
       {!compact && (
         <View style={styles.keyRow}>
           {activeSeconds > 0 && (
-            <Text style={styles.keyLabel}>
+            <Text style={[styles.keyLabel, hero && styles.keyLabelHero]}>
               <Text style={styles.keyDotActive}>■ </Text>
               {formatDuration(activeSeconds)} hands-on
             </Text>
           )}
           {passiveSeconds > 0 && (
-            <Text style={styles.keyLabel}>
+            <Text style={[styles.keyLabel, hero && styles.keyLabelHero]}>
               <Text style={styles.keyDotPassive}>■ </Text>
               {formatDuration(passiveSeconds)} passive
             </Text>
           )}
         </View>
+      )}
+      {hero && passiveSeconds > 0 && (
+        <Text style={styles.heroNote}>
+          Only {formatDuration(activeSeconds)} of this actually needs you at the hob.
+        </Text>
       )}
     </View>
   );
@@ -73,6 +92,7 @@ const makeStyles = (theme: AppTheme) =>
     fontSize: theme.fontSize.base,
     color: theme.colors.ink,
   },
+  headerValueHero: { fontSize: theme.fontSize.lg },
   track: {
     flexDirection: 'row',
     height: 8,
@@ -81,14 +101,28 @@ const makeStyles = (theme: AppTheme) =>
     backgroundColor: theme.colors.chipBg,
   },
   trackCompact: { height: 5 },
+  trackHero: { height: 28, borderRadius: theme.radius.tile },
   activeFill: { backgroundColor: theme.colors.accent },
   passiveFill: { backgroundColor: theme.colors.amber },
+  fillHero: { minWidth: 32, alignItems: 'center', justifyContent: 'center' },
+  fillPercent: {
+    fontFamily: theme.fonts.data.semiBold,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.accentFg,
+  },
+  heroNote: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.ink3,
+    fontStyle: 'italic',
+  },
   keyRow: { flexDirection: 'row', gap: theme.spacing.md },
   keyLabel: {
     fontFamily: theme.fonts.body.regular,
     fontSize: theme.fontSize.xs,
     color: theme.colors.ink2,
   },
+  keyLabelHero: { fontSize: theme.fontSize.sm },
   keyDotActive: { color: theme.colors.accent },
   keyDotPassive: { color: theme.colors.amber },
   emptyLabel: {

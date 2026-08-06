@@ -4,6 +4,7 @@
 // bloat the hero screen.
 import { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { EMOJI_OPTIONS } from '../recipes/emojiOptions';
 import { AVATAR_EMOJI_POOL } from './ensureProfile';
@@ -24,6 +25,7 @@ const ALL_AVATAR_EMOJI = [...new Set([...AVATAR_EMOJI_POOL, ...EMOJI_OPTIONS.map
 export function AvatarSheet({ visible, hasPhoto, onClose, onViewPhoto, onPickFromLibrary, onPickEmoji }: AvatarSheetProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<'menu' | 'change' | 'emoji'>('menu');
 
   function close() {
@@ -34,7 +36,7 @@ export function AvatarSheet({ visible, hasPhoto, onClose, onViewPhoto, onPickFro
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={close}>
-        <TouchableOpacity activeOpacity={1} style={styles.sheet}>
+        <TouchableOpacity activeOpacity={1} style={[styles.sheet, { paddingBottom: theme.spacing.base + insets.bottom }]}>
           {step === 'menu' && (
             <>
               <Text style={styles.title}>Profile picture</Text>

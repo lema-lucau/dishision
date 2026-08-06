@@ -3,24 +3,43 @@
 // any time. Persistence is event-driven only (§2.3) — nothing here writes
 // on a per-second tick, the tick only forces a re-render so the on-screen
 // clock and drift banner stay live.
+//
+// Two things the clock does NOT do (§5.6, spec v1.7):
+//   1. Start on entry. The session opens in the ready state — paused at zero,
+//      nothing scheduled — until the cook taps Start cooking.
+//   2. Get duplicated per lane. Lane tabs, lane timers, and auto-switching are
+//      all projections of this one clock (src/cooking/lanes.ts), which is why
+//      parallel cooking needed no schema change.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
 import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, ListIcon, PauseIcon, PlayIcon } from '../components/icons';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { PillButton, SectionLabel, Sheet } from '../components/ui';
 import { useConfirmModal } from '../components/useConfirmModal';
 import {
   cancelAllCookingNotifications,
   ensureNotificationPermission,
+  isAlertSoundEnabled,
   reconcileCookingNotifications,
 } from '../cooking/notifications';
 import {
+  MAIN_LANE_KEY,
+  buildLanes,
+  laneStatuses,
+  resolveVisibleLane,
+  shouldShowLaneTabs,
+  type LaneStatus,
+} from '../cooking/lanes';
+import {
   advanceToStep,
+  beginClock,
   checkpointSession,
   completeStep,
   finishSession,
   findUnfinishedSession,
+  isReadySession,
   loadStepRuntime,
   pauseSession,
   resumeSession,
@@ -62,13 +81,26 @@ function toTiming(step: EnrichedStep): RecipeStepTiming {
   };
 }
 
+function laneKeyOf(step: EnrichedStep | null | undefined): string {
+  return step?.laneName ?? MAIN_LANE_KEY;
+}
+
+// Colour is never the only signal (redesign R7) — every lane state carries a
+// glyph, because this screen is read at arm's length in bad light.
+const LANE_GLYPH: Record<LaneStatus['state'], string> = {
+  running: '●',
+  overdue: '⚠',
+  done: '✓',
+  waiting: '○',
+};
+
 export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   useKeepAwake();
   const db = useDb();
   const insets = useSafeAreaInsets();
-  const { modal: infoModal, notice } = useConfirmModal();
+  const { modal: infoModal, notice, confirm } = useConfirmModal();
   const setTabBarHidden = useUiChromeStore((s) => s.setTabBarHidden);
 
   // Cooking Mode is the one screen in the app that wants every pixel of
@@ -99,8 +131,25 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   // Non-null while the cook is peeking at a step other than the live one
   // (§ manual nav must not be auto-corrected — see the effect below).
   const [viewingStepId, setViewingStepId] = useState<number | null>(null);
+  // Which lane's timeline is on screen, and whether the cook put it there by
+  // hand. A hand-picked lane is pinned: the app won't pull it away (§5.6).
+  const [visibleLaneKey, setVisibleLaneKey] = useState<string>(MAIN_LANE_KEY);
+  const [pinnedLaneKey, setPinnedLaneKey] = useState<string | null>(null);
   const lastAlertedStepId = useRef<number | null>(null);
   const deniedNoticeShown = useRef(false);
+
+  const lanes = useMemo(() => buildLanes(timelineSteps), [timelineSteps]);
+  const showLaneTabs = shouldShowLaneTabs(lanes);
+  const timingById = useMemo(() => new Map(stepTimings.map((t) => [t.id, t])), [stepTimings]);
+
+  // The visible lane always has to exist — a recipe with one lane pins itself
+  // to it, and the first render happens before any lane has been chosen.
+  useEffect(() => {
+    if (!lanes.some((l) => l.key === visibleLaneKey)) {
+      setVisibleLaneKey(lanes[0]?.key ?? MAIN_LANE_KEY);
+      setPinnedLaneKey(null);
+    }
+  }, [lanes, visibleLaneKey]);
 
   useEffect(() => {
     findUnfinishedSession(db, recipe.id).then((existing) => {
@@ -130,7 +179,8 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
 
   async function reconcileNotificationsFor(current: CookingSessionRow, runtime: Map<number, StepRuntimeState>) {
     const schedule = computeNotificationSchedule(stepTimings, runtime, current.driftSeconds, current.pausedAt != null);
-    await reconcileCookingNotifications(schedule, current.startedAt, (stepId) => stepById.get(stepId)?.instruction ?? 'Next step');
+    const playSound = await isAlertSoundEnabled(db);
+    await reconcileCookingNotifications(schedule, current.startedAt, (stepId) => stepById.get(stepId)?.instruction ?? 'Next step', playSound);
   }
 
   async function beginSession(resumeExisting?: CookingSessionRow) {
@@ -152,7 +202,9 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
     const firstStepId = timelineSteps[0]?.id ?? null;
     const initialPhase: 'prep' | 'cook' = firstStepId != null && stepById.get(firstStepId)?.phase === 'prep' ? 'prep' : 'cook';
     const now = new Date().toISOString();
-    const id = await startSession(db, recipe.id, recipe.baseServings, initialPhase, firstStepId, now);
+    // Ready, not running (§5.6): created paused at zero so entry is a moment
+    // to read the first step, not a clock you're already losing to.
+    const id = await startSession(db, recipe.id, recipe.baseServings, initialPhase, firstStepId, now, true);
     if (firstStepId != null) {
       await advanceToStep(db, { id, recipeId: recipe.id, servings: recipe.baseServings, phase: initialPhase, startedAt: now, elapsedSeconds: 0, pausedAt: null, driftSeconds: 0, currentStepId: firstStepId, updatedAt: now }, firstStepId, now);
     }
@@ -251,6 +303,33 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
       const takeoverOn = (await getSettingWithDefault(db, 'alert_takeover', '1')) === '1';
       if (vibrateOn) Vibration.vibrate(400);
       if (takeoverOn && newStep) setTakeoverStep(newStep);
+      // A takeover-class alert is the one thing that overrides a pinned lane
+      // (§5.6) — it is exactly the interruption the cook asked to be given.
+      if (newStep) {
+        const takeoverLaneKey = laneKeyOf(newStep);
+        const { key, releasePin } = resolveVisibleLane({
+          statuses: laneStatuses(lanes, timingById, runtime, computeElapsedSeconds(updated, Date.now()), updated.driftSeconds),
+          pinnedKey: pinnedLaneKey,
+          currentKey: visibleLaneKey,
+          takeoverLaneKey,
+        });
+        if (releasePin) setPinnedLaneKey(null);
+        setVisibleLaneKey(key);
+        setViewingStepId(null);
+      }
+    }
+  }
+
+  // Ready → running (§5.6). Rebasing the clock here is what keeps drift
+  // honest: the minutes spent reading the first step are not "behind".
+  async function handleStartClock() {
+    if (!session) return;
+    await beginClock(db, session);
+    const updated = await reloadSession(session.id);
+    if (updated) {
+      const runtime = await loadStepRuntime(db, updated.id, updated.startedAt);
+      setStepRuntime(runtime);
+      await reconcileNotificationsFor(updated, runtime);
     }
   }
 
@@ -268,13 +347,46 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
     if (updated) await reconcileNotificationsFor(updated, stepRuntime);
   }
 
-  const displayedStepId = viewingStepId ?? session?.currentStepId ?? null;
+  const isReady = session != null && isReadySession(session);
+  const statuses = useMemo(
+    () => (session ? laneStatuses(lanes, timingById, stepRuntime, elapsedSeconds, session.driftSeconds) : []),
+    [lanes, timingById, stepRuntime, elapsedSeconds, session?.driftSeconds],
+  );
+  const visibleStatus = statuses.find((s) => s.key === visibleLaneKey) ?? statuses[0] ?? null;
+  const visibleLaneStepIds = lanes.find((l) => l.key === visibleLaneKey)?.stepIds ?? timelineSteps.map((s) => s.id);
 
+  // The app moves between lanes so the cook doesn't have to (§5.6). A pinned
+  // lane holds; only a takeover-class alert overrides it, and that path runs
+  // in handleAdvance below.
+  useEffect(() => {
+    if (stage !== 'active' || !session || isReady || statuses.length < 2) return;
+    const { key } = resolveVisibleLane({ statuses, pinnedKey: pinnedLaneKey, currentKey: visibleLaneKey });
+    if (key !== visibleLaneKey) {
+      setVisibleLaneKey(key);
+      setViewingStepId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statuses, pinnedLaneKey, visibleLaneKey, stage, isReady]);
+
+  // The displayed step follows the VISIBLE lane, not the global live step —
+  // otherwise switching to the rice tab would show you the curry.
+  const laneLiveStepId = visibleStatus?.liveStepId ?? visibleLaneStepIds[visibleLaneStepIds.length - 1] ?? null;
+  const displayedStepId = viewingStepId ?? laneLiveStepId ?? session?.currentStepId ?? null;
+
+  function selectLane(key: string) {
+    if (key === visibleLaneKey) return;
+    setVisibleLaneKey(key);
+    setPinnedLaneKey(key); // deliberate navigation pins (§5.6)
+    setViewingStepId(null);
+  }
+
+  // ←/→ walk the visible lane's steps, not the merged timeline.
   function neighbourOf(stepId: number | null, delta: number): number | null {
-    const index = timelineSteps.findIndex((s) => s.id === stepId);
+    const index = visibleLaneStepIds.indexOf(stepId ?? -1);
+    if (index < 0) return null;
     const target = index + delta;
-    if (target < 0 || target >= timelineSteps.length) return null;
-    return timelineSteps[target].id;
+    if (target < 0 || target >= visibleLaneStepIds.length) return null;
+    return visibleLaneStepIds[target];
   }
 
   // ← is a pure local "peek" — it never touches the session, never
@@ -283,25 +395,50 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   // real manual advance exactly as before.
   function handlePeekBack() {
     const prev = neighbourOf(displayedStepId, -1);
-    if (prev != null) setViewingStepId(prev);
+    if (prev == null) return;
+    setViewingStepId(prev);
+    setPinnedLaneKey(visibleLaneKey); // peeking is deliberate too — hold the lane
   }
 
   function handlePeekForward() {
     if (!session) return;
     const next = neighbourOf(displayedStepId, 1);
     if (next == null) return;
+    // Whether this is a peek or a real advance is still decided on the GLOBAL
+    // timeline: passing the live step is what completes steps and nudges drift.
     const liveIndex = timelineSteps.findIndex((s) => s.id === session.currentStepId);
     const nextIndex = timelineSteps.findIndex((s) => s.id === next);
     if (nextIndex <= liveIndex) {
-      setViewingStepId(nextIndex === liveIndex ? null : next);
-    } else {
-      handleAdvance(next, false);
-      setViewingStepId(null);
+      setViewingStepId(next === laneLiveStepId ? null : next);
+      setPinnedLaneKey(visibleLaneKey);
+      return;
     }
+
+    // Past the live step, → is not a peek: it marks the current step done and
+    // moves the timeline on. That is easy to fire by accident with wet hands
+    // three steps ahead of yourself, and there is no undo for a completed
+    // step — so it asks first. Peeking backward and forward inside what's
+    // already live stays instant, because nothing there commits.
+    const leaving = session.currentStepId != null ? stepById.get(session.currentStepId) : null;
+    const arriving = stepById.get(next);
+    confirm(
+      'Move on to the next step?',
+      leaving
+        ? `“${leaving.instruction}” gets marked done and the timeline moves on to “${arriving?.instruction ?? 'the next step'}”.`
+        : 'The timeline moves on to the next step.',
+      'Move on',
+      () => {
+        handleAdvance(next, false);
+        setViewingStepId(null);
+      },
+    );
   }
 
+  // "Back to live" (§5.6) — drops both the step peek and the lane pin, so the
+  // app resumes moving the cook along on its own.
   function handleGoToCurrentStep() {
     setViewingStepId(null);
+    setPinnedLaneKey(null);
   }
 
   async function handleExit() {
@@ -397,7 +534,10 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   if (!session) return null;
 
   const currentStep = stepById.get(displayedStepId ?? -1) ?? null;
-  const isViewingLive = displayedStepId == null || displayedStepId === session.currentStepId;
+  // "Live" now means the visible lane's live step with no pin held — the two
+  // things "Back to live" undoes.
+  const isViewingLive =
+    (viewingStepId == null || viewingStepId === laneLiveStepId) && pinnedLaneKey == null;
   const nextStepId = neighbourOf(displayedStepId, 1);
   const nextStep = nextStepId != null ? stepById.get(nextStepId) : null;
   const totalScheduled = stepTimings.reduce((acc, s) => acc + (s.durationSeconds ?? 0), 0);
@@ -407,35 +547,83 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   const stepElapsed = Math.max(0, elapsedSeconds - currentStart);
   const liveStepRemaining = currentTiming?.durationSeconds != null ? Math.max(0, currentTiming.durationSeconds - stepElapsed) : null;
   const isPaused = session.pausedAt != null;
-  const stepIndex = timelineSteps.findIndex((s) => s.id === displayedStepId);
+  const stepIndex = visibleLaneStepIds.indexOf(displayedStepId ?? -1);
 
   return (
     <View style={[styles.container, edgeStyle]}>
       <View style={styles.clockRow}>
-        <Text style={styles.clockSubtext}>
+        <Text style={[styles.clockSubtext, isReady && styles.clockResting]}>
           {formatDuration(elapsedSeconds)} / {formatDuration(eta)}
         </Text>
-        <Text style={styles.clockTimer}>{formatClock(elapsedSeconds)}</Text>
+        <Text style={[styles.clockTimer, isReady && styles.clockResting]}>{formatClock(elapsedSeconds)}</Text>
       </View>
-      {session.driftSeconds > 30 && <Text style={styles.driftText}>⚠ {Math.round(session.driftSeconds / 60)} min behind</Text>}
+      {!isReady && session.driftSeconds > 30 && (
+        <>
+          <Text style={styles.driftText}>⚠ {Math.round(session.driftSeconds / 60)} min behind</Text>
+          {/* The drift-aware nuance, said out loud once at the right moment
+              (product review §3): a passive step that's already running doesn't
+              care that you're behind, so don't let the warning read as panic. */}
+          {currentStep?.effort === 'passive' && (
+            <Text style={styles.driftReassure}>…but this step's already going — it'll keep cooking regardless.</Text>
+          )}
+        </>
+      )}
+
+      {showLaneTabs && (
+        <View style={styles.laneTabs} testID="lane-tabs">
+          {statuses.map((status) => {
+            const active = status.key === visibleLaneKey;
+            return (
+              <Pressable
+                key={status.key}
+                onPress={() => selectLane(status.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                testID={`lane-tab-${status.key}`}
+                style={[styles.laneTab, active && styles.laneTabActive]}
+              >
+                <Text
+                  style={[
+                    styles.laneTabName,
+                    active && styles.laneTabNameActive,
+                    status.state === 'overdue' && styles.laneTabOverdue,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {LANE_GLYPH[status.state]} {status.name}
+                </Text>
+                <Text style={[styles.laneTabTimer, status.state === 'overdue' && styles.laneTabOverdue]}>
+                  {laneTimerLabel(status)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
       <ScrollView style={styles.bodyScroll} contentContainerStyle={styles.body}>
         <Text style={styles.phaseLabel}>
           {currentStep?.phase === 'prep' ? 'PREP' : 'COOK'}
           {currentStep?.laneName ? ` · ${currentStep.laneName}` : ''}
-          {stepIndex >= 0 ? ` · Step ${stepIndex + 1} of ${timelineSteps.length}` : ''}
+          {stepIndex >= 0 ? ` · Step ${stepIndex + 1} of ${visibleLaneStepIds.length}` : ''}
         </Text>
         <Text style={styles.instruction}>{currentStep?.instruction ?? 'All done'}</Text>
         {currentTiming?.durationSeconds != null && (
           <View style={styles.stepTimerRow}>
             <ClockIcon size={22} color={theme.colors.accentText} />
-            <Text style={styles.stepTimer}>{formatDuration(isViewingLive ? liveStepRemaining ?? 0 : currentTiming.durationSeconds)}</Text>
+            <Text style={styles.stepTimer}>
+              {formatDuration(
+                !isReady && displayedStepId === laneLiveStepId
+                  ? liveStepRemaining ?? 0
+                  : currentTiming.durationSeconds,
+              )}
+            </Text>
           </View>
         )}
 
-        {!isViewingLive && (
-          <TouchableOpacity style={styles.goToLiveButton} onPress={handleGoToCurrentStep}>
-            <Text style={styles.goToLiveButtonText}>Go to current step</Text>
+        {!isViewingLive && !isReady && (
+          <TouchableOpacity style={styles.goToLiveButton} onPress={handleGoToCurrentStep} testID="back-to-live">
+            <Text style={styles.goToLiveButtonText}>Back to live</Text>
           </TouchableOpacity>
         )}
 
@@ -448,31 +636,49 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
       </ScrollView>
 
       <View style={styles.controlsRow}>
-        <TouchableOpacity onPress={isPaused ? handleResumeRunning : handlePause} style={styles.controlButton}>
-          {isPaused ? <PlayIcon size={22} color={theme.colors.accentText} /> : <PauseIcon size={22} color={theme.colors.accentText} />}
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handlePeekBack} style={styles.controlButton}>
-          <ChevronLeftIcon size={26} color={theme.colors.accentText} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handlePeekForward} style={styles.controlButton}>
-          <ChevronRightIcon size={26} color={theme.colors.accentText} />
-        </TouchableOpacity>
+        {!isReady && (
+          <>
+            <TouchableOpacity onPress={isPaused ? handleResumeRunning : handlePause} style={styles.controlButton} testID="pause-toggle">
+              {isPaused ? <PlayIcon size={22} color={theme.colors.accentText} /> : <PauseIcon size={22} color={theme.colors.accentText} />}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handlePeekBack} style={styles.controlButton} testID="step-back">
+              <ChevronLeftIcon size={26} color={theme.colors.accentText} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handlePeekForward} style={styles.controlButton} testID="step-forward">
+              <ChevronRightIcon size={26} color={theme.colors.accentText} />
+            </TouchableOpacity>
+          </>
+        )}
         <TouchableOpacity onPress={() => setShowStepList(true)} style={styles.controlButton}>
           <ListIcon size={22} color={theme.colors.accentText} />
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
-        <Text style={styles.completeButtonText}>Complete</Text>
-      </TouchableOpacity>
+      {isReady ? (
+        // §5.6 ready state: one gate, the same accent pill that got you here
+        // from Recipe detail, so the gesture repeats rather than surprises.
+        <PillButton
+          label="Start cooking"
+          onPress={handleStartClock}
+          variant="accent"
+          haptic="commit"
+          fullWidth
+          testID="start-cooking"
+        />
+      ) : (
+        <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
+          <Text style={styles.completeButtonText}>Complete</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity style={styles.exitButton} onPress={handleExit}>
-        <Text style={styles.exitButtonText}>Exit (keeps your progress)</Text>
+        <Text style={styles.exitButtonText}>{isReady ? 'Exit' : 'Exit (keeps your progress)'}</Text>
       </TouchableOpacity>
 
       <StepListModal
         visible={showStepList}
         steps={recipe.steps}
         currentStepId={session.currentStepId}
+        runtime={stepRuntime}
         onClose={() => setShowStepList(false)}
       />
 
@@ -488,39 +694,66 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   );
 }
 
+// The ☰ sheet keeps the WHOLE recipe (the tabs are the per-lane view), now
+// grouped by lane and carrying the same done/live markers as the tabs.
 function StepListModal({
   visible,
   steps,
   currentStepId,
+  runtime,
   onClose,
 }: {
   visible: boolean;
   steps: EnrichedStep[];
   currentStepId: number | null;
+  runtime: Map<number, StepRuntimeState>;
   onClose: () => void;
 }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  if (!visible) return null;
+  const grouped = useMemo(() => buildLanes(steps), [steps]);
+  const stepById = useMemo(() => new Map(steps.map((s) => [s.id, s])), [steps]);
+  const numberOf = useMemo(() => new Map(steps.map((s, i) => [s.id, i + 1])), [steps]);
+
   return (
-    <View style={styles.stepListBackdrop}>
-      <TouchableOpacity style={styles.stepListBackdropTouchable} activeOpacity={1} onPress={onClose} />
-      <View style={styles.stepListSheet}>
-        <Text style={styles.stepListTitle}>All steps</Text>
-        <ScrollView contentContainerStyle={styles.stepListContent}>
-          {steps.map((step, index) => (
-            <View key={step.id} style={[styles.stepListRow, step.id === currentStepId && styles.stepListRowActive]}>
-              <Text style={[styles.stepListNumber, step.id === currentStepId && styles.stepListNumberActive]}>{index + 1}</Text>
-              <Text style={[styles.stepListText, step.id === currentStepId && styles.stepListTextActive]}>{step.instruction}</Text>
-            </View>
-          ))}
-        </ScrollView>
-        <TouchableOpacity style={styles.stepListCloseButton} onPress={onClose}>
-          <Text style={styles.stepListCloseButtonText}>Close</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <Sheet visible={visible} onRequestClose={onClose} title="All steps" testID="all-steps-sheet">
+      {grouped.map((lane) => (
+        <View key={lane.key} style={styles.stepListGroup}>
+          {grouped.length > 1 ? <SectionLabel>{lane.name}</SectionLabel> : null}
+          {lane.stepIds.map((stepId) => {
+            const step = stepById.get(stepId);
+            if (!step) return null;
+            const done = runtime.get(stepId)?.completed ?? false;
+            const active = stepId === currentStepId;
+            return (
+              <View key={stepId} style={[styles.stepListRow, active && styles.stepListRowActive]}>
+                <Text style={[styles.stepListNumber, active && styles.stepListNumberActive]}>
+                  {done ? '✓' : numberOf.get(stepId)}
+                </Text>
+                <Text
+                  style={[
+                    styles.stepListText,
+                    active && styles.stepListTextActive,
+                    done && styles.stepListTextDone,
+                  ]}
+                >
+                  {step.instruction}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      ))}
+    </Sheet>
   );
+}
+
+function laneTimerLabel(status: LaneStatus): string {
+  if (status.state === 'done') return 'done';
+  if (status.seconds == null) return `${status.completedCount}/${status.totalCount}`;
+  if (status.state === 'waiting') return `in ${formatDuration(status.seconds)}`;
+  if (status.state === 'overdue') return 'now';
+  return formatDuration(status.seconds);
 }
 
 const makeStyles = (theme: AppTheme) =>
@@ -546,8 +779,31 @@ const makeStyles = (theme: AppTheme) =>
   prepFooterRow: { flexDirection: 'row', gap: theme.spacing.sm },
   clockRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md },
   clockSubtext: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.base, color: theme.colors.ink2 },
+  // A resting clock reads ink-3 and no lighter — at three feet in bad light
+  // that contrast IS the "not started yet" affordance (redesign R6.8.1).
+  clockResting: { color: theme.colors.ink3 },
+  laneTabs: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+  laneTab: {
+    minHeight: 44,
+    minWidth: 84,
+    flexGrow: 1,
+    flexBasis: 0,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.chipBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  laneTabActive: { backgroundColor: theme.colors.accentTint },
+  laneTabName: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  laneTabNameActive: { color: theme.colors.accentText },
+  laneTabTimer: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+  laneTabOverdue: { color: theme.colors.amberText },
   clockTimer: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.base, color: theme.colors.ink2 },
   driftText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.amberText, textAlign: 'center' },
+  driftReassure: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, textAlign: 'center', fontStyle: 'italic' },
   bodyScroll: { flex: 1 },
   body: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.base },
   phaseLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink3, letterSpacing: 1 },
@@ -632,6 +888,8 @@ const makeStyles = (theme: AppTheme) =>
   stepListNumberActive: { color: theme.colors.accentText },
   stepListText: { flex: 1, fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink, lineHeight: theme.fontSize.base + 6 },
   stepListTextActive: { fontFamily: theme.fonts.body.semiBold },
+  stepListTextDone: { color: theme.colors.ink3, textDecorationLine: 'line-through' },
+  stepListGroup: { gap: theme.spacing.sm },
   stepListCloseButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.card, paddingVertical: theme.spacing.sm, alignItems: 'center' },
   stepListCloseButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
 });

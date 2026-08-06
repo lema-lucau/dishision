@@ -18,7 +18,7 @@ import { emptyRecipeDraft, loadRecipeDraft } from '../recipes/loadRecipeForEdit'
 import { loadEnrichedRecipes, type EnrichedRecipe } from '../recipes/loadRecipes';
 import { MealSection } from '../recipes/MealSection';
 import { MEAL_TYPES, MEAL_TYPE_LABELS, recipeMealType, type MealType } from '../recipes/mealType';
-import { copyRecipe, clearExclusion, deleteRecipe, setExclusion, toggleFavourite } from '../recipes/recipeMutations';
+import { copyRecipe, clearExclusion, clearExclusionsOfKind, deleteRecipe, setExclusion, toggleFavourite } from '../recipes/recipeMutations';
 import { RecipeDetailScreen } from '../recipes/RecipeDetailScreen';
 import { RecipeFormScreen } from '../recipes/RecipeFormScreen';
 import type { ChipKey, QueryResultItem, SortDirection, SortKey } from '../recipes/queryEngine';
@@ -215,6 +215,10 @@ export function RecipesScreen({
         onBack={() => setView({ mode: 'list' })}
         onUnexclude={async (id) => {
           await clearExclusion(db, id);
+          await reload();
+        }}
+        onUnexcludeAll={async (kind) => {
+          await clearExclusionsOfKind(db, kind);
           await reload();
         }}
       />

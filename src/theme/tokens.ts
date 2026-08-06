@@ -36,6 +36,7 @@ export const fontSize = {
   md: 16,
   lg: 20,
   xl: 24,
+  hero: 30, // editorial serif headlines (redesign R2.6)
   xxl: 32,
   cookingMode: 44,
 } as const;
@@ -50,11 +51,21 @@ export const spacing = {
   xxl: 32,
 } as const;
 
+// The one shape a recipe photo is shown in wherever it appears full-bleed —
+// the crop editor's frame, the form preview, and the detail/plan heroes all use
+// this so what you crop is exactly what you see (width / height). 3:2 is the
+// classic landscape food-photo ratio and matches the wide hero surfaces.
+export const RECIPE_PHOTO_ASPECT = 3 / 2;
+
 export const radius = {
   chip: 6,
   tile: 10,
   card: 13,
   pill: 20,
+  // Additive, for the redesign's photo surfaces only (R2.5) — existing
+  // components keep their current radii.
+  photo: 16,
+  hero: 24,
 } as const;
 
 export type Fonts = typeof fonts;

@@ -127,6 +127,7 @@ export function ProfileScreen({
   }
 
   const currentTheme = themes[themeId];
+  const themeCount = Object.keys(themes).length;
 
   if (view.mode === 'stats') {
     return (
@@ -278,6 +279,7 @@ export function ProfileScreen({
         <TouchableOpacity style={styles.themeCard} onPress={onOpenThemePicker} activeOpacity={0.85}>
           <View style={styles.themeInfo}>
             <Text style={styles.themeName}>{currentTheme.name}</Text>
+            <Text style={styles.themeCount}>{themeCount} themes to try, light and dark</Text>
             <View style={styles.miniBar}>
               <View style={[styles.miniBarActive, { backgroundColor: theme.colors.accent }]} />
               <View style={[styles.miniBarPassive, { backgroundColor: theme.colors.amber }]} />
@@ -450,8 +452,9 @@ const makeStyles = (theme: AppTheme) =>
       borderColor: theme.colors.border,
       padding: theme.spacing.base,
     },
-    themeInfo: { gap: theme.spacing.sm, flex: 1 },
+    themeInfo: { gap: theme.spacing.xs, flex: 1 },
     themeName: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.md, color: theme.colors.ink },
+    themeCount: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
     miniBar: { flexDirection: 'row', height: 8, width: 120, borderRadius: theme.radius.chip, overflow: 'hidden', backgroundColor: theme.colors.chipBg },
     miniBarActive: { flex: 0.45 },
     miniBarPassive: { flex: 0.55 },

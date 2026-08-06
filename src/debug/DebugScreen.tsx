@@ -1,9 +1,16 @@
-import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// §12 Debug log viewer. Layout and functionality modelled on the Memento
+// debug screen (search, date range, level filter, expand/collapse all, an
+// expandable detail panel per row, and an Export / Import / Clear action bar)
+// but rendered entirely through Dishision's theme tokens — no hardcoded colour.
+import { useCallback, useMemo, useState } from 'react';
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import { Directory, File, Paths } from 'expo-file-system';
+import { DatePickerModal } from '../components/DatePickerModal';
 import { useConfirmModal } from '../components/useConfirmModal';
+import { formatDMY } from '../lib/formatDate';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { JsonViewer } from './JsonViewer';
 import { useLogStore } from './logStore';
@@ -14,17 +21,40 @@ function toggle<T>(set: T[], value: T): T[] {
   return set.includes(value) ? set.filter((v) => v !== value) : [...set, value];
 }
 
+// NDJSON export → parse: one LogEntry per line. Anything that isn't a
+// well-formed entry is dropped; a file with zero valid lines is rejected.
+function parseLogFile(text: string): LogEntry[] | null {
+  const out: LogEntry[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed === '') continue;
+    try {
+      const e = JSON.parse(trimmed) as Record<string, unknown>;
+      if (
+        typeof e.id === 'number' &&
+        typeof e.ts === 'string' &&
+        typeof e.level === 'string' &&
+        typeof e.category === 'string' &&
+        typeof e.message === 'string'
+      ) {
+        out.push(e as unknown as LogEntry);
+      }
+    } catch {
+      // skip the unparseable line
+    }
+  }
+  return out.length > 0 ? out : null;
+}
+
 async function exportLogs(entries: LogEntry[]) {
   const dir = new Directory(Paths.cache, 'dishision-logs');
-  dir.create({ overwrite: false });
+  if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
   const file = new File(dir, `debug-log-${Date.now()}.txt`);
   file.create({ overwrite: true });
   file.write(formatLogEntries(entries));
-
   if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(file.uri, { mimeType: 'text/plain' });
+    await Sharing.shareAsync(file.uri, { mimeType: 'text/plain', dialogTitle: 'Export debug logs' });
   }
-  return file;
 }
 
 // A level rendered as a coloured pill — reused in the row header and filters.
@@ -38,7 +68,7 @@ function LevelPill({ level, active, onPress }: { level: LogLevel; active?: boole
     </View>
   );
   return onPress ? (
-    <TouchableOpacity onPress={onPress} hitSlop={4}>
+    <TouchableOpacity onPress={onPress} hitSlop={4} accessibilityRole="button" accessibilityLabel={`Toggle ${level} level`}>
       {body}
     </TouchableOpacity>
   ) : (
@@ -46,41 +76,51 @@ function LevelPill({ level, active, onPress }: { level: LogLevel; active?: boole
   );
 }
 
-function LogRow({ entry }: { entry: LogEntry }) {
+function DetailField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const [open, setOpen] = useState(false);
-  // undefined = per-node default; true/false = force expand/collapse all.
-  const [expandAll, setExpandAll] = useState<boolean | undefined>(undefined);
+  return (
+    <View style={styles.detailField}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={[styles.detailValue, mono && styles.detailValueMono]}>{value}</Text>
+    </View>
+  );
+}
+
+function LogRow({ entry, expanded, onToggle }: { entry: LogEntry; expanded: boolean; onToggle: (id: number) => void }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const tone = LEVEL_TONE(theme)[entry.level];
   const time = entry.ts.slice(11, 19);
-  const hasData = entry.data !== undefined;
 
   return (
-    <View style={styles.card}>
-      <TouchableOpacity style={styles.cardHead} onPress={() => setOpen((o) => !o)} disabled={!hasData} activeOpacity={0.7}>
+    <View style={[styles.card, { borderLeftColor: tone.fg }]}>
+      <TouchableOpacity style={styles.cardHead} onPress={() => onToggle(entry.id)} activeOpacity={0.7}>
         <View style={styles.cardHeadTop}>
           <Text style={styles.time}>{time}</Text>
           <View style={styles.categoryPill}>
             <Text style={styles.categoryPillText}>{entry.category}</Text>
           </View>
           <LevelPill level={entry.level} />
-          {hasData && <Text style={styles.chevron}>{open ? '▾' : '▸'}</Text>}
+          <Text style={styles.chevron}>{expanded ? '▾' : '▸'}</Text>
         </View>
-        <Text style={styles.message}>{entry.message}</Text>
+        <Text style={styles.message} numberOfLines={expanded ? undefined : 2}>
+          {entry.message}
+        </Text>
       </TouchableOpacity>
 
-      {open && hasData && (
-        <View style={styles.dataBlock}>
-          <View style={styles.dataControls}>
-            <TouchableOpacity style={styles.miniButton} onPress={() => setExpandAll(true)}>
-              <Text style={styles.miniButtonText}>Expand all</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.miniButton} onPress={() => setExpandAll(false)}>
-              <Text style={styles.miniButtonText}>Collapse all</Text>
-            </TouchableOpacity>
-          </View>
-          {/* Remount on expandAll change so every node re-initialises. */}
-          <JsonViewer key={String(expandAll)} data={entry.data} expandAll={expandAll} />
+      {expanded && (
+        <View style={styles.detailBlock}>
+          <DetailField label="id" value={String(entry.id)} mono />
+          <DetailField label="timestamp" value={entry.ts} mono />
+          {entry.data !== undefined && (
+            <>
+              <Text style={styles.detailLabel}>data</Text>
+              <View style={styles.jsonContainer}>
+                <JsonViewer data={entry.data} />
+              </View>
+            </>
+          )}
         </View>
       )}
     </View>
@@ -92,19 +132,31 @@ export function DebugScreen() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const entries = useLogStore((s) => s.entries);
   const clear = useLogStore((s) => s.clear);
+  const setEntries = useLogStore((s) => s.setEntries);
+  const insets = useSafeAreaInsets();
+  const { modal, confirm, notice } = useConfirmModal();
+
   const [categories, setCategories] = useState<LogCategory[]>([]);
   const [levels, setLevels] = useState<LogLevel[]>([]);
+  const [search, setSearch] = useState('');
+  // YYYY-MM-DD or null; set via the app's calendar picker, not hand-typed.
+  const [dateFrom, setDateFrom] = useState<string | null>(null);
+  const [dateTo, setDateTo] = useState<string | null>(null);
+  const [datePickerFor, setDatePickerFor] = useState<'from' | 'to' | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const insets = useSafeAreaInsets();
-  const { modal, confirm } = useConfirmModal();
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   const filtered = useMemo(() => {
+    const needle = search.trim().toLowerCase();
     return entries
       .filter((e) => categories.length === 0 || categories.includes(e.category))
       .filter((e) => levels.length === 0 || levels.includes(e.level))
+      .filter((e) => needle === '' || e.message.toLowerCase().includes(needle))
+      .filter((e) => dateFrom == null || e.ts.slice(0, 10) >= dateFrom)
+      .filter((e) => dateTo == null || e.ts.slice(0, 10) <= dateTo)
       .slice()
       .reverse();
-  }, [entries, categories, levels]);
+  }, [entries, categories, levels, search, dateFrom, dateTo]);
 
   const levelCounts = useMemo(() => {
     const counts: Record<LogLevel, number> = { debug: 0, info: 0, warn: 0, error: 0 };
@@ -112,11 +164,64 @@ export function DebugScreen() {
     return counts;
   }, [entries]);
 
-  const activeFilterCount = categories.length + levels.length;
+  const activeFilterCount = categories.length + levels.length + (search ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
-  function handleDeleteAll() {
-    confirm('Delete all logs?', 'This clears every log entry and cannot be undone.', 'Delete all', clear, true);
+  function onPickDate(dateKey: string) {
+    if (datePickerFor === 'from') setDateFrom(dateKey);
+    else if (datePickerFor === 'to') setDateTo(dateKey);
+    setDatePickerFor(null);
   }
+
+  const toggleRow = useCallback((id: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const expandAll = useCallback(() => setExpandedIds(new Set(filtered.map((e) => e.id))), [filtered]);
+  const collapseAll = useCallback(() => setExpandedIds(new Set()), []);
+
+  function clearFilters() {
+    setCategories([]);
+    setLevels([]);
+    setSearch('');
+    setDateFrom(null);
+    setDateTo(null);
+  }
+
+  function handleClear() {
+    if (entries.length === 0) return;
+    confirm('Delete all logs?', `This clears every log entry (${entries.length}) and cannot be undone.`, 'Delete all', clear, true);
+  }
+
+  async function handleImport() {
+    const result = await DocumentPicker.getDocumentAsync({ type: ['text/plain', 'application/json', '*/*'], copyToCacheDirectory: true });
+    if (result.canceled || result.assets.length === 0) return;
+    let parsed: LogEntry[] | null = null;
+    try {
+      parsed = parseLogFile(await new File(result.assets[0].uri).text());
+    } catch {
+      notice('Import failed', 'Could not read that file.');
+      return;
+    }
+    if (parsed == null) {
+      notice('Import failed', "That file doesn't look like a Dishision log export.");
+      return;
+    }
+    // Append onto whatever's here (into an empty buffer, that's the same as a
+    // replace). To start clean instead, Clear first — that keeps the action
+    // set to two obvious buttons rather than a three-way replace/add prompt.
+    setEntries(parsed, 'append');
+    notice('Imported', `Added ${parsed.length} log ${parsed.length === 1 ? 'entry' : 'entries'}.`);
+  }
+
+  const renderItem = useCallback(
+    ({ item }: { item: LogEntry }) => <LogRow entry={item} expanded={expandedIds.has(item.id)} onToggle={toggleRow} />,
+    [expandedIds, toggleRow],
+  );
 
   return (
     <View style={styles.container}>
@@ -137,23 +242,63 @@ export function DebugScreen() {
         ))}
       </View>
 
-      {/* Collapsible filters */}
-      <TouchableOpacity style={styles.filtersToggle} onPress={() => setFiltersOpen((o) => !o)}>
-        <Text style={styles.filtersToggleText}>
-          {filtersOpen ? '▾' : '▸'} Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-        </Text>
-        {activeFilterCount > 0 && (
-          <TouchableOpacity
-            onPress={() => {
-              setCategories([]);
-              setLevels([]);
-            }}
-            hitSlop={8}
-          >
-            <Text style={styles.clearFilters}>Clear</Text>
+      {/* Search */}
+      <View style={styles.searchRow}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput
+          style={styles.searchInput}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search messages…"
+          placeholderTextColor={theme.colors.ink4}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        {search !== '' && (
+          <TouchableOpacity onPress={() => setSearch('')} hitSlop={8} accessibilityLabel="Clear search">
+            <Text style={styles.clearX}>✕</Text>
           </TouchableOpacity>
         )}
-      </TouchableOpacity>
+      </View>
+
+      {/* Date range — tap to open the app's calendar picker */}
+      <View style={styles.dateRow}>
+        <Text style={styles.dateLabel}>From</Text>
+        <TouchableOpacity style={styles.dateInput} onPress={() => setDatePickerFor('from')}>
+          <Text style={[styles.dateInputText, dateFrom == null && styles.dateInputPlaceholder]}>{dateFrom ? formatDMY(dateFrom) : 'Any'}</Text>
+        </TouchableOpacity>
+        <Text style={styles.dateLabel}>To</Text>
+        <TouchableOpacity style={styles.dateInput} onPress={() => setDatePickerFor('to')}>
+          <Text style={[styles.dateInputText, dateTo == null && styles.dateInputPlaceholder]}>{dateTo ? formatDMY(dateTo) : 'Any'}</Text>
+        </TouchableOpacity>
+        {(dateFrom != null || dateTo != null) && (
+          <TouchableOpacity onPress={() => { setDateFrom(null); setDateTo(null); }} hitSlop={8} accessibilityLabel="Clear dates">
+            <Text style={styles.clearX}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Collapsible category/level filters */}
+      <View style={styles.controlsRow}>
+        <TouchableOpacity style={styles.filtersToggle} onPress={() => setFiltersOpen((o) => !o)}>
+          <Text style={styles.filtersToggleText}>
+            {filtersOpen ? '▾' : '▸'} Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </Text>
+        </TouchableOpacity>
+        {activeFilterCount > 0 && (
+          <TouchableOpacity onPress={clearFilters} hitSlop={8}>
+            <Text style={styles.clearFilters}>Clear all</Text>
+          </TouchableOpacity>
+        )}
+        <View style={styles.expandControls}>
+          <TouchableOpacity style={styles.miniButton} onPress={expandAll}>
+            <Text style={styles.miniButtonText}>Expand all</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.miniButton} onPress={collapseAll}>
+            <Text style={styles.miniButtonText}>Collapse all</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {filtersOpen && (
         <View style={styles.filterPanel}>
@@ -180,26 +325,37 @@ export function DebugScreen() {
 
       {filtered.length === 0 ? (
         <View style={styles.list}>
-          <Text style={styles.empty}>No logs match the current filters.</Text>
+          <Text style={styles.empty}>{entries.length === 0 ? 'No logs captured yet.' : 'No logs match the current filters.'}</Text>
         </View>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={(e) => String(e.id)}
-          renderItem={({ item }) => <LogRow entry={item} />}
+          renderItem={renderItem}
           style={styles.list}
           contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
         />
       )}
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-        <TouchableOpacity style={styles.button} onPress={() => exportLogs(entries)}>
-          <Text style={styles.buttonText}>Export</Text>
+        <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={() => exportLogs(entries)}>
+          <Text style={styles.buttonSecondaryText}>Export</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.buttonDanger]} onPress={handleDeleteAll}>
-          <Text style={styles.buttonDangerText}>Delete all</Text>
+        <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={handleImport}>
+          <Text style={styles.buttonSecondaryText}>Import</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.button, styles.buttonDanger]} onPress={handleClear}>
+          <Text style={styles.buttonDangerText}>Clear</Text>
         </TouchableOpacity>
       </View>
+
+      <DatePickerModal
+        visible={datePickerFor != null}
+        value={datePickerFor === 'from' ? dateFrom : dateTo}
+        onSelect={onPickDate}
+        onClose={() => setDatePickerFor(null)}
+      />
 
       {modal}
     </View>
@@ -224,9 +380,43 @@ const makeStyles = (theme: AppTheme) =>
     summaryItem: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
     summaryCount: { fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
 
-    filtersToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.pill,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: theme.spacing.base,
+      height: 40,
+    },
+    searchIcon: { fontSize: theme.fontSize.sm },
+    searchInput: { flex: 1, fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink },
+    clearX: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink3 },
+
+    dateRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+    dateLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    dateInput: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.tile,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+    },
+    dateInputText: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink },
+    dateInputPlaceholder: { color: theme.colors.ink4 },
+
+    controlsRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
+    filtersToggle: {},
     filtersToggleText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
     clearFilters: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+    expandControls: { flexDirection: 'row', gap: theme.spacing.xs, marginLeft: 'auto' },
+    miniButton: { backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: 4 },
+    miniButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+
     filterPanel: {
       gap: theme.spacing.xs,
       backgroundColor: theme.colors.surface,
@@ -249,11 +439,13 @@ const makeStyles = (theme: AppTheme) =>
     list: { flex: 1 },
     listContent: { gap: theme.spacing.sm, paddingVertical: theme.spacing.xs },
     empty: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic', textAlign: 'center', paddingVertical: theme.spacing.xl },
+
     card: {
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius.card,
       borderWidth: 1,
       borderColor: theme.colors.border,
+      borderLeftWidth: 3,
       padding: theme.spacing.sm,
     },
     cardHead: { gap: 4 },
@@ -263,14 +455,18 @@ const makeStyles = (theme: AppTheme) =>
     categoryPillText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink2, textTransform: 'uppercase', letterSpacing: 0.5 },
     chevron: { marginLeft: 'auto', fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink3 },
     message: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink },
-    dataBlock: { marginTop: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: theme.spacing.xs },
-    dataControls: { flexDirection: 'row', gap: theme.spacing.xs },
-    miniButton: { backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: 4 },
-    miniButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
 
-    footer: { flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xs },
-    button: { flex: 1, backgroundColor: theme.colors.accent, paddingVertical: theme.spacing.md, borderRadius: theme.radius.card, alignItems: 'center' },
-    buttonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
+    detailBlock: { marginTop: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: theme.spacing.xs },
+    detailField: { gap: 2 },
+    detailLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.accentText, textTransform: 'uppercase', letterSpacing: 0.5 },
+    detailValue: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink },
+    detailValueMono: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+    jsonContainer: { paddingLeft: theme.spacing.xs, borderLeftWidth: 2, borderLeftColor: theme.colors.border },
+
+    footer: { flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.xs },
+    button: { flex: 1, paddingVertical: theme.spacing.md, borderRadius: theme.radius.card, alignItems: 'center' },
+    buttonSecondary: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border },
+    buttonSecondaryText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.ink },
     buttonDanger: { backgroundColor: theme.colors.redTint },
     buttonDangerText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.red },
   });

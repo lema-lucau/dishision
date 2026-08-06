@@ -30,6 +30,11 @@ export interface RecipeDraft {
   name: string;
   description: string;
   photoEmoji: string;
+  /** §8 pipeline output, or null for "no photo, use the emoji fallback".
+   * `undefined` means "leave whatever is already stored alone" — the import
+   * path (§7.3) uses that, because it applies its own photo separately from
+   * the base64 payload and must not wipe a local photo on a merge. */
+  photoUri?: string | null;
   baseServings: number;
   timelineMode: TimelineMode;
   originLabel: string;
@@ -109,12 +114,13 @@ export async function createRecipeFromDraft(db: DbClient, draft: RecipeDraft, me
   await db.execAsync('BEGIN');
   try {
     const result = await db.runAsync(
-      `INSERT INTO recipe (share_id, name, description, photo_emoji, base_servings, timeline_mode, source, origin_label, imported_from, imported_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO recipe (share_id, name, description, photo_uri, photo_emoji, base_servings, timeline_mode, source, origin_label, imported_from, imported_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         meta.shareId,
         draft.name,
         draft.description || null,
+        draft.photoUri ?? null,
         draft.photoEmoji,
         draft.baseServings,
         draft.timelineMode,
@@ -142,12 +148,17 @@ export async function createManualRecipe(db: DbClient, draft: RecipeDraft): Prom
 export async function updateManualRecipe(db: DbClient, recipeId: number, draft: RecipeDraft): Promise<void> {
   await db.execAsync('BEGIN');
   try {
+    // photo_uri is only written when the draft actually carries the field — an
+    // `undefined` photoUri leaves the stored photo untouched (see RecipeDraft).
+    const setsPhoto = draft.photoUri !== undefined;
     await db.runAsync(
       `UPDATE recipe
        SET name = ?, description = ?, photo_emoji = ?, base_servings = ?, timeline_mode = ?,
-           origin_label = ?, updated_at = datetime('now')
+           origin_label = ?, updated_at = datetime('now')${setsPhoto ? ', photo_uri = ?' : ''}
        WHERE id = ?`,
-      [draft.name, draft.description || null, draft.photoEmoji, draft.baseServings, draft.timelineMode, draft.originLabel || null, recipeId],
+      setsPhoto
+        ? [draft.name, draft.description || null, draft.photoEmoji, draft.baseServings, draft.timelineMode, draft.originLabel || null, draft.photoUri ?? null, recipeId]
+        : [draft.name, draft.description || null, draft.photoEmoji, draft.baseServings, draft.timelineMode, draft.originLabel || null, recipeId],
     );
     await writeChildren(db, recipeId, draft);
     await db.execAsync('COMMIT');

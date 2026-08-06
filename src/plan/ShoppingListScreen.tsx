@@ -4,8 +4,9 @@
 // drag-reorder within a section, add manual with autocomplete), search,
 // mark-all-checked/unchecked, and check-off -> pantry.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
+import { PillButton } from '../components/ui';
 import { DatePickerModal } from '../components/DatePickerModal';
 import { UnitPickerModal } from '../components/UnitPickerModal';
 import { pluralizeUnit } from '../lib/unitLabels';
@@ -18,13 +19,18 @@ import {
   addManualShoppingListItem,
   checkAllShoppingListItems,
   checkShoppingListItem,
+  clearShoppingList,
   deleteShoppingListItem,
+  deleteShoppingListItems,
+  findOrCreateOpenShoppingList,
   reorderShoppingListSection,
   uncheckAllShoppingListItems,
   uncheckShoppingListItem,
   updateShoppingListItem,
 } from './shoppingListMutations';
+import type { ShoppingListSection } from './loadShoppingList';
 import { generateShoppingList } from './shoppingListGeneration';
+import { parseShoppingListText, shoppingListToText } from './shoppingListText';
 import {
   groupShoppingListItems,
   loadLatestShoppingList,
@@ -87,7 +93,11 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
   const [newUnit, setNewUnit] = useState<RecipeUnit>('unit');
   const [newBuyCount, setNewBuyCount] = useState('1');
 
-  const { modal, confirm } = useConfirmModal();
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importing, setImporting] = useState(false);
+
+  const { modal, confirm, notice } = useConfirmModal();
 
   function toggleSectionCollapsed(key: string) {
     setCollapsedSections((prev) => {
@@ -119,10 +129,40 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
   }
 
   function handleDelete(item: ShoppingListItemRow) {
-    confirm('Delete item?', `Remove "${item.displayName}" from the list?`, 'Delete', async () => {
+    confirm('Delete item?', `Remove "${item.displayName}" from the shopping list? This won't change your meal plans.`, 'Delete', async () => {
       await deleteShoppingListItem(db, item.id);
       await reload();
     }, true);
+  }
+
+  // Long-press a recipe section in edit mode: drop all of that recipe's items
+  // from the shopping list. The planned meal it came from is untouched — the
+  // calendar and the shopping list are separate (that reassurance is in the copy).
+  function handleDeleteSection(section: ShoppingListSection) {
+    const count = section.items.length;
+    const isRecipe = section.key.startsWith('recipe:');
+    const message = isRecipe
+      ? `Remove all ${count} item${count === 1 ? '' : 's'} for "${section.label}" from the shopping list? Your meal plan for it stays exactly as it is.`
+      : `Remove all ${count} item${count === 1 ? '' : 's'} under "${section.label}" from the shopping list?`;
+    confirm('Remove these items?', message, 'Remove', async () => {
+      await deleteShoppingListItems(db, section.items.map((i) => i.id));
+      await reload();
+    }, true);
+  }
+
+  function handleClearList() {
+    if (!list) return;
+    confirm(
+      'Clear the whole list?',
+      "This empties the shopping list. It won't touch your calendar or meal plans — you can always regenerate.",
+      'Clear list',
+      async () => {
+        await clearShoppingList(db, list.id);
+        setEditMode(false);
+        await reload();
+      },
+      true,
+    );
   }
 
   async function handleFieldChange(item: ShoppingListItemRow, patch: { displayName?: string; quantity?: number; unit?: string; buyCount?: number }) {
@@ -139,6 +179,42 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
     const nextItems = list.items.map((item) => (idSet.has(item.id) ? orderedItems[cursor++] : item));
     setList({ ...list, items: nextItems });
     reorderShoppingListSection(db, orderedIds);
+  }
+
+  async function handleShare() {
+    if (!list || list.items.length === 0) return;
+    // The whole list, checked state included — the recipient sees what's
+    // already in the trolley too. A text share pastes anywhere; no file needed.
+    await Share.share({ message: shoppingListToText(list.items) });
+  }
+
+  async function handleImport() {
+    const result = parseShoppingListText(importText);
+    if (!result.ok) {
+      // Reject a malformed paste loudly rather than silently adding nothing.
+      notice("Couldn't import that", result.error);
+      return;
+    }
+    setImporting(true);
+    try {
+      // Imported items land in the current open list (created if there isn't
+      // one) as manual entries — the same bucket as anything you add by hand.
+      const listId = await findOrCreateOpenShoppingList(db);
+      for (const item of result.items) {
+        await addManualShoppingListItem(db, listId, {
+          displayName: item.displayName,
+          quantity: item.quantity,
+          unit: item.unit,
+          buyCount: item.buyCount,
+        });
+      }
+      setImportOpen(false);
+      setImportText('');
+      await reload();
+      notice('Imported', `Added ${result.items.length} item${result.items.length === 1 ? '' : 's'} to your list.`);
+    } finally {
+      setImporting(false);
+    }
   }
 
   async function handleMarkAll(checked: boolean) {
@@ -205,25 +281,40 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Shopping List</Text>
-        <TouchableOpacity style={styles.generateButton} onPress={() => setRangePickerVisible(true)}>
-          <Text style={styles.generateButtonText}>{list ? 'Regenerate' : 'Generate'}</Text>
+      <Text style={styles.title}>Shopping List</Text>
+      <View style={styles.actionRow}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => setImportOpen(true)} accessibilityLabel="Import a shared shopping list">
+          <Text style={styles.actionButtonText}>Import</Text>
+        </TouchableOpacity>
+        {list && list.items.length > 0 && (
+          <TouchableOpacity style={styles.actionButton} onPress={handleShare} accessibilityLabel="Share shopping list">
+            <Text style={styles.actionButtonText}>Share</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => setRangePickerVisible(true)}>
+          <Text style={styles.actionButtonPrimaryText}>{list ? 'Regenerate' : 'Generate'}</Text>
         </TouchableOpacity>
       </View>
       {list && (
         <View style={styles.dateRow}>
-          <Text style={styles.rangeLabel}>
+          <Text style={styles.rangeLabel} numberOfLines={1}>
             {list.rangeStart ? `${formatDMY(list.rangeStart)} → ${list.rangeEnd ? formatDMY(list.rangeEnd) : ''}` : ''}
           </Text>
-          <TouchableOpacity
-            style={[styles.editModeButton, editMode && styles.editModeButtonActive]}
-            onPress={() => setEditMode((e) => !e)}
-          >
-            <Text style={[styles.editModeButtonText, editMode && styles.editModeButtonTextActive]}>
-              {editMode ? 'Done' : 'Edit/Delete Items'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.editModeActions}>
+            {editMode && list.items.length > 0 && (
+              <TouchableOpacity style={styles.clearListButton} onPress={handleClearList} accessibilityLabel="Clear shopping list">
+                <Text style={styles.clearListButtonText}>Clear list</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.editModeButton, editMode && styles.editModeButtonActive]}
+              onPress={() => setEditMode((e) => !e)}
+            >
+              <Text style={[styles.editModeButtonText, editMode && styles.editModeButtonTextActive]}>
+                {editMode ? 'Done' : 'Edit/Delete Items'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -270,11 +361,16 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
               <View style={styles.sectionHeaderRow}>
                 <TouchableOpacity
                   style={styles.sectionHeaderMain}
-                  disabled={!(sectionRecipeId != null && onOpenRecipe)}
-                  onPress={() => sectionRecipeId != null && onOpenRecipe?.(sectionRecipeId)}
+                  // In edit mode the header long-press removes the whole
+                  // section; tapping still opens the recipe when not editing.
+                  disabled={!editMode && !(sectionRecipeId != null && onOpenRecipe)}
+                  onPress={() => !editMode && sectionRecipeId != null && onOpenRecipe?.(sectionRecipeId)}
+                  onLongPress={editMode ? () => handleDeleteSection(section) : undefined}
+                  delayLongPress={350}
                 >
                   {section.emoji && <Text style={styles.sectionEmoji}>{section.emoji}</Text>}
                   <Text style={styles.sectionLabel}>{section.label.toUpperCase()}</Text>
+                  {editMode && <Text style={styles.sectionDeleteHint}>hold to remove</Text>}
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => toggleSectionCollapsed(section.key)} hitSlop={8} style={styles.sectionCollapseButton}>
                   <Text style={styles.sectionCollapseIcon}>{isCollapsed ? '▸' : '▾'}</Text>
@@ -445,6 +541,38 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
         onClose={() => setUnitPickerFor(null)}
       />
 
+      <Modal visible={importOpen} transparent animationType="fade" onRequestClose={() => setImportOpen(false)}>
+        <KeyboardAvoidingView style={styles.importBackdrop} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.importCard}>
+            <Text style={styles.importTitle}>Import a shopping list</Text>
+            <Text style={styles.importSubtitle}>Paste a list someone shared with you. Its items are added to your current list.</Text>
+            <TextInput
+              style={styles.importInput}
+              value={importText}
+              onChangeText={setImportText}
+              placeholder={'🛒 Shopping list\n\n🍛 Curry\n[ ] Onion — 2 items'}
+              placeholderTextColor={theme.colors.ink4}
+              multiline
+              textAlignVertical="top"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <View style={styles.importActions}>
+              <PillButton label="Cancel" onPress={() => setImportOpen(false)} variant="soft" haptic="light" style={styles.importActionFlex} />
+              <PillButton
+                label={importing ? 'Importing…' : 'Import'}
+                onPress={handleImport}
+                variant="accent"
+                haptic="commit"
+                disabled={importing || importText.trim() === ''}
+                style={styles.importActionFlex}
+                testID="shopping-import-confirm"
+              />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {modal}
     </View>
   );
@@ -578,12 +706,35 @@ function ItemRow({
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     container: { flex: 1, padding: theme.spacing.base, gap: theme.spacing.sm },
-    headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
-    generateButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs },
-    generateButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentFg },
-    rangeLabel: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
-    dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: theme.spacing.xs },
+    actionRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginTop: theme.spacing.sm },
+    actionButton: { backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm },
+    actionButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+    actionButtonPrimary: { backgroundColor: theme.colors.accent, marginLeft: 'auto' },
+    actionButtonPrimaryText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentFg },
+    importBackdrop: { flex: 1, backgroundColor: theme.onPhoto.scrim.colors[1], alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl },
+    importCard: { width: '100%', maxWidth: 420, backgroundColor: theme.colors.surface, borderRadius: theme.radius.hero, padding: theme.spacing.xl, paddingBottom: theme.spacing.xxl, gap: theme.spacing.md },
+    importTitle: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.lg, color: theme.colors.ink },
+    importSubtitle: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2, lineHeight: theme.fontSize.sm * 1.4 },
+    importInput: {
+      minHeight: 120,
+      maxHeight: 220,
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.tile,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.md,
+      fontFamily: theme.fonts.data.medium,
+      fontSize: theme.fontSize.sm,
+      color: theme.colors.ink,
+    },
+    importActions: { flexDirection: 'row', gap: theme.spacing.sm },
+    importActionFlex: { flex: 1 },
+    rangeLabel: { flex: 1, fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, marginTop: theme.spacing.xs },
+    editModeActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+    clearListButton: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs, borderRadius: theme.radius.pill, backgroundColor: theme.colors.redTint },
+    clearListButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.red },
     editModeButton: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
     editModeButtonActive: { backgroundColor: theme.colors.accent },
     editModeButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
@@ -624,6 +775,7 @@ const makeStyles = (theme: AppTheme) =>
     sectionHeaderMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
     sectionEmoji: { fontSize: theme.fontSize.base },
     sectionLabel: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.6 },
+    sectionDeleteHint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink4, fontStyle: 'italic' },
     sectionCollapseButton: { paddingHorizontal: theme.spacing.xs, paddingVertical: 2 },
     sectionCollapseIcon: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.ink3 },
     staticRowWrap: { marginBottom: theme.spacing.xs },

@@ -26,10 +26,19 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "category": ["BROWSABLE", "DEFAULT"],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
           "data": [
-            { "scheme": "content", "pathPattern": ".*\\.dishision" },
-            { "scheme": "file", "pathPattern": ".*\\.dishision" }
+            {
+              "scheme": "content",
+              "pathPattern": ".*\\.dishision"
+            },
+            {
+              "scheme": "file",
+              "pathPattern": ".*\\.dishision"
+            }
           ]
         }
       ]
@@ -42,7 +51,17 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Dishision uses your photos to attach a picture of what you cooked to a cook log."
+          "photosPermission": "Dishision uses your photos to attach a picture of what you cooked to a recipe or a cook log.",
+          "cameraPermission": "Dishision uses your camera so you can photograph a dish as soon as it's out of the pan.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "buildArchs": ["arm64-v8a"]
+          }
         }
       ]
     ]

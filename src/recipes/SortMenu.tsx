@@ -3,6 +3,7 @@
 // control for direction, not one per option.
 import { useMemo } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { SortDirection, SortKey } from './queryEngine';
 
@@ -41,10 +42,11 @@ interface SortMenuProps {
 export function SortMenu({ visible, sort, direction, onChange, onClose }: SortMenuProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: theme.spacing.base + insets.bottom }]}>
           <View style={styles.headerRow}>
             <Text style={styles.title}>Sort by</Text>
             <TouchableOpacity

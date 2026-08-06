@@ -2,6 +2,7 @@
 // settings are only ever written when a user actually changes them, so every
 // read degrades honestly to a caller-supplied default rather than throwing.
 import type { DbClient } from '../db/DbClient';
+import { parseMealCategories, type MealCategory } from '../recommend/mealCategories';
 
 export async function getSetting(db: DbClient, key: string): Promise<string | null> {
   const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM setting WHERE key = ?', [key]);
@@ -87,4 +88,23 @@ export async function getCostStalenessDays(db: DbClient): Promise<CostStalenessD
 // every app open. Stores the ISO instant it was last dismissed.
 export async function getCostPromptDismissedAt(db: DbClient): Promise<string | null> {
   return getSetting(db, 'cost_prompt_dismissed_at');
+}
+
+// First-run onboarding (product review §2): shown once, on the very first
+// launch, then never again — the flag survives even if it was skipped.
+export async function getOnboardingComplete(db: DbClient): Promise<boolean> {
+  return (await getSettingWithDefault(db, 'onboarding_complete', '0')) === '1';
+}
+
+// §12 dev tooling: the Debug entry's visibility is remembered across launches.
+// Off by default; hydrated into the in-memory settings store at app start.
+export async function getDebugMode(db: DbClient): Promise<boolean> {
+  return (await getSettingWithDefault(db, 'debug_mode', '0')) === '1';
+}
+
+// Meal-category recommender filter: which of breakfast/lunch/dinner/dessert the
+// engine is allowed to suggest. Stored as a CSV; absent = all four (no
+// restriction). See recommend/mealCategories.ts for the set semantics.
+export async function getRecommendCategories(db: DbClient): Promise<MealCategory[]> {
+  return parseMealCategories(await getSetting(db, 'recommend_categories'));
 }

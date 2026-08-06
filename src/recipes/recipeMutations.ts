@@ -43,6 +43,27 @@ export async function clearExclusion(db: DbClient, recipeId: number): Promise<vo
   await db.runAsync('DELETE FROM recipe_exclusion WHERE recipe_id = ?', [recipeId]);
 }
 
+// Bulk un-exclude (§5.4). Scoped to one kind on purpose: clearing tonight's
+// dismissals must not also resurrect everything you swore off permanently.
+// Returns how many rows went, so the caller can report it honestly.
+export async function clearExclusionsOfKind(
+  db: DbClient,
+  kind: 'never_again' | 'not_tonight',
+): Promise<number> {
+  const result = await db.runAsync('DELETE FROM recipe_exclusion WHERE kind = ?', [kind]);
+  logger.info('db', 'Exclusions cleared in bulk', { kind, cleared: result.changes });
+  return result.changes;
+}
+
+// Sets (or clears, with null) a recipe's hero photo. Separate from the form's
+// full save so Cook Complete can promote the photo you just took without
+// round-tripping the whole draft. The URI must already be through the §8
+// pipeline — this never compresses.
+export async function setRecipePhoto(db: DbClient, recipeId: number, photoUri: string | null): Promise<void> {
+  await db.runAsync(`UPDATE recipe SET photo_uri = ?, updated_at = datetime('now') WHERE id = ?`, [photoUri, recipeId]);
+  logger.info('db', 'Set recipe photo', { recipeId, cleared: photoUri == null });
+}
+
 export async function deleteRecipe(db: DbClient, recipeId: number): Promise<void> {
   await db.runAsync('DELETE FROM recipe WHERE id = ?', [recipeId]);
   await invalidateMedianCostCache(db);
@@ -54,21 +75,26 @@ export async function copyRecipe(db: DbClient, recipeId: number): Promise<number
   const recipe = await db.getFirstAsync<{
     name: string;
     description: string | null;
+    photo_uri: string | null;
     photo_emoji: string;
     base_servings: number;
     timeline_mode: string;
     origin_label: string | null;
     origin_url: string | null;
-  }>('SELECT name, description, photo_emoji, base_servings, timeline_mode, origin_label, origin_url FROM recipe WHERE id = ?', [recipeId]);
+  }>('SELECT name, description, photo_uri, photo_emoji, base_servings, timeline_mode, origin_label, origin_url FROM recipe WHERE id = ?', [recipeId]);
   if (!recipe) throw new Error(`Recipe ${recipeId} not found`);
 
   const result = await db.runAsync(
-    `INSERT INTO recipe (share_id, name, description, photo_emoji, base_servings, timeline_mode, source, origin_label, origin_url)
-     VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?)`,
+    `INSERT INTO recipe (share_id, name, description, photo_uri, photo_emoji, base_servings, timeline_mode, source, origin_label, origin_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?)`,
     [
       uuidv4(),
       `${recipe.name} (copy)`,
       recipe.description,
+      // Both rows point at the same file on disk. Nothing in the app deletes a
+      // photo file, so there's no dangling-URI risk — and a copy losing the
+      // photo would be the more surprising outcome.
+      recipe.photo_uri,
       recipe.photo_emoji,
       recipe.base_servings,
       recipe.timeline_mode,

@@ -3,6 +3,7 @@
 // per day are supported by just inserting more rows.
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { recipeName } from '../debug/logNames';
 
 export interface CreatePlannedMealInput {
   recipeId: number;
@@ -16,7 +17,7 @@ export async function createPlannedMeal(db: DbClient, input: CreatePlannedMealIn
     'INSERT INTO planned_meal (recipe_id, planned_date, slot, planned_servings) VALUES (?, ?, ?, ?)',
     [input.recipeId, input.plannedDate, input.slot, input.plannedServings],
   );
-  logger.info('db', 'Planned meal created', { plannedMealId: result.lastInsertRowId, ...input });
+  logger.info('db', 'Planned meal created', { plannedMealId: result.lastInsertRowId, recipeName: await recipeName(db, input.recipeId), ...input });
   return result.lastInsertRowId;
 }
 
@@ -46,12 +47,13 @@ export async function updatePlannedMeal(db: DbClient, id: number, patch: UpdateP
       id,
     ],
   );
-  logger.info('db', 'Planned meal updated', { plannedMealId: id, ...patch });
+  logger.info('db', 'Planned meal updated', { plannedMealId: id, recipeName: await recipeName(db, patch.recipeId ?? existing.recipe_id), ...patch });
 }
 
 export async function deletePlannedMeal(db: DbClient, id: number): Promise<void> {
+  const existing = await db.getFirstAsync<{ recipe_id: number }>('SELECT recipe_id FROM planned_meal WHERE id = ?', [id]);
   await db.runAsync('DELETE FROM planned_meal WHERE id = ?', [id]);
-  logger.info('db', 'Planned meal deleted', { plannedMealId: id });
+  logger.info('db', 'Planned meal deleted', { plannedMealId: id, recipeName: await recipeName(db, existing?.recipe_id) });
 }
 
 // Bulk-clears every planned meal in a date range (the weekly planner's

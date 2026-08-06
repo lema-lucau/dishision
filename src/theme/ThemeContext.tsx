@@ -7,6 +7,7 @@ import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
 import { getSetting } from '../settings/getSetting';
 import { setSetting } from '../settings/setSetting';
+import { deriveVisuals, type VisualTokens } from './deriveVisuals';
 import { fonts, fontSize, radius, spacing, type Fonts, type FontSize, type Radius, type Spacing } from './tokens';
 import { DEFAULT_THEME_ID, themes, type Theme, type ThemeId } from './themes';
 
@@ -28,10 +29,18 @@ export interface AppTheme {
   fontSize: FontSize;
   spacing: Spacing;
   radius: Radius;
+  // The derived visual layer (redesign R2) — computed once, here, from the
+  // colours above. Components read these instead of writing their own shadow
+  // props or gradient stops.
+  elevation: VisualTokens['elevation'];
+  gradients: VisualTokens['gradients'];
+  glow: VisualTokens['glow'];
+  onPhoto: VisualTokens['onPhoto'];
 }
 
 function composeAppTheme(id: ThemeId): AppTheme {
   const t = themes[id];
+  const visuals = deriveVisuals(t.colors, t.mode);
   return {
     id: t.id,
     name: t.name,
@@ -43,6 +52,7 @@ function composeAppTheme(id: ThemeId): AppTheme {
     fontSize,
     spacing,
     radius,
+    ...visuals,
   };
 }
 

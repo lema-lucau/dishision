@@ -4,7 +4,9 @@ import {
   addManualShoppingListItem,
   checkAllShoppingListItems,
   checkShoppingListItem,
+  clearShoppingList,
   deleteShoppingListItem,
+  deleteShoppingListItems,
   reorderShoppingListSection,
   uncheckAllShoppingListItems,
   uncheckShoppingListItem,
@@ -49,6 +51,42 @@ describe('shoppingListMutations (§5.8)', () => {
       spinachId,
     ]);
     expect(movement).toMatchObject({ delta: 200, reason: 'shopping' });
+  });
+
+  it('deleteShoppingListItems removes only the given items, leaving planned meals untouched', async () => {
+    const recipe = await db.runAsync(`INSERT INTO recipe (share_id, name, photo_emoji, source) VALUES ('s1', 'Curry', '🍛', 'manual')`);
+    await db.runAsync(`INSERT INTO planned_meal (recipe_id, planned_date, slot, planned_servings) VALUES (?, '2026-08-10', 'dinner', 2)`, [
+      recipe.lastInsertRowId,
+    ]);
+    const listId = await makeList(db);
+    const a = await addManualShoppingListItem(db, listId, { displayName: 'Onion', quantity: 1, unit: 'unit' });
+    const b = await addManualShoppingListItem(db, listId, { displayName: 'Garlic', quantity: 2, unit: 'unit' });
+    const c = await addManualShoppingListItem(db, listId, { displayName: 'Rice', quantity: 300, unit: 'g' });
+
+    await deleteShoppingListItems(db, [a, b]);
+
+    const remaining = await db.getAllAsync<{ id: number }>('SELECT id FROM shopping_list_item WHERE list_id = ?', [listId]);
+    expect(remaining.map((r) => r.id)).toEqual([c]);
+    // The calendar plan is a separate table and must be left alone.
+    const plans = await db.getAllAsync('SELECT id FROM planned_meal');
+    expect(plans).toHaveLength(1);
+  });
+
+  it('clearShoppingList empties the list but never touches planned meals', async () => {
+    const recipe = await db.runAsync(`INSERT INTO recipe (share_id, name, photo_emoji, source) VALUES ('s2', 'Stew', '🍲', 'manual')`);
+    await db.runAsync(`INSERT INTO planned_meal (recipe_id, planned_date, slot, planned_servings) VALUES (?, '2026-08-11', 'dinner', 2)`, [
+      recipe.lastInsertRowId,
+    ]);
+    const listId = await makeList(db);
+    await addManualShoppingListItem(db, listId, { displayName: 'Onion', quantity: 1, unit: 'unit' });
+    await addManualShoppingListItem(db, listId, { displayName: 'Beef', quantity: 500, unit: 'g' });
+
+    await clearShoppingList(db, listId);
+
+    const items = await db.getAllAsync('SELECT id FROM shopping_list_item WHERE list_id = ?', [listId]);
+    expect(items).toHaveLength(0);
+    const plans = await db.getAllAsync('SELECT id FROM planned_meal');
+    expect(plans).toHaveLength(1);
   });
 
   it('converts a non-base unit at check-off time', async () => {

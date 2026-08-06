@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running cook phase after auto-starting a session (no timed prep, no unfinished session) 1`] = `
+exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) opens in the ready state — clock at zero, Start cooking as the gate 1`] = `
 <View
   style={
     [
@@ -29,11 +29,16 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
   >
     <Text
       style={
-        {
-          "color": "#7A6E64",
-          "fontFamily": "IBMPlexMono_500Medium",
-          "fontSize": 14,
-        }
+        [
+          {
+            "color": "#7A6E64",
+            "fontFamily": "IBMPlexMono_500Medium",
+            "fontSize": 14,
+          },
+          {
+            "color": "#A0938A",
+          },
+        ]
       }
     >
       0 mins
@@ -42,11 +47,16 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
     </Text>
     <Text
       style={
-        {
-          "color": "#7A6E64",
-          "fontFamily": "IBMPlexMono_500Medium",
-          "fontSize": 14,
-        }
+        [
+          {
+            "color": "#7A6E64",
+            "fontFamily": "IBMPlexMono_500Medium",
+            "fontSize": 14,
+          },
+          {
+            "color": "#A0938A",
+          },
+        ]
       }
     >
       00:00
@@ -329,11 +339,11 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
               }
             }
             strokeLinecap={1}
-            strokeWidth={4}
-            x1="7"
-            x2="7"
-            y1="4"
-            y2="20"
+            strokeWidth={2.2}
+            x1="4"
+            x2="20"
+            y1="6"
+            y2="6"
           />
           <RNSVGLine
             fill={
@@ -356,23 +366,287 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
               }
             }
             strokeLinecap={1}
-            strokeWidth={4}
-            x1="17"
-            x2="17"
-            y1="4"
-            y2="20"
+            strokeWidth={2.2}
+            x1="4"
+            x2="20"
+            y1="12"
+            y2="12"
+          />
+          <RNSVGLine
+            fill={
+              {
+                "payload": 4278190080,
+                "type": 0,
+              }
+            }
+            propList={
+              [
+                "stroke",
+                "strokeWidth",
+                "strokeLinecap",
+              ]
+            }
+            stroke={
+              {
+                "payload": 4288891434,
+                "type": 0,
+              }
+            }
+            strokeLinecap={1}
+            strokeWidth={2.2}
+            x1="4"
+            x2="20"
+            y1="18"
+            y2="18"
           />
         </RNSVGGroup>
       </RNSVGSvgView>
     </View>
+  </View>
+  <View
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": false,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignSelf": "stretch",
+        },
+        false,
+      ]
+    }
+    testID="start-cooking"
+  >
+    <ViewManagerAdapter_ExpoLinearGradient
+      colors={
+        [
+          4290928186,
+          4289155378,
+        ]
+      }
+      endPoint={
+        [
+          1,
+          1,
+        ]
+      }
+      startPoint={
+        [
+          0,
+          0,
+        ]
+      }
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 20,
+            "justifyContent": "center",
+            "minHeight": 48,
+            "paddingHorizontal": 18,
+            "paddingVertical": 12,
+          },
+          false,
+          {
+            "alignSelf": "stretch",
+          },
+          false,
+          false,
+          false,
+          undefined,
+        ]
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_700Bold",
+                "fontSize": 14,
+              },
+              false,
+              {
+                "color": "#FFF6F0",
+              },
+            ]
+          }
+        >
+          Start cooking
+        </Text>
+      </View>
+    </ViewManagerAdapter_ExpoLinearGradient>
+  </View>
+  <View
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": undefined,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onClick={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "#F3E9DF",
+        "borderRadius": 13,
+        "marginBottom": 16,
+        "opacity": 1,
+        "paddingVertical": 8,
+      }
+    }
+  >
+    <Text
+      style={
+        {
+          "color": "#7A6E64",
+          "fontFamily": "PublicSans_600SemiBold",
+          "fontSize": 12.5,
+        }
+      }
+    >
+      Exit
+    </Text>
+  </View>
+</View>
+`;
+
+exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) shows one tab per lane on a parallel recipe, and pins the lane the cook picks 1`] = `
+<View
+  style={
+    [
+      {
+        "backgroundColor": "#FDF8F3",
+        "flex": 1,
+        "gap": 16,
+        "padding": 16,
+      },
+      {
+        "paddingBottom": 16,
+        "paddingTop": 16,
+      },
+    ]
+  }
+>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 12,
+        "justifyContent": "space-between",
+      }
+    }
+  >
+    <Text
+      style={
+        [
+          {
+            "color": "#7A6E64",
+            "fontFamily": "IBMPlexMono_500Medium",
+            "fontSize": 14,
+          },
+          {
+            "color": "#A0938A",
+          },
+        ]
+      }
+    >
+      0 mins
+       / 
+      9 mins
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#7A6E64",
+            "fontFamily": "IBMPlexMono_500Medium",
+            "fontSize": 14,
+          },
+          {
+            "color": "#A0938A",
+          },
+        ]
+      }
+    >
+      00:00
+    </Text>
+  </View>
+  <View
+    style={
+      {
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "gap": 8,
+      }
+    }
+    testID="lane-tabs"
+  >
     <View
+      accessibilityRole="tab"
       accessibilityState={
         {
           "busy": undefined,
           "checked": undefined,
           "disabled": undefined,
           "expanded": undefined,
-          "selected": undefined,
+          "selected": true,
         }
       }
       accessibilityValue={
@@ -386,7 +660,9 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
       accessible={true}
       collapsable={false}
       focusable={true}
+      onBlur={[Function]}
       onClick={[Function]}
+      onFocus={[Function]}
       onResponderGrant={[Function]}
       onResponderMove={[Function]}
       onResponderRelease={[Function]}
@@ -394,85 +670,71 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
       onResponderTerminationRequest={[Function]}
       onStartShouldSetResponder={[Function]}
       style={
-        {
-          "alignItems": "center",
-          "backgroundColor": "#F3E9DF",
-          "borderRadius": 28,
-          "height": 56,
-          "justifyContent": "center",
-          "opacity": 1,
-          "width": 56,
-        }
+        [
+          {
+            "alignItems": "center",
+            "backgroundColor": "#F3E9DF",
+            "borderRadius": 20,
+            "flexBasis": 0,
+            "flexGrow": 1,
+            "gap": 2,
+            "justifyContent": "center",
+            "minHeight": 44,
+            "minWidth": 84,
+            "paddingHorizontal": 12,
+            "paddingVertical": 8,
+          },
+          {
+            "backgroundColor": "#F4E0D7",
+          },
+        ]
       }
+      testID="lane-tab-Curry"
     >
-      <RNSVGSvgView
-        align="xMidYMid"
-        bbHeight={26}
-        bbWidth={26}
-        fill="none"
-        focusable={false}
-        height={26}
-        meetOrSlice={0}
-        minX={0}
-        minY={0}
+      <Text
+        numberOfLines={1}
         style={
           [
             {
-              "backgroundColor": "transparent",
-              "borderWidth": 0,
+              "color": "#7A6E64",
+              "fontFamily": "PublicSans_600SemiBold",
+              "fontSize": 12.5,
             },
             {
-              "flex": 0,
-              "height": 26,
-              "width": 26,
+              "color": "#A34A2A",
             },
+            false,
           ]
         }
-        vbHeight={24}
-        vbWidth={24}
-        width={26}
       >
-        <RNSVGGroup
-          fill={null}
-          propList={
-            [
-              "fill",
-            ]
-          }
-        >
-          <RNSVGPath
-            d="M15 5 L8 12 L15 19"
-            fill={null}
-            propList={
-              [
-                "fill",
-                "stroke",
-                "strokeWidth",
-                "strokeLinecap",
-                "strokeLinejoin",
-              ]
-            }
-            stroke={
-              {
-                "payload": 4288891434,
-                "type": 0,
-              }
-            }
-            strokeLinecap={1}
-            strokeLinejoin={1}
-            strokeWidth={3.5}
-          />
-        </RNSVGGroup>
-      </RNSVGSvgView>
+        ●
+         
+        Curry
+      </Text>
+      <Text
+        style={
+          [
+            {
+              "color": "#A0938A",
+              "fontFamily": "IBMPlexMono_500Medium",
+              "fontSize": 11,
+            },
+            false,
+          ]
+        }
+      >
+        2 mins
+      </Text>
     </View>
     <View
+      accessibilityRole="tab"
       accessibilityState={
         {
           "busy": undefined,
           "checked": undefined,
           "disabled": undefined,
           "expanded": undefined,
-          "selected": undefined,
+          "selected": false,
         }
       }
       accessibilityValue={
@@ -486,7 +748,9 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
       accessible={true}
       collapsable={false}
       focusable={true}
+      onBlur={[Function]}
       onClick={[Function]}
+      onFocus={[Function]}
       onResponderGrant={[Function]}
       onResponderMove={[Function]}
       onResponderRelease={[Function]}
@@ -494,77 +758,241 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
       onResponderTerminationRequest={[Function]}
       onStartShouldSetResponder={[Function]}
       style={
-        {
-          "alignItems": "center",
-          "backgroundColor": "#F3E9DF",
-          "borderRadius": 28,
-          "height": 56,
-          "justifyContent": "center",
-          "opacity": 1,
-          "width": 56,
-        }
+        [
+          {
+            "alignItems": "center",
+            "backgroundColor": "#F3E9DF",
+            "borderRadius": 20,
+            "flexBasis": 0,
+            "flexGrow": 1,
+            "gap": 2,
+            "justifyContent": "center",
+            "minHeight": 44,
+            "minWidth": 84,
+            "paddingHorizontal": 12,
+            "paddingVertical": 8,
+          },
+          false,
+        ]
       }
+      testID="lane-tab-Rice"
     >
-      <RNSVGSvgView
-        align="xMidYMid"
-        bbHeight={26}
-        bbWidth={26}
-        fill="none"
-        focusable={false}
-        height={26}
-        meetOrSlice={0}
-        minX={0}
-        minY={0}
+      <Text
+        numberOfLines={1}
         style={
           [
             {
-              "backgroundColor": "transparent",
-              "borderWidth": 0,
+              "color": "#7A6E64",
+              "fontFamily": "PublicSans_600SemiBold",
+              "fontSize": 12.5,
             },
-            {
-              "flex": 0,
-              "height": 26,
-              "width": 26,
-            },
+            false,
+            false,
           ]
         }
-        vbHeight={24}
-        vbWidth={24}
-        width={26}
       >
-        <RNSVGGroup
-          fill={null}
-          propList={
+        ○
+         
+        Rice
+      </Text>
+      <Text
+        style={
+          [
+            {
+              "color": "#A0938A",
+              "fontFamily": "IBMPlexMono_500Medium",
+              "fontSize": 11,
+            },
+            false,
+          ]
+        }
+      >
+        in 2 mins
+      </Text>
+    </View>
+  </View>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "alignItems": "center",
+        "flexGrow": 1,
+        "gap": 16,
+        "justifyContent": "center",
+      }
+    }
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <View>
+      <Text
+        style={
+          {
+            "color": "#A0938A",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 12.5,
+            "letterSpacing": 1,
+          }
+        }
+      >
+        COOK
+         · Curry
+         · Step 1 of 2
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#2C2420",
+            "fontFamily": "Fraunces_700Bold",
+            "fontSize": 44,
+            "textAlign": "center",
+          }
+        }
+      >
+        Step 1
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 4,
+          }
+        }
+      >
+        <RNSVGSvgView
+          align="xMidYMid"
+          bbHeight={22}
+          bbWidth={22}
+          fill="none"
+          focusable={false}
+          height={22}
+          meetOrSlice={0}
+          minX={0}
+          minY={0}
+          style={
             [
-              "fill",
+              {
+                "backgroundColor": "transparent",
+                "borderWidth": 0,
+              },
+              {
+                "flex": 0,
+                "height": 22,
+                "width": 22,
+              },
             ]
           }
+          vbHeight={24}
+          vbWidth={24}
+          width={22}
         >
-          <RNSVGPath
-            d="M9 5 L16 12 L9 19"
+          <RNSVGGroup
             fill={null}
             propList={
               [
                 "fill",
-                "stroke",
-                "strokeWidth",
-                "strokeLinecap",
-                "strokeLinejoin",
               ]
             }
-            stroke={
-              {
-                "payload": 4288891434,
-                "type": 0,
+          >
+            <RNSVGCircle
+              cx="12"
+              cy="12"
+              fill={
+                {
+                  "payload": 4278190080,
+                  "type": 0,
+                }
               }
+              propList={
+                [
+                  "stroke",
+                  "strokeWidth",
+                ]
+              }
+              r="9"
+              stroke={
+                {
+                  "payload": 4288891434,
+                  "type": 0,
+                }
+              }
+              strokeWidth={2}
+            />
+            <RNSVGPath
+              d="M12 7 V12 L16 14"
+              fill={
+                {
+                  "payload": 4278190080,
+                  "type": 0,
+                }
+              }
+              propList={
+                [
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4288891434,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+          </RNSVGGroup>
+        </RNSVGSvgView>
+        <Text
+          style={
+            {
+              "color": "#A34A2A",
+              "fontFamily": "IBMPlexMono_600SemiBold",
+              "fontSize": 24,
             }
-            strokeLinecap={1}
-            strokeLinejoin={1}
-            strokeWidth={3.5}
-          />
-        </RNSVGGroup>
-      </RNSVGSvgView>
+          }
+        >
+          2 mins
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "backgroundColor": "#EDE4DA",
+            "height": 1,
+            "width": "100%",
+          }
+        }
+      />
+      <Text
+        style={
+          {
+            "color": "#7A6E64",
+            "fontFamily": "PublicSans_400Regular",
+            "fontSize": 14,
+          }
+        }
+      >
+        NEXT · 
+        Step 3
+      </Text>
     </View>
+  </RCTScrollView>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "justifyContent": "space-around",
+      }
+    }
+  >
     <View
       accessibilityState={
         {
@@ -726,11 +1154,12 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
     </View>
   </View>
   <View
+    accessibilityRole="button"
     accessibilityState={
       {
         "busy": undefined,
         "checked": undefined,
-        "disabled": undefined,
+        "disabled": false,
         "expanded": undefined,
         "selected": undefined,
       }
@@ -746,7 +1175,9 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
     accessible={true}
     collapsable={false}
     focusable={true}
+    onBlur={[Function]}
     onClick={[Function]}
+    onFocus={[Function]}
     onResponderGrant={[Function]}
     onResponderMove={[Function]}
     onResponderRelease={[Function]}
@@ -754,26 +1185,82 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
     onResponderTerminationRequest={[Function]}
     onStartShouldSetResponder={[Function]}
     style={
-      {
-        "alignItems": "center",
-        "backgroundColor": "#C25E3A",
-        "borderRadius": 13,
-        "opacity": 1,
-        "paddingVertical": 16,
-      }
-    }
-  >
-    <Text
-      style={
+      [
         {
-          "color": "#FFF6F0",
-          "fontFamily": "PublicSans_700Bold",
-          "fontSize": 14,
-        }
+          "alignSelf": "stretch",
+        },
+        false,
+      ]
+    }
+    testID="start-cooking"
+  >
+    <ViewManagerAdapter_ExpoLinearGradient
+      colors={
+        [
+          4290928186,
+          4289155378,
+        ]
+      }
+      endPoint={
+        [
+          1,
+          1,
+        ]
+      }
+      startPoint={
+        [
+          0,
+          0,
+        ]
+      }
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 20,
+            "justifyContent": "center",
+            "minHeight": 48,
+            "paddingHorizontal": 18,
+            "paddingVertical": 12,
+          },
+          false,
+          {
+            "alignSelf": "stretch",
+          },
+          false,
+          false,
+          false,
+          undefined,
+        ]
       }
     >
-      Complete
-    </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "PublicSans_700Bold",
+                "fontSize": 14,
+              },
+              false,
+              {
+                "color": "#FFF6F0",
+              },
+            ]
+          }
+        >
+          Start cooking
+        </Text>
+      </View>
+    </ViewManagerAdapter_ExpoLinearGradient>
   </View>
   <View
     accessibilityState={
@@ -823,7 +1310,7 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) renders the running co
         }
       }
     >
-      Exit (keeps your progress)
+      Exit
     </Text>
   </View>
 </View>

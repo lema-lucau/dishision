@@ -42,7 +42,7 @@ export async function addManualShoppingListItem(db: DbClient, listId: number, in
      VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
     [listId, input.canonicalId ?? null, capitalize(input.displayName.trim()), input.quantity, input.unit, input.buyCount ?? 1, sortOrder],
   );
-  logger.info('db', 'Manual shopping list item added', { listId, itemId: result.lastInsertRowId });
+  logger.info('db', 'Manual shopping list item added', { listId, itemId: result.lastInsertRowId, name: input.displayName });
   return result.lastInsertRowId;
 }
 
@@ -70,6 +70,22 @@ export async function updateShoppingListItem(db: DbClient, itemId: number, patch
 
 export async function deleteShoppingListItem(db: DbClient, itemId: number): Promise<void> {
   await db.runAsync('DELETE FROM shopping_list_item WHERE id = ?', [itemId]);
+}
+
+// Deletes a set of items by id in one statement. Used by the section-level
+// "remove this recipe's items" long-press and the whole-list Clear button.
+// Only ever touches shopping_list_item — planned_meal (the calendar) is a
+// separate table and is deliberately left untouched.
+export async function deleteShoppingListItems(db: DbClient, itemIds: number[]): Promise<void> {
+  if (itemIds.length === 0) return;
+  const placeholders = itemIds.map(() => '?').join(',');
+  await db.runAsync(`DELETE FROM shopping_list_item WHERE id IN (${placeholders})`, itemIds);
+}
+
+// Empties a whole list. Same guarantee as above: the calendar plans that the
+// list was generated from are not affected.
+export async function clearShoppingList(db: DbClient, listId: number): Promise<void> {
+  await db.runAsync('DELETE FROM shopping_list_item WHERE list_id = ?', [listId]);
 }
 
 // Drag-drop reorder, constrained to a single section: `orderedItemIds` is
@@ -116,6 +132,7 @@ async function applyPantryDelta(db: DbClient, canonicalId: number, delta: number
 
 interface ShoppingItemForToggle {
   canonical_id: number | null;
+  display_name: string;
   quantity: number;
   unit: RecipeUnit;
   buy_count: number;
@@ -144,7 +161,7 @@ async function pantryDeltaForItem(db: DbClient, item: ShoppingItemForToggle): Pr
 // it still checks off, it just can't inform the pantry pool.
 export async function checkShoppingListItem(db: DbClient, itemId: number): Promise<void> {
   const item = await db.getFirstAsync<ShoppingItemForToggle>(
-    'SELECT canonical_id, quantity, unit, buy_count, checked FROM shopping_list_item WHERE id = ?',
+    'SELECT canonical_id, display_name, quantity, unit, buy_count, checked FROM shopping_list_item WHERE id = ?',
     [itemId],
   );
   if (!item || item.checked === 1) return;
@@ -153,13 +170,13 @@ export async function checkShoppingListItem(db: DbClient, itemId: number): Promi
   if (delta != null) await applyPantryDelta(db, item.canonical_id!, delta);
 
   await db.runAsync(`UPDATE shopping_list_item SET checked = 1, checked_at = datetime('now') WHERE id = ?`, [itemId]);
-  logger.info('pantry', 'Shopping list item checked off', { itemId, canonicalId: item.canonical_id });
+  logger.info('pantry', 'Shopping list item checked off', { itemId, canonicalId: item.canonical_id, name: item.display_name });
 }
 
 // Unchecking reverses exactly the delta checkShoppingListItem applied.
 export async function uncheckShoppingListItem(db: DbClient, itemId: number): Promise<void> {
   const item = await db.getFirstAsync<ShoppingItemForToggle>(
-    'SELECT canonical_id, quantity, unit, buy_count, checked FROM shopping_list_item WHERE id = ?',
+    'SELECT canonical_id, display_name, quantity, unit, buy_count, checked FROM shopping_list_item WHERE id = ?',
     [itemId],
   );
   if (!item || item.checked === 0) return;
@@ -168,7 +185,7 @@ export async function uncheckShoppingListItem(db: DbClient, itemId: number): Pro
   if (delta != null) await applyPantryDelta(db, item.canonical_id!, -delta);
 
   await db.runAsync('UPDATE shopping_list_item SET checked = 0, checked_at = NULL WHERE id = ?', [itemId]);
-  logger.info('pantry', 'Shopping list item unchecked', { itemId, canonicalId: item.canonical_id });
+  logger.info('pantry', 'Shopping list item unchecked', { itemId, canonicalId: item.canonical_id, name: item.display_name });
 }
 
 // Mark-all-checked / mark-all-unchecked bulk actions, applied item by item

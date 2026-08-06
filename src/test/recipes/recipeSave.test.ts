@@ -95,6 +95,25 @@ describe('createManualRecipe / updateManualRecipe (§5.5)', () => {
     expect(ingredients).toHaveLength(2);
   });
 
+  it('persists photoUri on create, and leaves it untouched when an update omits the field', async () => {
+    const id = await createManualRecipe(db, baseDraft({ photoUri: 'file:///photos/hero.jpg' }));
+    let row = await db.getFirstAsync<{ photo_uri: string | null }>('SELECT photo_uri FROM recipe WHERE id = ?', [id]);
+    expect(row?.photo_uri).toBe('file:///photos/hero.jpg');
+
+    // A draft with photoUri undefined (the form loads it, but the import merge
+    // path leaves it off) must not wipe the stored photo.
+    const draftWithoutPhoto = baseDraft({ name: 'Renamed' });
+    delete (draftWithoutPhoto as { photoUri?: string | null }).photoUri;
+    await updateManualRecipe(db, id, draftWithoutPhoto);
+    row = await db.getFirstAsync<{ photo_uri: string | null }>('SELECT photo_uri FROM recipe WHERE id = ?', [id]);
+    expect(row?.photo_uri).toBe('file:///photos/hero.jpg');
+
+    // An explicit null clears it.
+    await updateManualRecipe(db, id, baseDraft({ photoUri: null }));
+    row = await db.getFirstAsync<{ photo_uri: string | null }>('SELECT photo_uri FROM recipe WHERE id = ?', [id]);
+    expect(row?.photo_uri).toBeNull();
+  });
+
   it('a failed save rolls back rather than leaving a half-written recipe', async () => {
     const badDraft = baseDraft({
       // canonicalId 999 doesn't exist — with foreign_keys=ON (§2.6) this

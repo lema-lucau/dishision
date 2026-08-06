@@ -4,20 +4,24 @@
 // skippable (§1.1 no-nagging) — Done alone still commits made/eaten, pantry
 // deduction, and any leftover.
 import { useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { DatePickerModal } from '../components/DatePickerModal';
+import { PillButton, RecipePhoto } from '../components/ui';
 import { addShortfallToShoppingList, completeCook } from '../cooking/completeCook';
 import type { CookLogDraft } from '../cooking/cookLog';
 import { updateCookLog } from '../cooking/cookLog';
+import { celebrationLine, loadCookMilestones, type CookMilestones } from '../cooking/cookMilestones';
 import { previewCook, type CookPreview } from '../cooking/previewCook';
 import { BUILT_IN_QUICK_TAGS, loadCustomQuickTags } from '../cooking/quickTags';
 import { useDb } from '../db/DbContext';
 import { listHouseholdMembers, type HouseholdMember } from '../household/householdMutations';
 import { queueSharedCook } from '../household/sharedCooks';
 import { dateInputToIso, formatShortDate, toDateInputValue } from '../lib/formatDate';
+import { captureAndCompressPhoto, pickAndCompressPhotos } from '../photos/pickAndCompressPhoto';
 import { getAutoAddShortfalls } from '../settings/getSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
-import type { EnrichedRecipe } from './loadRecipes';
+import type { CategoryKey } from '../theme/tokens';
+import { recipePrimaryProtein, type EnrichedRecipe } from './loadRecipes';
 
 interface CookCompleteScreenProps {
   recipe: EnrichedRecipe;
@@ -48,6 +52,9 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
   const [autoAddShortfalls, setAutoAddShortfalls] = useState(true);
   const [addedManually, setAddedManually] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [milestones, setMilestones] = useState<CookMilestones | null>(null);
 
   const cookedAtIso = useMemo(() => dateInputToIso(cookedAtDate), [cookedAtDate]);
 
@@ -74,6 +81,23 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
     previewCook(db, recipe.id, madeServings, eatenServings, cookedAtIso).then(setPreview);
   }, [db, recipe.id, madeServings, eatenServings, cookedAtIso]);
 
+  // §5.7 occasion header. Loaded before the write, so "3rd time" and the streak
+  // describe the cook you are about to commit rather than the one before it.
+  useEffect(() => {
+    loadCookMilestones(db, recipe.id, cookedAtIso).then(setMilestones);
+  }, [db, recipe.id, cookedAtIso]);
+
+  async function addPhoto(source: 'camera' | 'library') {
+    setPhotoBusy(true);
+    try {
+      const added = source === 'camera' ? [await captureAndCompressPhoto()] : await pickAndCompressPhotos();
+      const uris = added.filter((p) => p != null).map((p) => p!.uri);
+      if (uris.length > 0) setPhotos((existing) => [...existing, ...uris]);
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
   function toggleTag(tag: string) {
     setQuickTags((tags) => (tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag]));
   }
@@ -99,7 +123,10 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
         stars,
         viaCookingMode: !retroactive,
       });
-      if (expanded) {
+      // Photos are committed whether or not the full log was expanded — taking
+      // one is itself the deliberate act, and losing it because the optional
+      // notes section stayed closed would be indefensible.
+      if (expanded || photos.length > 0) {
         const draft: CookLogDraft = {
           recipeId: recipe.id,
           cookedAt: cookedAtIso,
@@ -110,11 +137,14 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
           whatWentWell,
           whatToChange,
           quickTags,
-          photos: [],
+          photos,
           viaCookingMode: !retroactive,
         };
         await updateCookLog(db, result.cookLogId, draft);
       }
+      // Photos attach to the cook log only — the recipe's own hero photo is
+      // deliberately left untouched (a cook is a moment in time; the recipe's
+      // photo is its identity, and the two shouldn't be coupled).
       // Queue this cook for each household member marked as cooked-with — it
       // syncs to them (becoming a cook log on their device) on the next sync,
       // or waits locally in the outbox until then.
@@ -136,15 +166,51 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
   }
 
   const leftoverLine = preview?.leftoverPlan;
+  const timesCooked = milestones?.timesCooked ?? recipe.timesCooked + 1;
+  const celebration = milestones ? celebrationLine(milestones, stars) : null;
+  // The dish you just photographed beats the recipe's stored hero here — this
+  // screen is about tonight, not about the library.
+  const heroPhotoUri = photos[0] ?? recipe.photoUri;
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Cooked {recipe.name}</Text>
-      <Text style={styles.subtitle}>
-        {Math.round(recipe.totalSeconds / 60)} min · {recipe.timesCooked + 1}
-        {ordinalSuffix(recipe.timesCooked + 1)} time
-      </Text>
+      {/* §5.7 as an occasion, not a form: the dish, then the one fact worth
+          saying out loud, then the numbers. Everything below is still optional
+          and still skippable (§1.1). */}
+      <RecipePhoto
+        recipe={{
+          photoUri: heroPhotoUri,
+          photoEmoji: recipe.photoEmoji,
+          category: (recipePrimaryProtein(recipe) as CategoryKey | null) ?? 'other',
+        }}
+        fill
+        scrim
+        radius="photo"
+        style={styles.heroPhoto}
+      >
+        <View style={styles.heroChrome}>
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeText}>COOKED</Text>
+          </View>
+          <Text style={styles.heroTitle} numberOfLines={2}>
+            {recipe.name}
+          </Text>
+        </View>
+      </RecipePhoto>
+
+      {celebration && (
+        <View style={styles.celebration}>
+          <Text style={styles.celebrationText}>{celebration}</Text>
+        </View>
+      )}
+
+      <View style={styles.factRow}>
+        <Fact value={`${timesCooked}${ordinalSuffix(timesCooked)}`} label="time" />
+        <Fact value={`${Math.round(recipe.totalSeconds / 60)}`} label="minutes" />
+        {milestones && milestones.dayStreak > 1 && <Fact value={`${milestones.dayStreak}`} label="day streak" />}
+        {milestones && <Fact value={`${milestones.cooksThisMonth}`} label="this month" />}
+      </View>
 
       {retroactive && (
         <View style={styles.section}>
@@ -199,6 +265,44 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
             keep until {formatShortDate(leftoverLine.expiresAt)}
           </Text>
         )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>A PHOTO OF IT?</Text>
+        {photos.length > 0 && (
+          <View style={styles.photoStrip}>
+            {photos.map((uri) => (
+              <TouchableOpacity
+                key={uri}
+                onPress={() => setPhotos((existing) => existing.filter((p) => p !== uri))}
+                accessibilityLabel="Remove this photo"
+              >
+                <Image source={{ uri }} style={styles.photoThumb} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+        <View style={styles.photoButtonRow}>
+          <PillButton
+            label={photoBusy ? 'Working…' : photos.length > 0 ? 'Another' : 'Take a photo'}
+            onPress={() => addPhoto('camera')}
+            variant="accent"
+            haptic="commit"
+            disabled={photoBusy}
+            style={styles.flexButton}
+            testID="cook-photo-camera"
+          />
+          <PillButton
+            label="Choose"
+            onPress={() => addPhoto('library')}
+            variant="soft"
+            haptic="light"
+            disabled={photoBusy}
+            style={styles.flexButton}
+            testID="cook-photo-library"
+          />
+        </View>
+        {photos.length > 0 && <Text style={styles.photoHint}>Tap a photo to remove it. These stay with this cook — your recipe photo is left as it is.</Text>}
       </View>
 
       {preview && preview.lines.length > 0 && (
@@ -339,6 +443,19 @@ function ordinalSuffix(n: number): string {
   }
 }
 
+// One number from the occasion header. Deliberately plain — the celebration
+// line above it is the only thing on this screen allowed to be warm.
+function Fact({ value, label }: { value: string; label: string }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  return (
+    <View style={styles.fact}>
+      <Text style={styles.factValue}>{value}</Text>
+      <Text style={styles.factLabel}>{label}</Text>
+    </View>
+  );
+}
+
 function ServingStepper({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -362,8 +479,62 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   content: { padding: theme.spacing.xl, gap: theme.spacing.xxl, paddingBottom: theme.spacing.xxl * 1.5 },
-  title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
-  subtitle: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2, marginTop: theme.spacing.xs },
+
+  heroPhoto: { height: 200 },
+  heroChrome: { flex: 1, justifyContent: 'space-between', padding: theme.spacing.base },
+  heroBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.onPhoto.chipBg,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 5,
+  },
+  heroBadgeText: {
+    fontFamily: theme.fonts.body.bold,
+    fontSize: theme.fontSize.xs,
+    letterSpacing: theme.fontSize.xs * 0.13,
+    color: theme.colors.ink,
+  },
+  heroTitle: {
+    fontFamily: theme.fonts.display.bold,
+    fontSize: theme.fontSize.hero,
+    lineHeight: theme.fontSize.hero * 1.08,
+    letterSpacing: -0.4,
+    color: theme.onPhoto.ink,
+  },
+  celebration: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.accentTint,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+    marginTop: -theme.spacing.lg,
+  },
+  celebrationText: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.base, color: theme.colors.accentText },
+  factRow: { flexDirection: 'row', gap: theme.spacing.sm, marginTop: -theme.spacing.lg },
+  fact: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceWarm,
+    borderRadius: theme.radius.tile,
+  },
+  factValue: { fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.md, color: theme.colors.ink },
+  factLabel: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.ink3,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+
+  photoStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+  photoThumb: { width: 84, height: 84, borderRadius: theme.radius.tile },
+  photoButtonRow: { flexDirection: 'row', gap: theme.spacing.sm },
+  flexButton: { flex: 1 },
+  photoHint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, fontStyle: 'italic' },
+
   section: { gap: theme.spacing.md },
   sectionTitle: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.5 },
   dateRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },

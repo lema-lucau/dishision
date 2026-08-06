@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RecipePhoto } from '../components/ui';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { EnrichedRecipe } from './loadRecipes';
+import { HouseholdRatingChip } from './HouseholdRatingChip';
+import { recipePhotoSubject } from './recipePhotoSubject';
 import { TimeSplitBar } from './TimeSplitBar';
-import { EmojiTile } from './EmojiTile';
 
 interface RecipeListItemProps {
   recipe: EnrichedRecipe;
@@ -16,7 +18,7 @@ export function RecipeListItem({ recipe, matchedNote, onPress }: RecipeListItemP
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
-      <EmojiTile emoji={recipe.photoEmoji} />
+      <RecipePhoto recipe={recipePhotoSubject(recipe)} size={56} radius="tile" />
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>
           {recipe.name}
@@ -30,6 +32,7 @@ export function RecipeListItem({ recipe, matchedNote, onPress }: RecipeListItemP
         <View style={styles.metaRow}>
           {recipe.avgRating != null && <Text style={styles.metaText}>★{recipe.avgRating.toFixed(1)}</Text>}
           <Text style={styles.metaText}>Cooked {recipe.timesCooked}×</Text>
+          <HouseholdRatingChip ratings={recipe.householdRatings} />
           {matchedNote != null && (
             <Text style={styles.noteMatch} numberOfLines={1}>
               matched in your notes: "{matchedNote}"

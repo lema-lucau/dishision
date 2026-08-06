@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../db/DbClient';
-import { clearExclusion, copyRecipe, deleteRecipe, setExclusion, toggleFavourite } from '../../recipes/recipeMutations';
+import { clearExclusion, copyRecipe, deleteRecipe, setExclusion, setRecipePhoto, toggleFavourite } from '../../recipes/recipeMutations';
 import { createTestDb } from '../support/testDb';
 
 async function insertRecipe(db: DbClient, name = 'Bacon & Cabbage'): Promise<number> {
@@ -37,6 +37,25 @@ describe('recipeMutations (§5.4, §9.4)', () => {
     await setExclusion(db, id, 'not_tonight');
     row = await db.getFirstAsync<{ kind: string }>('SELECT kind FROM recipe_exclusion WHERE recipe_id = ?', [id]);
     expect(row?.kind).toBe('never_again');
+  });
+
+  it('setRecipePhoto stores and then clears the hero photo', async () => {
+    const id = await insertRecipe(db);
+    await setRecipePhoto(db, id, 'file:///photos/dish.jpg');
+    let row = await db.getFirstAsync<{ photo_uri: string | null }>('SELECT photo_uri FROM recipe WHERE id = ?', [id]);
+    expect(row?.photo_uri).toBe('file:///photos/dish.jpg');
+
+    await setRecipePhoto(db, id, null);
+    row = await db.getFirstAsync<{ photo_uri: string | null }>('SELECT photo_uri FROM recipe WHERE id = ?', [id]);
+    expect(row?.photo_uri).toBeNull();
+  });
+
+  it('copyRecipe carries the hero photo across to the copy', async () => {
+    const id = await insertRecipe(db, 'Photographed Dish');
+    await setRecipePhoto(db, id, 'file:///photos/original.jpg');
+    const newId = await copyRecipe(db, id);
+    const copy = await db.getFirstAsync<{ photo_uri: string | null }>('SELECT photo_uri FROM recipe WHERE id = ?', [newId]);
+    expect(copy?.photo_uri).toBe('file:///photos/original.jpg');
   });
 
   it('clearExclusion removes the row entirely', async () => {

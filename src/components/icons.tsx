@@ -108,3 +108,72 @@ export function TrashIcon({ size = 24, color, strokeWidth = 2 }: IconProps) {
     </Svg>
   );
 }
+
+// ── Tab bar (§5.1) ──────────────────────────────────────────────────────────
+// The bottom bar is the only chrome on screen at all times, which makes emoji
+// there the app's loudest "prototype" tell. These five are drawn on the same
+// 24×24 grid at the same stroke weight so the row reads as one set.
+
+export function HomeIcon({ size = 24, color, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 11 L12 4 L20 11 V19 A1 1 0 0 1 19 20 H5 A1 1 0 0 1 4 19 Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path d="M10 20 V14 H14 V20" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// A pan seen from above, handle to the right — the Recipes library.
+export function PanIcon({ size = 24, color, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="10" cy="12" r="7" stroke={color} strokeWidth={strokeWidth} />
+      <Line x1="17" y1="12" x2="22" y2="12" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Circle cx="10" cy="12" r="2.6" stroke={color} strokeWidth={strokeWidth * 0.8} />
+    </Svg>
+  );
+}
+
+// A shopping basket — Plan is where the calendar meets the shopping list.
+export function BasketIcon({ size = 24, color, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 9 H21 L19 19 H5 Z" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M8 9 L10 4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M16 9 L14 4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Line x1="10" y1="12.5" x2="10" y2="16" stroke={color} strokeWidth={strokeWidth * 0.8} strokeLinecap="round" />
+      <Line x1="14" y1="12.5" x2="14" y2="16" stroke={color} strokeWidth={strokeWidth * 0.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// Plate and fork — the Cook Log is the record of what got eaten.
+export function PlateIcon({ size = 24, color, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="11" cy="12" r="8" stroke={color} strokeWidth={strokeWidth} />
+      <Circle cx="11" cy="12" r="4" stroke={color} strokeWidth={strokeWidth * 0.8} />
+      <Line x1="21" y1="4" x2="21" y2="20" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function PersonIcon({ size = 24, color, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="8.5" r="4" stroke={color} strokeWidth={strokeWidth} />
+      <Path
+        d="M4.5 20 C4.5 16 7.9 14 12 14 C16.1 14 19.5 16 19.5 20"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}

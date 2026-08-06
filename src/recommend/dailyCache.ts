@@ -5,7 +5,7 @@
 import { logger } from '../debug/logStore';
 import { localDateKey } from '../lib/formatDate';
 import { recipePrimaryProtein, type EnrichedRecipe } from '../recipes/loadRecipes';
-import { getRecencyWindowDays, getRecommendationWeights, getSetting } from '../settings/getSetting';
+import { getRecencyWindowDays, getRecommendCategories, getRecommendationWeights, getSetting } from '../settings/getSetting';
 import { setSetting } from '../settings/setSetting';
 import type { DbClient } from '../db/DbClient';
 import { computeRecommendations, type RecommendResult } from './recommend';
@@ -30,10 +30,11 @@ function hydrate(ids: number[], allRecipes: EnrichedRecipe[]): EnrichedRecipe[] 
 }
 
 async function computeAndCacheBench(db: DbClient, allRecipes: EnrichedRecipe[], now: number, todayKey: string): Promise<RecommendResult> {
-  const [recencyWindowDays, weights, yesterdaysRecipeId] = await Promise.all([
+  const [recencyWindowDays, weights, yesterdaysRecipeId, allowedCategories] = await Promise.all([
     getRecencyWindowDays(db),
     getRecommendationWeights(db),
     getYesterdaysCookedRecipeId(db, now),
+    getRecommendCategories(db),
   ]);
   const yesterdaysRecipe = yesterdaysRecipeId != null ? allRecipes.find((r) => r.id === yesterdaysRecipeId) ?? null : null;
   const yesterdaysPrimaryProtein = yesterdaysRecipe ? recipePrimaryProtein(yesterdaysRecipe) : null;
@@ -43,6 +44,7 @@ async function computeAndCacheBench(db: DbClient, allRecipes: EnrichedRecipe[], 
     recencyWindowDays,
     yesterdaysPrimaryProtein,
     weights,
+    allowedCategories,
     benchSize: BENCH_SIZE,
   });
 
