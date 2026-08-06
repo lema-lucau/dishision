@@ -10,9 +10,12 @@ import { TimeSplitBar } from '../recipes/TimeSplitBar';
 import type { EnrichedRecipe } from '../recipes/loadRecipes';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { decidablePool, decideReason } from './decideReason';
+import { MEAL_CATEGORIES, type MealCategory } from './mealCategories';
 
 interface DecideForUsProps {
   recipes: EnrichedRecipe[];
+  /** Meal categories the roll may land on — mirrors the daily engine's filter. */
+  allowedCategories?: MealCategory[];
   onOpenRecipe: (recipeId: number) => void;
 }
 
@@ -27,11 +30,11 @@ function pickRandom(pool: EnrichedRecipe[], avoidId?: number): EnrichedRecipe | 
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-export function DecideForUs({ recipes, onOpenRecipe }: DecideForUsProps) {
+export function DecideForUs({ recipes, allowedCategories = MEAL_CATEGORIES, onOpenRecipe }: DecideForUsProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const reduceMotion = useReducedMotion();
-  const pool = useMemo(() => decidablePool(recipes), [recipes]);
+  const pool = useMemo(() => decidablePool(recipes, allowedCategories), [recipes, allowedCategories]);
 
   const [phase, setPhase] = useState<'idle' | 'deciding' | 'revealed'>('idle');
   const [display, setDisplay] = useState<EnrichedRecipe | null>(null);

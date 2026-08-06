@@ -9,8 +9,11 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { PillButton, RecipePhoto } from '../components/ui';
 import { useConfirmModal } from '../components/useConfirmModal';
-import { captureAndCompressPhoto, pickAndCompressPhoto } from '../photos/pickAndCompressPhoto';
+import type { CompressedPhoto } from '../photos/compressPhoto';
+import { capturePhotoRaw, pickPhotoRaw, type RawPickedPhoto } from '../photos/pickAndCompressPhoto';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import { RECIPE_PHOTO_ASPECT } from '../theme/tokens';
+import { RecipePhotoCropModal } from './RecipePhotoCropModal';
 
 interface RecipePhotoFieldProps {
   photoUri: string | null;
@@ -22,18 +25,27 @@ export function RecipePhotoField({ photoUri, photoEmoji, onChange }: RecipePhoto
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [busy, setBusy] = useState(false);
+  // The raw photo awaiting a crop; non-null holds the crop modal open.
+  const [cropping, setCropping] = useState<RawPickedPhoto | null>(null);
   const { modal, confirm } = useConfirmModal();
 
   async function run(source: 'camera' | 'library') {
     setBusy(true);
     try {
-      const photo = source === 'camera' ? await captureAndCompressPhoto() : await pickAndCompressPhoto();
+      // Pick raw, then hand off to the crop editor — compression happens on
+      // save there, once the region is chosen.
+      const raw = source === 'camera' ? await capturePhotoRaw() : await pickPhotoRaw();
       // A null result is a cancel or a denied permission — both are silent by
       // design (§1.1 no-nagging); the button is simply still there.
-      if (photo) onChange(photo.uri);
+      if (raw) setCropping(raw);
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleCropped(result: CompressedPhoto) {
+    setCropping(null);
+    onChange(result.uri);
   }
 
   function handleRemove() {
@@ -49,7 +61,9 @@ export function RecipePhotoField({ photoUri, photoEmoji, onChange }: RecipePhoto
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Photo</Text>
-      <RecipePhoto recipe={{ photoUri, photoEmoji, category: null }} fill radius="photo" style={styles.preview} />
+      {/* Same aspect as the crop frame and the detail hero — the preview shows
+          exactly what you cropped, at the shape it'll appear on the recipe. */}
+      <RecipePhoto recipe={{ photoUri, photoEmoji, category: null }} aspectRatio={RECIPE_PHOTO_ASPECT} radius="photo" />
       {!photoUri && <Text style={styles.hint}>No photo yet — the emoji tile below stands in until there is one.</Text>}
       <View style={styles.buttonRow}>
         <PillButton
@@ -76,6 +90,7 @@ export function RecipePhotoField({ photoUri, photoEmoji, onChange }: RecipePhoto
           <Text style={styles.removeText}>Remove photo</Text>
         </TouchableOpacity>
       )}
+      <RecipePhotoCropModal photo={cropping} onCancel={() => setCropping(null)} onCropped={handleCropped} />
       {modal}
     </View>
   );
@@ -85,7 +100,6 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     container: { gap: theme.spacing.sm },
     label: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
-    preview: { height: 180 },
     hint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, fontStyle: 'italic' },
     buttonRow: { flexDirection: 'row', gap: theme.spacing.sm },
     flexButton: { flex: 1 },

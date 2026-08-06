@@ -73,15 +73,10 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -126,7 +121,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -1802,15 +1797,10 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -1855,7 +1845,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -3533,15 +3523,10 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -3586,7 +3571,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >

@@ -23,7 +23,8 @@ import { dismissAndPromote, getDailyRecommendations } from '../recommend/dailyCa
 import { DecideForUs } from '../recommend/DecideForUs';
 import { FeelingPickerSheet } from '../recommend/FeelingPickerSheet';
 import { getMedianCostPerServing } from '../recommend/medianCostCache';
-import { getCurrencySymbol } from '../settings/getSetting';
+import { getCurrencySymbol, getRecommendCategories } from '../settings/getSetting';
+import { MEAL_CATEGORIES, type MealCategory } from '../recommend/mealCategories';
 import type { CategoryKey } from '../theme/tokens';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
@@ -101,6 +102,7 @@ export function HomeScreen({ onOpenRecipe }: HomeScreenProps) {
   const [relaxationLabel, setRelaxationLabel] = useState<string | null>(null);
   const [medianCost, setMedianCost] = useState<number | null>(null);
   const [currencySymbol, setCurrencySymbol] = useState('€');
+  const [allowedCategories, setAllowedCategories] = useState<MealCategory[]>(MEAL_CATEGORIES);
   const [feelingChip, setFeelingChip] = useState<ChipKey | null>(null);
   const [eatTarget, setEatTarget] = useState<LeftoverRow | null>(null);
   const [eatQty, setEatQty] = useState(1);
@@ -111,17 +113,19 @@ export function HomeScreen({ onOpenRecipe }: HomeScreenProps) {
     const enriched = await loadEnrichedRecipes(db);
     setRecipes(enriched);
 
-    const [activeLeftovers, plan, symbol, median] = await Promise.all([
+    const [activeLeftovers, plan, symbol, median, categories] = await Promise.all([
       loadActiveLeftovers(db),
       loadTodaysPlan(db),
       getCurrencySymbol(db),
       getMedianCostPerServing(db, enriched),
+      getRecommendCategories(db),
     ]);
     setLeftovers(activeLeftovers);
     setPlanEntry(plan);
     setPlanRecipe(plan ? (enriched.find((r) => r.id === plan.recipeId) ?? null) : null);
     setCurrencySymbol(symbol);
     setMedianCost(median);
+    setAllowedCategories(categories);
 
     const rec = await getDailyRecommendations(db, enriched);
     setPicks(rec.picks.slice(0, 3));
@@ -216,7 +220,7 @@ export function HomeScreen({ onOpenRecipe }: HomeScreenProps) {
               plan yet and there's actually something to decide between. */}
           {!planRecipe && recipes.length > 0 && (
             <View style={styles.section}>
-              <DecideForUs recipes={recipes} onOpenRecipe={(recipeId) => onOpenRecipe(recipeId)} />
+              <DecideForUs recipes={recipes} allowedCategories={allowedCategories} onOpenRecipe={(recipeId) => onOpenRecipe(recipeId)} />
             </View>
           )}
 

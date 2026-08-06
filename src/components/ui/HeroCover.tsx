@@ -10,6 +10,9 @@ import { useTheme, type AppTheme } from '../../theme/ThemeContext';
 interface HeroCoverProps {
   recipe: RecipePhotoSubject;
   height?: number;
+  /** Self-size to full width at this ratio instead of a fixed height — used so
+   * the recipe hero matches the crop/preview shape exactly. */
+  aspectRatio?: number;
   /** Small uppercase pill floating top-left, e.g. `PLANNED · DINNER`. */
   badge?: string;
   /** Floating controls top-right — favourite heart, etc. */
@@ -26,6 +29,7 @@ interface HeroCoverProps {
 export function HeroCover({
   recipe,
   height = 200,
+  aspectRatio,
   badge,
   topRight,
   topLeft,
@@ -38,7 +42,13 @@ export function HeroCover({
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const cover = (
-    <RecipePhoto recipe={recipe} fill scrim radius={radius} style={[{ height }, style]}>
+    <RecipePhoto
+      recipe={recipe}
+      {...(aspectRatio != null ? { aspectRatio } : { fill: true })}
+      scrim
+      radius={radius}
+      style={aspectRatio != null ? style : [{ height }, style]}
+    >
       <View style={styles.chrome}>
         <View style={styles.topRow}>
           {topLeft ??

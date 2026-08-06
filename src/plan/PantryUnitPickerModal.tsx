@@ -4,6 +4,7 @@
 // persists (ingredient_unit_preference) until changed again or reset.
 import { useMemo } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { availableDisplayUnits, type DisplayUnit } from '../lib/displayUnit';
 import type { ConvertibleIngredient } from '../lib/units';
 import { DISPLAY_UNIT_LABELS, pluralizeUnit } from '../lib/unitLabels';
@@ -21,6 +22,7 @@ interface PantryUnitPickerModalProps {
 export function PantryUnitPickerModal({ visible, ingredient, value, onSelect, onReset, onClose }: PantryUnitPickerModalProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   if (!ingredient) return null;
   const options = availableDisplayUnits(ingredient);
   const defaultLabel = pluralizeUnit(2, ingredient.baseUnit);
@@ -28,7 +30,7 @@ export function PantryUnitPickerModal({ visible, ingredient, value, onSelect, on
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: theme.spacing.base + insets.bottom }]}>
           <Text style={styles.title}>Display unit</Text>
           {options.map((unit) => {
             const isActive = unit === value;

@@ -73,15 +73,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -126,7 +121,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -1753,15 +1748,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -1806,7 +1796,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -3433,15 +3423,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -3486,7 +3471,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -5113,15 +5098,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -5166,7 +5146,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -6793,15 +6773,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -6846,7 +6821,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -8473,15 +8448,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -8526,7 +8496,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -10153,15 +10123,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -10206,7 +10171,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -11833,15 +11798,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -11886,7 +11846,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -13513,15 +13473,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -13566,7 +13521,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -15193,15 +15148,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -15246,7 +15196,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -16873,15 +16823,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -16926,7 +16871,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -18553,15 +18498,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -18606,7 +18546,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -20233,15 +20173,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -20286,7 +20221,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -21913,15 +21848,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -21966,7 +21896,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -23593,15 +23523,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -23646,7 +23571,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -25273,15 +25198,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -25326,7 +25246,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -26953,15 +26873,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -27006,7 +26921,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -28633,15 +28548,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -28686,7 +28596,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -30313,15 +30223,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -30366,7 +30271,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -31993,15 +31898,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -32046,7 +31946,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -33673,15 +33573,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -33726,7 +33621,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -35353,15 +35248,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -35406,7 +35296,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -37033,15 +36923,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -37086,7 +36971,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -38713,15 +38598,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -38766,7 +38646,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -40393,15 +40273,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -40446,7 +40321,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -42073,15 +41948,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -42126,7 +41996,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -43753,15 +43623,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -43806,7 +43671,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -45433,15 +45298,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -45486,7 +45346,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -47113,15 +46973,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -47166,7 +47021,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -48793,15 +48648,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -48846,7 +48696,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -50473,15 +50323,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -50526,7 +50371,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -52153,15 +51998,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -52206,7 +52046,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -53833,15 +53673,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -53886,7 +53721,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -55513,15 +55348,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -55566,7 +55396,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -57193,15 +57023,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -57246,7 +57071,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -58873,15 +58698,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -58926,7 +58746,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >
@@ -60553,15 +60373,10 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
             "borderRadius": 16,
           },
           {
-            "flex": 1,
+            "aspectRatio": 1.5,
             "width": "100%",
           },
-          [
-            {
-              "height": 220,
-            },
-            undefined,
-          ],
+          undefined,
         ]
       }
     >
@@ -60606,7 +60421,7 @@ exports[`theme matrix (§11.2) — every theme renders the recipe detail without
           <Text
             style={
               {
-                "fontSize": 64,
+                "fontSize": 50,
               }
             }
           >

@@ -3,6 +3,7 @@
 // honest sentence — "you haven't had fish in 12 days, and you have everything
 // for this". Pure and RN-free so the phrasing is unit-testable.
 import { recipePrimaryProtein, type EnrichedRecipe } from '../recipes/loadRecipes';
+import { isAllowedByCategories, MEAL_CATEGORIES, type MealCategory } from './mealCategories';
 
 const DAY_MS = 86_400_000;
 
@@ -60,6 +61,13 @@ export function decideReason(recipe: EnrichedRecipe, allRecipes: EnrichedRecipe[
 
 // The eligible pool for a decisive roll: everything not excluded, so the pick
 // can genuinely surprise rather than re-offer the three cards already on Home.
-export function decidablePool(recipes: EnrichedRecipe[]): EnrichedRecipe[] {
-  return recipes.filter((r) => r.exclusion == null && r.steps.length > 0);
+// Honours the same meal-category preference as the daily engine, so "Decide for
+// us" can't hand you a dessert when you've restricted it to dinners.
+export function decidablePool(
+  recipes: EnrichedRecipe[],
+  allowedCategories: MealCategory[] = MEAL_CATEGORIES,
+): EnrichedRecipe[] {
+  return recipes.filter(
+    (r) => r.exclusion == null && r.steps.length > 0 && isAllowedByCategories(r, allowedCategories),
+  );
 }

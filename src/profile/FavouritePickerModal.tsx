@@ -6,6 +6,7 @@ import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { useDb } from '../db/DbContext';
 import { EmojiTile } from '../recipes/EmojiTile';
 import { Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { getProfileFavouriteIds, loadAllFavourites, MAX_PROFILE_FAVOURITES, setProfileFavouriteIds, type FavouriteSummary } from './loadFavourites';
 
@@ -18,6 +19,7 @@ interface FavouritePickerModalProps {
 export function FavouritePickerModal({ visible, onClose, onSaved }: FavouritePickerModalProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const db = useDb();
   const [all, setAll] = useState<FavouriteSummary[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
@@ -45,7 +47,7 @@ export function FavouritePickerModal({ visible, onClose, onSaved }: FavouritePic
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
-        <TouchableOpacity activeOpacity={1} style={styles.sheet}>
+        <TouchableOpacity activeOpacity={1} style={[styles.sheet, { paddingBottom: theme.spacing.base + insets.bottom }]}>
           <Text style={styles.title}>Choose profile favourites</Text>
           <Text style={styles.hint}>
             Pick up to {MAX_PROFILE_FAVOURITES} to feature on your profile. Leave empty to show your most recent.

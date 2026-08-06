@@ -3,6 +3,7 @@
 // bottom-sheet convention as SortMenu.
 import { useMemo } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RecipeUnit } from '../seed/types';
 import { UNIT_LABELS, UNIT_OPTIONS } from '../lib/unitLabels';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
@@ -19,10 +20,11 @@ interface UnitPickerModalProps {
 export function UnitPickerModal({ visible, value, onSelect, onClose }: UnitPickerModalProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: theme.spacing.base + insets.bottom }]}>
           <Text style={styles.title}>Unit</Text>
           {UNIT_OPTIONS.map((unit) => {
             const isActive = unit === value;

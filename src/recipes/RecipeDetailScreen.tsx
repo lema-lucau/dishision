@@ -11,6 +11,7 @@ import { formatScaledQuantity, scaleQuantity } from '../lib/scaling';
 import { pluralizeUnit } from '../lib/unitLabels';
 import { HeroCover } from '../components/ui';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import { RECIPE_PHOTO_ASPECT } from '../theme/tokens';
 import { laneColor, phaseColor, timeTagColor } from '../theme/stepColors';
 import { ActionButton } from './ActionButton';
 import { HouseholdRatingChip } from './HouseholdRatingChip';
@@ -99,7 +100,7 @@ export function RecipeDetailScreen({
         <Text style={styles.back}>← Back</Text>
       </TouchableOpacity>
 
-      <HeroCover recipe={recipePhotoSubject(recipe)} height={220} title={recipe.name} radius="photo" />
+      <HeroCover recipe={recipePhotoSubject(recipe)} aspectRatio={RECIPE_PHOTO_ASPECT} title={recipe.name} radius="photo" />
       {recipe.description ? <Text style={styles.description}>{recipe.description}</Text> : null}
 
       <View style={styles.metaRow}>

@@ -4,6 +4,7 @@
 // pantry_item.quantity, which always stays in base units (§3.1).
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { canonicalIngredientName } from '../debug/logNames';
 import type { DisplayUnit } from '../lib/displayUnit';
 
 export async function getUnitPreference(db: DbClient, canonicalId: number): Promise<DisplayUnit | null> {
@@ -25,10 +26,10 @@ export async function setUnitPreference(db: DbClient, canonicalId: number, unit:
      ON CONFLICT(canonical_id) DO UPDATE SET unit = excluded.unit`,
     [canonicalId, unit],
   );
-  logger.info('db', 'Pantry display-unit preference set', { canonicalId, unit });
+  logger.info('db', 'Pantry display-unit preference set', { canonicalId, name: await canonicalIngredientName(db, canonicalId), unit });
 }
 
 export async function resetUnitPreference(db: DbClient, canonicalId: number): Promise<void> {
   await db.runAsync('DELETE FROM ingredient_unit_preference WHERE canonical_id = ?', [canonicalId]);
-  logger.info('db', 'Pantry display-unit preference reset to default', { canonicalId });
+  logger.info('db', 'Pantry display-unit preference reset to default', { canonicalId, name: await canonicalIngredientName(db, canonicalId) });
 }

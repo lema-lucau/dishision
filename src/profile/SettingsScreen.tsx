@@ -17,6 +17,7 @@ import {
   getCurrencySymbol,
   getDefaultServingSize,
   getRecencyWindowDays,
+  getRecommendCategories,
   getRecommendationWeights,
   type CostStalenessDays,
   type RecommendationWeights,
@@ -28,10 +29,15 @@ import {
   setAutoAddShortfalls,
   setCostStalenessDays,
   setCurrency,
+  setDebugMode,
   setDefaultServingSize,
   setRecencyWindowDays,
   setRecommendationWeights,
+  setRecommendCategories,
 } from '../settings/setSetting';
+import { invalidateDailyRecommendations } from '../recommend/dailyCache';
+import { MealCategoryPickerModal } from '../recommend/MealCategoryPickerModal';
+import { MEAL_CATEGORIES, MEAL_CATEGORY_LABELS, type MealCategory } from '../recommend/mealCategories';
 import { useSettingsStore } from '../debug/settingsStore';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
@@ -71,6 +77,8 @@ const TIPS = {
   wFrequency: 'Favours recipes you cook often — your reliable go-tos.',
   wJitter: "Adds a little randomness so you don't get the exact same suggestions every day.",
   recency: 'Recipes cooked within this many days are hidden from suggestions, so you don\'t repeat meals too soon. Set to Off to never hide them.',
+  categories:
+    'Limit the daily suggestions and “Decide for us” to certain meals — e.g. dinners only. Recipes are matched on their meal-type tags. This only affects recommendations; browsing and search still show everything.',
   servings: "The serving count new recipes and the 'add to shopping list' prompts start from.",
   vibrate: 'Vibrate the phone when a cooking-mode step timer finishes.',
   sound: 'Play a sound with the step-timer notification. Only the notification makes a sound; on-screen alerts while the app is open are silent (they vibrate instead).',
@@ -105,7 +113,15 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
   const db = useDb();
   const { modal, notice } = useConfirmModal();
   const debugModeEnabled = useSettingsStore((s) => s.debugMode);
-  const toggleDebugMode = useSettingsStore((s) => s.toggleDebugMode);
+  const setDebugModeStore = useSettingsStore((s) => s.setDebugMode);
+
+  // Persisted (§12): flip the in-memory store for an instant UI response, then
+  // write the flag so it survives the next launch.
+  async function toggleDebugMode() {
+    const next = !debugModeEnabled;
+    setDebugModeStore(next);
+    await setDebugMode(db, next);
+  }
 
   // A small ⓘ that opens a plain-language explanation of a setting.
   const info = (title: string, text: string) => (
@@ -125,6 +141,8 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
   const [currencySymbol, setCurrencySymbolState] = useState('€');
   const [customSymbol, setCustomSymbol] = useState('');
   const [staleness, setStaleness] = useState<CostStalenessDays>(90);
+  const [recommendCategories, setRecommendCategoriesState] = useState<MealCategory[]>(MEAL_CATEGORIES);
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [showSyncLog, setShowSyncLog] = useState(false);
 
@@ -142,6 +160,7 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
       setCurrencySymbolState(symbol);
       setCustomSymbol(symbol);
       setStaleness(await getCostStalenessDays(db));
+      setRecommendCategoriesState(await getRecommendCategories(db));
       setLoaded(true);
     })();
   }, [db]);
@@ -157,6 +176,15 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
     const clamped = Math.min(30, Math.max(0, value));
     setRecencyWindowState(clamped);
     await setRecencyWindowDays(db, clamped);
+  }
+
+  async function saveRecommendCategories(categories: MealCategory[]) {
+    setCategoryPickerOpen(false);
+    setRecommendCategoriesState(categories);
+    await setRecommendCategories(db, categories);
+    // The day's picks are pinned in a cache (§6.1); clear it so the new filter
+    // takes effect on the next Home visit rather than tomorrow.
+    await invalidateDailyRecommendations(db);
   }
 
   async function updateServingSize(value: number) {
@@ -224,6 +252,24 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
           <Stepper value={recencyWindow} step={1} min={0} format={(v) => (v === 0 ? 'Off' : `${v}d`)} onChange={updateRecencyWindow} />
         </View>
       </View>
+
+      <View style={styles.sectionLabelRow}>
+        <Text style={styles.sectionLabel}>RECOMMEND ONLY</Text>
+        {info('Recommend only', TIPS.categories)}
+      </View>
+      <TouchableOpacity style={styles.card} onPress={() => setCategoryPickerOpen(true)} accessibilityRole="button">
+        <View style={styles.row}>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.rowLabel}>Meal types</Text>
+          </View>
+          <Text style={styles.categoryValue}>
+            {recommendCategories.length === MEAL_CATEGORIES.length
+              ? 'All meals'
+              : recommendCategories.map((c) => MEAL_CATEGORY_LABELS[c]).join(', ')}
+            {'  ▸'}
+          </Text>
+        </View>
+      </TouchableOpacity>
 
       <Text style={styles.sectionLabel}>DEFAULT SERVINGS</Text>
       <View style={styles.card}>
@@ -367,6 +413,13 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
         <Text style={styles.chevron}>▸</Text>
       </TouchableOpacity>
 
+      <MealCategoryPickerModal
+        visible={categoryPickerOpen}
+        initial={recommendCategories}
+        onCancel={() => setCategoryPickerOpen(false)}
+        onSave={saveRecommendCategories}
+      />
+
       {modal}
     </ScrollView>
   );
@@ -445,4 +498,5 @@ const makeStyles = (theme: AppTheme) =>
     },
     backupRowText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink },
     chevron: { color: theme.colors.ink3, fontSize: theme.fontSize.base },
+    categoryValue: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText, flexShrink: 1, textAlign: 'right' },
   });

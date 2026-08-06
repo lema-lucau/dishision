@@ -9,9 +9,10 @@ import { openDatabase } from './src/db/openDatabase';
 import { logger } from './src/debug/logStore';
 import { TabShell } from './src/navigation/TabShell';
 import { ensureProfile, type Profile } from './src/profile/ensureProfile';
+import { useSettingsStore } from './src/debug/settingsStore';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { runSeed } from './src/seed/seedRunner';
-import { getOnboardingComplete } from './src/settings/getSetting';
+import { getDebugMode, getOnboardingComplete } from './src/settings/getSetting';
 import { setOnboardingComplete } from './src/settings/setSetting';
 import { useDeepLinkListener } from './src/sharing/useDeepLinkListener';
 import { ThemeProvider, useTheme, type AppTheme } from './src/theme/ThemeContext';
@@ -94,6 +95,9 @@ export default function App() {
         const createdProfile = await ensureProfile(database);
         await runSeed(database);
         const onboarded = await getOnboardingComplete(database);
+        // Hydrate the persisted Debug-mode flag before first render so an
+        // enabled Debug entry doesn't flicker off on launch (§12).
+        useSettingsStore.getState().hydrate(await getDebugMode(database));
         if (cancelled) return;
         setDb(database);
         setProfile(createdProfile);

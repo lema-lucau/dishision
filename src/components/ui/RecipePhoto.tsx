@@ -21,6 +21,9 @@ interface RecipePhotoProps {
   /** Square size. Omit and pass `fill` for a full-bleed hero. */
   size?: number;
   fill?: boolean;
+  /** Self-size to full width at this width/height ratio (wins over size/fill).
+   * Used so the crop editor, form preview and heroes all share one shape. */
+  aspectRatio?: number;
   radius?: 'tile' | 'photo' | 'hero' | 'none';
   /** Legibility gradient for text sitting on top (R2.4). */
   scrim?: boolean;
@@ -32,6 +35,7 @@ export function RecipePhoto({
   recipe,
   size,
   fill = false,
+  aspectRatio,
   radius = 'photo',
   scrim = false,
   children,
@@ -41,12 +45,12 @@ export function RecipePhoto({
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const borderRadius = radius === 'none' ? 0 : theme.radius[radius];
-  const box: StyleProp<ViewStyle> = [
-    styles.box,
-    { borderRadius },
-    fill ? styles.fill : { width: size ?? 88, height: size ?? 88 },
-    style,
-  ];
+  const sizing: StyleProp<ViewStyle> = aspectRatio != null
+    ? { width: '100%', aspectRatio }
+    : fill
+      ? styles.fill
+      : { width: size ?? 88, height: size ?? 88 };
+  const box: StyleProp<ViewStyle> = [styles.box, { borderRadius }, sizing, style];
 
   const categoryColor =
     recipe.category != null ? theme.categoryColors[recipe.category] : theme.categoryColors.other;

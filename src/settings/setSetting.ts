@@ -54,3 +54,11 @@ export async function setCostPromptDismissedAt(db: DbClient, iso: string): Promi
 export async function setOnboardingComplete(db: DbClient): Promise<void> {
   await setSetting(db, 'onboarding_complete', '1');
 }
+
+export async function setDebugMode(db: DbClient, enabled: boolean): Promise<void> {
+  await setSetting(db, 'debug_mode', enabled ? '1' : '0');
+}
+
+export async function setRecommendCategories(db: DbClient, categories: string[]): Promise<void> {
+  await setSetting(db, 'recommend_categories', categories.join(','));
+}

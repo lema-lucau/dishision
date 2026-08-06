@@ -14,11 +14,23 @@ import { logger } from '../debug/logStore';
 import { uuidv4 } from '../utils/uuid';
 import { computeResizeTarget, JPEG_QUALITY } from './resizeMath';
 
+// A crop rectangle in SOURCE pixels, applied before the resize/compress pass —
+// this is how the recipe-photo crop editor bakes the region the user chose so
+// the stored file already frames the dish (no display-time focal-point math).
+export interface CropRect {
+  originX: number;
+  originY: number;
+  width: number;
+  height: number;
+}
+
 export interface CompressPhotoInput {
   /** Source URI as returned by the picker/camera — file:// or content://. */
   uri: string;
   width: number;
   height: number;
+  /** Optional pre-crop in source pixels; the resize cap then applies to the cropped size. */
+  crop?: CropRect;
 }
 
 export interface CompressedPhoto {
@@ -47,16 +59,24 @@ function safeFileSize(uri: string): number {
 // storage (Paths.document, not cache — a cook log photo must survive the OS
 // clearing the cache). Logs source/output dims+bytes unconditionally (§12.4).
 export async function compressPhoto(input: CompressPhotoInput): Promise<CompressedPhoto> {
-  const { uri, width: sourceWidth, height: sourceHeight } = input;
+  const { uri, width: sourceWidth, height: sourceHeight, crop } = input;
   const sourceBytes = safeFileSize(uri);
+
+  // After an optional crop the "source" dimensions the resize cap reasons about
+  // are the cropped ones — a crop out of a 4000px photo shouldn't still be
+  // treated as 4000px wide.
+  const effectiveWidth = crop ? crop.width : sourceWidth;
+  const effectiveHeight = crop ? crop.height : sourceHeight;
 
   // The resize call itself is only issued when the source actually exceeds
   // the cap (§8 — "max 1280px" is a ceiling, not a forced upscale target).
   // What's unconditional is everything below: renderAsync/saveAsync always
   // run, so a photo that's already small still gets re-encoded at quality
   // 0.7 rather than passed through untouched at its original bytes.
-  const target = computeResizeTarget(sourceWidth, sourceHeight);
+  const target = computeResizeTarget(effectiveWidth, effectiveHeight);
   let pipeline = ImageManipulator.manipulate(uri);
+  // Crop first, then resize — the crop is expressed in source pixels.
+  if (crop) pipeline = pipeline.crop(crop);
   if (target.width != null || target.height != null) pipeline = pipeline.resize(target);
   const rendered = await pipeline.renderAsync();
   const saved = await rendered.saveAsync({ compress: JPEG_QUALITY, format: SaveFormat.JPEG });

@@ -4,7 +4,7 @@
 // skippable (§1.1 no-nagging) — Done alone still commits made/eaten, pantry
 // deduction, and any leftover.
 import { useEffect, useMemo, useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { DatePickerModal } from '../components/DatePickerModal';
 import { PillButton, RecipePhoto } from '../components/ui';
 import { addShortfallToShoppingList, completeCook } from '../cooking/completeCook';
@@ -22,7 +22,6 @@ import { getAutoAddShortfalls } from '../settings/getSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { CategoryKey } from '../theme/tokens';
 import { recipePrimaryProtein, type EnrichedRecipe } from './loadRecipes';
-import { setRecipePhoto } from './recipeMutations';
 
 interface CookCompleteScreenProps {
   recipe: EnrichedRecipe;
@@ -55,10 +54,6 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
   const [saving, setSaving] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoBusy, setPhotoBusy] = useState(false);
-  // Defaults on only when the recipe has no photo of its own — that's how the
-  // library fills itself over a few weeks with nobody doing data entry. If the
-  // recipe already has a hero, replacing it becomes a deliberate act.
-  const [useAsRecipePhoto, setUseAsRecipePhoto] = useState(recipe.photoUri == null);
   const [milestones, setMilestones] = useState<CookMilestones | null>(null);
 
   const cookedAtIso = useMemo(() => dateInputToIso(cookedAtDate), [cookedAtDate]);
@@ -147,11 +142,9 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
         };
         await updateCookLog(db, result.cookLogId, draft);
       }
-      // The one-tap path from "photo of tonight's dinner" to "this is what the
-      // recipe looks like" (redesign R4).
-      if (useAsRecipePhoto && photos.length > 0) {
-        await setRecipePhoto(db, recipe.id, photos[0]);
-      }
+      // Photos attach to the cook log only — the recipe's own hero photo is
+      // deliberately left untouched (a cook is a moment in time; the recipe's
+      // photo is its identity, and the two shouldn't be coupled).
       // Queue this cook for each household member marked as cooked-with — it
       // syncs to them (becoming a cook log on their device) on the next sync,
       // or waits locally in the outbox until then.
@@ -309,17 +302,7 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
             testID="cook-photo-library"
           />
         </View>
-        {photos.length > 0 && (
-          <>
-            <Text style={styles.photoHint}>Tap a photo to remove it.</Text>
-            <View style={styles.photoToggleRow}>
-              <Text style={styles.photoToggleLabel}>
-                {recipe.photoUri == null ? 'Use as the recipe photo' : 'Replace the recipe photo with this'}
-              </Text>
-              <Switch value={useAsRecipePhoto} onValueChange={setUseAsRecipePhoto} />
-            </View>
-          </>
-        )}
+        {photos.length > 0 && <Text style={styles.photoHint}>Tap a photo to remove it. These stay with this cook — your recipe photo is left as it is.</Text>}
       </View>
 
       {preview && preview.lines.length > 0 && (
@@ -551,8 +534,6 @@ const makeStyles = (theme: AppTheme) =>
   photoButtonRow: { flexDirection: 'row', gap: theme.spacing.sm },
   flexButton: { flex: 1 },
   photoHint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, fontStyle: 'italic' },
-  photoToggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm },
-  photoToggleLabel: { flex: 1, fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
 
   section: { gap: theme.spacing.md },
   sectionTitle: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.5 },

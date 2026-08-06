@@ -12,6 +12,7 @@
 // otherwise the stored cost_per_100 fallback is used.
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { canonicalIngredientName } from '../debug/logNames';
 import { invalidateMedianCostCache } from '../recommend/medianCostCache';
 import { convertToBaseUnit } from '../lib/units';
 import type { BaseUnit, RecipeUnit } from '../seed/types';
@@ -109,11 +110,11 @@ export async function addIngredientPrice(
   // recommendation engine's median-cost cache is a stored snapshot and does
   // need explicit invalidation whenever a price that could shift it changes.
   await invalidateMedianCostCache(db);
-  logger.info('db', 'Added ingredient price', { canonicalId, quantity, unit, price });
+  logger.info('db', 'Added ingredient price', { canonicalId, name: await canonicalIngredientName(db, canonicalId), quantity, unit, price });
 }
 
 export async function deleteIngredientPrice(db: DbClient, priceId: number, canonicalId: number): Promise<void> {
   await db.runAsync('DELETE FROM ingredient_price WHERE id = ?', [priceId]);
   await invalidateMedianCostCache(db);
-  logger.info('db', 'Deleted ingredient price', { priceId, canonicalId });
+  logger.info('db', 'Deleted ingredient price', { priceId, canonicalId, name: await canonicalIngredientName(db, canonicalId) });
 }

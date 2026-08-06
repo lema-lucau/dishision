@@ -3,6 +3,7 @@
 // never on a per-second tick (§2.3 write cadence comment, §15).
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { recipeName } from '../debug/logNames';
 import { computeElapsedSeconds, type SessionCheckpoint, type StepRuntimeState } from './sessionClock';
 
 export interface CookingSessionRow {
@@ -73,7 +74,7 @@ export async function startSession(
      VALUES (?, ?, ?, ?, 0, ?, 0, ?, ?)`,
     [recipeId, servings, phase, now, ready ? now : null, currentStepId, now],
   );
-  logger.info('engine', 'Cooking session started', { recipeId, sessionId: result.lastInsertRowId, ready });
+  logger.info('engine', 'Cooking session started', { recipeId, recipeName: await recipeName(db, recipeId), sessionId: result.lastInsertRowId, ready });
   return result.lastInsertRowId;
 }
 
