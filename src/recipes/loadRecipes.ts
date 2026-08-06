@@ -111,6 +111,17 @@ export interface EnrichedStep {
   laneName: string | null;
 }
 
+// One household member's synced rating of this recipe (§7.6), carried on the
+// recipe itself so browse cards can surface "she rated this 5★" where it lands
+// emotionally — not only in the diagnostic breakdown sheet.
+export interface HouseholdRatingOnRecipe {
+  personId: string;
+  displayName: string;
+  avatarEmoji: string;
+  stars: number;
+  syncedAt: string;
+}
+
 export interface EnrichedRecipe {
   id: number;
   shareId: string;
@@ -149,6 +160,8 @@ export interface EnrichedRecipe {
   hasStaleCost: boolean;
   /** Private log text (§5.4 search) — never leaves the device, never included in a share payload. */
   logNotes: string[];
+  /** §7.6 household ratings synced for this recipe's share_id, active members only. */
+  householdRatings: HouseholdRatingOnRecipe[];
 }
 
 export async function loadEnrichedRecipes(
@@ -224,6 +237,36 @@ export async function loadEnrichedRecipes(
     what_went_well: string | null;
     what_to_change: string | null;
   }>('SELECT recipe_id, notes, what_went_well, what_to_change FROM cook_log');
+
+  // Household ratings join on share_id, not recipe_id (§7.6) — a rating can
+  // arrive before its recipe does. Active members only; a removed member's
+  // opinions shouldn't linger on cards.
+  const householdRatingRows = await db.getAllAsync<{
+    share_id: string;
+    person_id: string;
+    display_name: string;
+    avatar_emoji: string;
+    stars: number;
+    synced_at: string;
+  }>(
+    `SELECT hr.share_id, hr.person_id, hm.display_name, hm.avatar_emoji, hr.stars, hr.synced_at
+       FROM household_rating hr
+       JOIN household_member hm ON hm.person_id = hr.person_id
+      WHERE hm.removed_at IS NULL
+      ORDER BY hm.display_name`,
+  );
+  const householdRatingsByShareId = new Map<string, HouseholdRatingOnRecipe[]>();
+  for (const row of householdRatingRows) {
+    const list = householdRatingsByShareId.get(row.share_id) ?? [];
+    list.push({
+      personId: row.person_id,
+      displayName: row.display_name,
+      avatarEmoji: row.avatar_emoji,
+      stars: row.stars,
+      syncedAt: row.synced_at,
+    });
+    householdRatingsByShareId.set(row.share_id, list);
+  }
 
   const logNotesByRecipe = new Map<number, string[]>();
   for (const row of logRows) {
@@ -403,6 +446,7 @@ export async function loadEnrichedRecipes(
       exclusion,
       hasStaleCost,
       logNotes: logNotesByRecipe.get(recipe.id) ?? [],
+      householdRatings: householdRatingsByShareId.get(recipe.share_id) ?? [],
     };
   });
 }

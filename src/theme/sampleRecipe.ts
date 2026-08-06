@@ -50,4 +50,5 @@ export const SAMPLE_RECIPE: EnrichedRecipe = {
   exclusion: null,
   hasStaleCost: false,
   logNotes: [],
+  householdRatings: [],
 };

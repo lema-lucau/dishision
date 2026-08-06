@@ -14,11 +14,13 @@ import { formatShortDate } from '../lib/formatDate';
 import { formatDuration } from '../lib/formatDuration';
 import { loadTodaysPlan, type TodaysPlanEntry } from '../plan/loadTodaysPlan';
 import { CHIP_LABELS } from '../recipes/FilterChipBar';
+import { HouseholdRatingChip } from '../recipes/HouseholdRatingChip';
 import { loadEnrichedRecipes, recipePrimaryProtein, type EnrichedRecipe } from '../recipes/loadRecipes';
 import type { ChipKey } from '../recipes/queryEngine';
 import { setExclusion } from '../recipes/recipeMutations';
 import { TimeSplitBar } from '../recipes/TimeSplitBar';
 import { dismissAndPromote, getDailyRecommendations } from '../recommend/dailyCache';
+import { DecideForUs } from '../recommend/DecideForUs';
 import { FeelingPickerSheet } from '../recommend/FeelingPickerSheet';
 import { getMedianCostPerServing } from '../recommend/medianCostCache';
 import { getCurrencySymbol } from '../settings/getSetting';
@@ -55,6 +57,31 @@ function splitLastWord(line: string): [string, string] {
   const index = trimmed.lastIndexOf(' ');
   if (index < 0) return ['', trimmed];
   return [trimmed.slice(0, index), trimmed.slice(index + 1)];
+}
+
+// Rotating greeting copy (the spec explicitly allows it) — three fixed strings
+// made an app that felt identical on its fifth open feel identical on its
+// fiftieth. One line is chosen per calendar day so it's stable within a day but
+// fresh across them. Each state keeps its own set; the last word gets the
+// accent-italic treatment.
+const GREETINGS: Record<'planned' | 'suggesting' | 'empty', string[]> = {
+  planned: ["Tonight's plan is set.", "Dinner's decided.", 'You already picked tonight.', "Tonight's sorted."],
+  suggesting: [
+    'What are we making tonight?',
+    'So, what are we cooking?',
+    "What's for dinner tonight?",
+    'Hungry yet?',
+    'Time to decide dinner.',
+  ],
+  empty: ['Add a recipe to get started.', "Let's fill your cookbook.", 'Start with one recipe.'],
+};
+
+function rotatingGreeting(state: 'planned' | 'suggesting' | 'empty', dayKey: string): string {
+  const options = GREETINGS[state];
+  // Cheap stable hash of the YYYY-MM-DD key → a per-day index into the set.
+  let hash = 0;
+  for (let i = 0; i < dayKey.length; i++) hash = (hash * 31 + dayKey.charCodeAt(i)) | 0;
+  return options[Math.abs(hash) % options.length];
 }
 
 interface HomeScreenProps {
@@ -156,11 +183,11 @@ export function HomeScreen({ onOpenRecipe }: HomeScreenProps) {
 
   const today = new Date();
   const dateLabel = `${WEEKDAYS[today.getDay()]} · ${today.getDate()} ${MONTHS[today.getMonth()]}`;
+  const dayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
   const [dominant, ...rest] = picks;
   const totalLeftoverServings = leftovers.reduce((sum, l) => sum + l.servingsRemaining, 0);
-  const [greetingHead, greetingTail] = splitLastWord(
-    planRecipe ? "Tonight's plan is set." : picks.length > 0 ? 'What are we making tonight?' : 'Add a recipe to get started.',
-  );
+  const greetingState = planRecipe ? 'planned' : picks.length > 0 ? 'suggesting' : 'empty';
+  const [greetingHead, greetingTail] = splitLastWord(rotatingGreeting(greetingState, dayKey));
 
   return (
     <View style={styles.container}>
@@ -185,6 +212,14 @@ export function HomeScreen({ onOpenRecipe }: HomeScreenProps) {
         </View>
 
         <View style={styles.body}>
+          {/* The decisive gesture (product review §2). Offered when there's no
+              plan yet and there's actually something to decide between. */}
+          {!planRecipe && recipes.length > 0 && (
+            <View style={styles.section}>
+              <DecideForUs recipes={recipes} onOpenRecipe={(recipeId) => onOpenRecipe(recipeId)} />
+            </View>
+          )}
+
           {planRecipe && (
             <View style={styles.section}>
               <SectionLabel>{`Tonight's plan · ${planEntry?.slot ?? 'dinner'}`}</SectionLabel>
@@ -355,6 +390,7 @@ function DominantCard({
             {recipe.avgRating != null ? `★${recipe.avgRating.toFixed(1)} · ` : ''}
             {recipe.lastCookedAt ? `last cooked ${formatShortDate(recipe.lastCookedAt)}` : 'never cooked'}
           </Text>
+          <HouseholdRatingChip ratings={recipe.householdRatings} variant="full" />
         </View>
 
         <TimeSplitBar activeSeconds={recipe.activeSeconds} passiveSeconds={recipe.passiveSeconds} compact />

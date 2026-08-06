@@ -55,6 +55,15 @@ export async function clearExclusionsOfKind(
   return result.changes;
 }
 
+// Sets (or clears, with null) a recipe's hero photo. Separate from the form's
+// full save so Cook Complete can promote the photo you just took without
+// round-tripping the whole draft. The URI must already be through the §8
+// pipeline — this never compresses.
+export async function setRecipePhoto(db: DbClient, recipeId: number, photoUri: string | null): Promise<void> {
+  await db.runAsync(`UPDATE recipe SET photo_uri = ?, updated_at = datetime('now') WHERE id = ?`, [photoUri, recipeId]);
+  logger.info('db', 'Set recipe photo', { recipeId, cleared: photoUri == null });
+}
+
 export async function deleteRecipe(db: DbClient, recipeId: number): Promise<void> {
   await db.runAsync('DELETE FROM recipe WHERE id = ?', [recipeId]);
   await invalidateMedianCostCache(db);
@@ -66,21 +75,26 @@ export async function copyRecipe(db: DbClient, recipeId: number): Promise<number
   const recipe = await db.getFirstAsync<{
     name: string;
     description: string | null;
+    photo_uri: string | null;
     photo_emoji: string;
     base_servings: number;
     timeline_mode: string;
     origin_label: string | null;
     origin_url: string | null;
-  }>('SELECT name, description, photo_emoji, base_servings, timeline_mode, origin_label, origin_url FROM recipe WHERE id = ?', [recipeId]);
+  }>('SELECT name, description, photo_uri, photo_emoji, base_servings, timeline_mode, origin_label, origin_url FROM recipe WHERE id = ?', [recipeId]);
   if (!recipe) throw new Error(`Recipe ${recipeId} not found`);
 
   const result = await db.runAsync(
-    `INSERT INTO recipe (share_id, name, description, photo_emoji, base_servings, timeline_mode, source, origin_label, origin_url)
-     VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?)`,
+    `INSERT INTO recipe (share_id, name, description, photo_uri, photo_emoji, base_servings, timeline_mode, source, origin_label, origin_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?)`,
     [
       uuidv4(),
       `${recipe.name} (copy)`,
       recipe.description,
+      // Both rows point at the same file on disk. Nothing in the app deletes a
+      // photo file, so there's no dangling-URI risk — and a copy losing the
+      // photo would be the more surprising outcome.
+      recipe.photo_uri,
       recipe.photo_emoji,
       recipe.base_servings,
       recipe.timeline_mode,

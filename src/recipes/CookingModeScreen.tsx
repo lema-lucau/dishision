@@ -21,6 +21,7 @@ import { useConfirmModal } from '../components/useConfirmModal';
 import {
   cancelAllCookingNotifications,
   ensureNotificationPermission,
+  isAlertSoundEnabled,
   reconcileCookingNotifications,
 } from '../cooking/notifications';
 import {
@@ -178,7 +179,8 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
 
   async function reconcileNotificationsFor(current: CookingSessionRow, runtime: Map<number, StepRuntimeState>) {
     const schedule = computeNotificationSchedule(stepTimings, runtime, current.driftSeconds, current.pausedAt != null);
-    await reconcileCookingNotifications(schedule, current.startedAt, (stepId) => stepById.get(stepId)?.instruction ?? 'Next step');
+    const playSound = await isAlertSoundEnabled(db);
+    await reconcileCookingNotifications(schedule, current.startedAt, (stepId) => stepById.get(stepId)?.instruction ?? 'Next step', playSound);
   }
 
   async function beginSession(resumeExisting?: CookingSessionRow) {
@@ -556,7 +558,15 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
         <Text style={[styles.clockTimer, isReady && styles.clockResting]}>{formatClock(elapsedSeconds)}</Text>
       </View>
       {!isReady && session.driftSeconds > 30 && (
-        <Text style={styles.driftText}>⚠ {Math.round(session.driftSeconds / 60)} min behind</Text>
+        <>
+          <Text style={styles.driftText}>⚠ {Math.round(session.driftSeconds / 60)} min behind</Text>
+          {/* The drift-aware nuance, said out loud once at the right moment
+              (product review §3): a passive step that's already running doesn't
+              care that you're behind, so don't let the warning read as panic. */}
+          {currentStep?.effort === 'passive' && (
+            <Text style={styles.driftReassure}>…but this step's already going — it'll keep cooking regardless.</Text>
+          )}
+        </>
       )}
 
       {showLaneTabs && (
@@ -793,6 +803,7 @@ const makeStyles = (theme: AppTheme) =>
   laneTabOverdue: { color: theme.colors.amberText },
   clockTimer: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.base, color: theme.colors.ink2 },
   driftText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.amberText, textAlign: 'center' },
+  driftReassure: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, textAlign: 'center', fontStyle: 'italic' },
   bodyScroll: { flex: 1 },
   body: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.base },
   phaseLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink3, letterSpacing: 1 },

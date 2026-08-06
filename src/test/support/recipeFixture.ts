@@ -49,6 +49,7 @@ export function makeRecipe(overrides: Partial<EnrichedRecipe> = {}): EnrichedRec
     exclusion: null,
     hasStaleCost: false,
     logNotes: [],
+    householdRatings: [],
     ...overrides,
   };
 }

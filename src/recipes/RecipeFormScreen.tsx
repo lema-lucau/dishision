@@ -27,6 +27,7 @@ import { MEAL_TYPES, MEAL_TYPE_LABELS, isMealTag, sectionFromTags, withSection, 
 import type { RecipeDraft, RecipeIngredientDraft, RecipeStepDraft } from './recipeSave';
 import type { BaseUnit, Effort, Phase, RecipeUnit, TimelineMode } from '../seed/types';
 import { EmojiPicker } from './EmojiPicker';
+import { RecipePhotoField } from './RecipePhotoField';
 
 const TAG_SUGGESTIONS = ['chicken', 'beef', 'pork', 'fish', 'lamb', 'veg', 'healthy', 'comfort', 'hob', 'oven', 'one-pot', 'traybake'];
 
@@ -224,6 +225,12 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
         <Text style={styles.back}>← Cancel</Text>
       </TouchableOpacity>
       <Text style={styles.title}>{title}</Text>
+
+      <RecipePhotoField
+        photoUri={draft.photoUri ?? null}
+        photoEmoji={draft.photoEmoji || '🍽️'}
+        onChange={(photoUri) => update({ photoUri })}
+      />
 
       <EmojiPicker value={draft.photoEmoji || '🍽️'} onChange={(e) => update({ photoEmoji: e })} />
 

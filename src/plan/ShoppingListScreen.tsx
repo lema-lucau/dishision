@@ -4,7 +4,7 @@
 // drag-reorder within a section, add manual with autocomplete), search,
 // mark-all-checked/unchecked, and check-off -> pantry.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { DatePickerModal } from '../components/DatePickerModal';
 import { UnitPickerModal } from '../components/UnitPickerModal';
@@ -25,6 +25,7 @@ import {
   updateShoppingListItem,
 } from './shoppingListMutations';
 import { generateShoppingList } from './shoppingListGeneration';
+import { shoppingListToText } from './shoppingListText';
 import {
   groupShoppingListItems,
   loadLatestShoppingList,
@@ -141,6 +142,13 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
     reorderShoppingListSection(db, orderedIds);
   }
 
+  async function handleShare() {
+    if (!list || list.items.length === 0) return;
+    // The whole list, checked state included — the recipient sees what's
+    // already in the trolley too. A text share pastes anywhere; no file needed.
+    await Share.share({ message: shoppingListToText(list.items) });
+  }
+
   async function handleMarkAll(checked: boolean) {
     if (!list) return;
     if (checked) await checkAllShoppingListItems(db, list.id);
@@ -207,9 +215,16 @@ export function ShoppingListScreen({ defaultRangeStart, defaultRangeEnd, onOpenR
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Shopping List</Text>
-        <TouchableOpacity style={styles.generateButton} onPress={() => setRangePickerVisible(true)}>
-          <Text style={styles.generateButtonText}>{list ? 'Regenerate' : 'Generate'}</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {list && list.items.length > 0 && (
+            <TouchableOpacity style={styles.shareButton} onPress={handleShare} accessibilityLabel="Share shopping list">
+              <Text style={styles.shareButtonText}>Share</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.generateButton} onPress={() => setRangePickerVisible(true)}>
+            <Text style={styles.generateButtonText}>{list ? 'Regenerate' : 'Generate'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       {list && (
         <View style={styles.dateRow}>
@@ -579,7 +594,10 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     container: { flex: 1, padding: theme.spacing.base, gap: theme.spacing.sm },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
     title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
+    shareButton: { backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs },
+    shareButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
     generateButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs },
     generateButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentFg },
     rangeLabel: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },

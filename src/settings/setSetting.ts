@@ -50,3 +50,7 @@ export async function setCostStalenessDays(db: DbClient, days: number): Promise<
 export async function setCostPromptDismissedAt(db: DbClient, iso: string): Promise<void> {
   await setSetting(db, 'cost_prompt_dismissed_at', iso);
 }
+
+export async function setOnboardingComplete(db: DbClient): Promise<void> {
+  await setSetting(db, 'onboarding_complete', '1');
+}

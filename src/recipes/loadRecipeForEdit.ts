@@ -8,11 +8,12 @@ export async function loadRecipeDraft(db: DbClient, recipeId: number): Promise<R
   const recipe = await db.getFirstAsync<{
     name: string;
     description: string | null;
+    photo_uri: string | null;
     photo_emoji: string;
     base_servings: number;
     timeline_mode: 'sequential' | 'parallel';
     origin_label: string | null;
-  }>('SELECT name, description, photo_emoji, base_servings, timeline_mode, origin_label FROM recipe WHERE id = ?', [recipeId]);
+  }>('SELECT name, description, photo_uri, photo_emoji, base_servings, timeline_mode, origin_label FROM recipe WHERE id = ?', [recipeId]);
   if (!recipe) throw new Error(`Recipe ${recipeId} not found`);
 
   const lanes = await db.getAllAsync<{ name: string }>(
@@ -52,6 +53,7 @@ export async function loadRecipeDraft(db: DbClient, recipeId: number): Promise<R
   return {
     name: recipe.name,
     description: recipe.description ?? '',
+    photoUri: recipe.photo_uri,
     photoEmoji: recipe.photo_emoji,
     baseServings: recipe.base_servings,
     timelineMode: recipe.timeline_mode,
@@ -82,6 +84,7 @@ export function emptyRecipeDraft(): RecipeDraft {
   return {
     name: '',
     description: '',
+    photoUri: null,
     photoEmoji: '🍽️',
     baseServings: 2,
     timelineMode: 'sequential',

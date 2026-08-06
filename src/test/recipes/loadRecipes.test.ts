@@ -176,4 +176,22 @@ describe('loadEnrichedRecipes (§2.5, §3, §4.7)', () => {
     expect(recipe.costPerServing).toBeNull();
     expect(recipe.totalSeconds).toBe(0);
   });
+
+  it('attaches active household members\' ratings by share_id, skipping removed members (§7.6)', async () => {
+    const recipeId = await insertRecipe(db, { name: 'Thai Green Curry' });
+    const shareId = 'share-Thai Green Curry';
+    await db.runAsync(
+      `INSERT INTO household_member (person_id, display_name, avatar_emoji, sync_secret) VALUES ('p1', 'Ana', '👩', 'x')`,
+    );
+    await db.runAsync(
+      `INSERT INTO household_member (person_id, display_name, avatar_emoji, sync_secret, removed_at)
+       VALUES ('p2', 'Gone', '👻', 'y', datetime('now'))`,
+    );
+    await db.runAsync(`INSERT INTO household_rating (person_id, share_id, stars) VALUES ('p1', ?, 5)`, [shareId]);
+    await db.runAsync(`INSERT INTO household_rating (person_id, share_id, stars) VALUES ('p2', ?, 2)`, [shareId]);
+
+    const recipe = (await loadEnrichedRecipes(db)).find((r) => r.id === recipeId)!;
+    expect(recipe.householdRatings).toHaveLength(1);
+    expect(recipe.householdRatings[0]).toMatchObject({ displayName: 'Ana', stars: 5 });
+  });
 });

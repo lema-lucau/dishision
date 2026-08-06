@@ -11,14 +11,21 @@
 import * as Notifications from 'expo-notifications';
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
-import { getSettingWithDefault } from '../settings/getSetting';
+import { getAlertSound, getSettingWithDefault } from '../settings/getSetting';
 import type { ScheduledNotification } from './sessionClock';
+
+// The single source of truth for whether cooking-mode alerts make a sound.
+// The Settings "Sound" toggle (§5.6) writes `alert_sound`; the reconcile call
+// below reads it and pushes the value here so BOTH the delivered notification
+// (its own `sound` field) and the foreground handler agree. Without this, the
+// handler hardcoded shouldPlaySound: true and the toggle silently did nothing.
+let soundEnabled = true;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
-    shouldPlaySound: true,
+    shouldPlaySound: soundEnabled,
     shouldSetBadge: false,
   }),
 });
@@ -47,6 +54,12 @@ export async function ensureNotificationPermission(db: DbClient): Promise<Notifi
   }
 }
 
+// Convenience for callers that only have a db handle — reads `alert_sound`
+// and returns it, so the reconcile call site stays a one-liner.
+export async function isAlertSoundEnabled(db: DbClient): Promise<boolean> {
+  return getAlertSound(db);
+}
+
 export async function cancelAllCookingNotifications(): Promise<void> {
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
@@ -63,7 +76,11 @@ export async function reconcileCookingNotifications(
   schedule: ScheduledNotification[],
   sessionStartedAt: string,
   stepLabel: (stepId: number) => string,
+  /** From the §5.6 "Sound" toggle (`alert_sound`). Silences both the scheduled
+   * notification and the foreground handler when off. */
+  playSound = true,
 ): Promise<void> {
+  soundEnabled = playSound;
   await cancelAllCookingNotifications();
   const startMs = new Date(sessionStartedAt).getTime();
   const now = Date.now();
@@ -77,7 +94,7 @@ export async function reconcileCookingNotifications(
         content: {
           title: 'Next step',
           body: stepLabel(entry.stepId),
-          sound: true,
+          sound: playSound,
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,

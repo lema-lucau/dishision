@@ -128,20 +128,28 @@ export function TabShell({ profile, onRestored }: TabShellProps) {
       </View>
       {!tabBarHidden && (
         <View style={[styles.tabBar, { paddingBottom: insets.bottom || theme.spacing.sm }]}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={styles.tabButton}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Text style={[styles.tabIcon, activeTab !== tab.key && styles.tabIconInactive]}>
-                {tab.icon}
-              </Text>
-              <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {TABS.map((tab) => {
+            const active = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={styles.tabButton}
+                onPress={() => setActiveTab(tab.key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={tab.label}
+              >
+                {/* Colour alone never carries state (redesign R7) — the active
+                    tab is also the heavier stroke. */}
+                <tab.Icon
+                  size={22}
+                  color={active ? theme.colors.accentText : theme.colors.ink3}
+                  strokeWidth={active ? 2.4 : 1.8}
+                />
+                <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       )}
     </View>
@@ -163,14 +171,8 @@ const makeStyles = (theme: AppTheme) =>
     tabButton: {
       flex: 1,
       alignItems: 'center',
+      gap: 3,
       paddingVertical: theme.spacing.sm,
-    },
-    tabIcon: {
-      fontSize: theme.fontSize.md,
-      marginBottom: 2,
-    },
-    tabIconInactive: {
-      opacity: 0.5,
     },
     tabLabel: {
       fontFamily: theme.fonts.body.semiBold,

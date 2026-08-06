@@ -88,3 +88,9 @@ export async function getCostStalenessDays(db: DbClient): Promise<CostStalenessD
 export async function getCostPromptDismissedAt(db: DbClient): Promise<string | null> {
   return getSetting(db, 'cost_prompt_dismissed_at');
 }
+
+// First-run onboarding (product review §2): shown once, on the very first
+// launch, then never again — the flag survives even if it was skipped.
+export async function getOnboardingComplete(db: DbClient): Promise<boolean> {
+  return (await getSettingWithDefault(db, 'onboarding_complete', '0')) === '1';
+}

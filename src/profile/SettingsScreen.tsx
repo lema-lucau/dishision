@@ -73,7 +73,7 @@ const TIPS = {
   recency: 'Recipes cooked within this many days are hidden from suggestions, so you don\'t repeat meals too soon. Set to Off to never hide them.',
   servings: "The serving count new recipes and the 'add to shopping list' prompts start from.",
   vibrate: 'Vibrate the phone when a cooking-mode step timer finishes.',
-  sound: 'Play a sound when a cooking-mode step timer finishes.',
+  sound: 'Play a sound with the step-timer notification. Only the notification makes a sound; on-screen alerts while the app is open are silent (they vibrate instead).',
   takeover: 'Show a full-screen alert when a step timer finishes — handy when the phone is propped up across the kitchen.',
   autoAdd:
     "When you add a recipe to your shopping list, also add any ingredients you don't have enough of. Either way, shortfalls are always flagged — this only decides whether they're added to the list for you automatically.",

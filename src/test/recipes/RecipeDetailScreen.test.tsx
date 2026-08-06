@@ -74,6 +74,7 @@ function baseRecipe(overrides: Partial<EnrichedRecipe> = {}): EnrichedRecipe {
     exclusion: null,
     hasStaleCost: false,
     logNotes: [],
+    householdRatings: [],
     ...overrides,
   };
 }
