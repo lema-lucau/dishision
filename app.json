@@ -41,7 +41,8 @@
             }
           ]
         }
-      ]
+      ],
+      "package": "com.lema_21.dishision"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -60,10 +61,17 @@
         "expo-build-properties",
         {
           "android": {
-            "buildArchs": ["arm64-v8a"]
+            "buildArchs": [
+              "arm64-v8a"
+            ]
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f8605c2d-3b60-4e33-a623-dd4319dffd31"
+      }
+    }
   }
 }
