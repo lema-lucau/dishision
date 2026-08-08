@@ -18,6 +18,7 @@ interface ChatRow {
   source: string;
   source_url: string | null;
   original_recipe_id: number | null;
+  origin_cook_log_id: number | null;
   recipe_draft_json: string | null;
   saved_recipe_id: number | null;
   model_used: string | null;
@@ -51,6 +52,7 @@ function mapChat(row: ChatRow): BotChat {
     source: row.source as BotChatSource,
     sourceUrl: row.source_url,
     originalRecipeId: row.original_recipe_id,
+    originCookLogId: row.origin_cook_log_id,
     draft: parseDraft(row.recipe_draft_json),
     savedRecipeId: row.saved_recipe_id,
     model: row.model_used,
@@ -64,6 +66,7 @@ export interface CreateChatInput {
   settings: BotBehaviourSettings;
   sourceUrl?: string | null;
   originalRecipeId?: number | null;
+  originCookLogId?: number | null;
   draft?: ProposedRecipe | null;
 }
 
@@ -94,6 +97,7 @@ export function buildNewChat(input: CreateChatInput): BotChat {
     source: input.source,
     sourceUrl: input.sourceUrl ?? null,
     originalRecipeId: input.originalRecipeId ?? null,
+    originCookLogId: input.originCookLogId ?? null,
     draft: input.draft ?? null,
     savedRecipeId: null,
     model: input.settings.model,
@@ -113,13 +117,14 @@ export async function persistChat(db: DbClient, chat: BotChat): Promise<void> {
   if (existing) return;
   await enforceCap(db);
   await db.runAsync(
-    `INSERT INTO bot_chat (id, source, source_url, original_recipe_id, recipe_draft_json, model_used, lane_aggressiveness, dishision_assisted)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO bot_chat (id, source, source_url, original_recipe_id, origin_cook_log_id, recipe_draft_json, model_used, lane_aggressiveness, dishision_assisted)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       chat.id,
       chat.source,
       chat.sourceUrl,
       chat.originalRecipeId,
+      chat.originCookLogId,
       chat.draft ? JSON.stringify(chat.draft) : null,
       chat.settings.model,
       JSON.stringify(chat.settings),

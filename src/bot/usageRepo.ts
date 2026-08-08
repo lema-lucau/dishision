@@ -10,12 +10,12 @@ import type { BotModelKey } from './types';
 
 export async function logUsage(
   db: DbClient,
-  args: { chatId: string | null; model: string; inputTokens: number; outputTokens: number },
+  args: { chatId: string | null; model: string; inputTokens: number; outputTokens: number; surface?: string | null },
 ): Promise<void> {
   const cost = estimateCostUsd(args.model, args.inputTokens, args.outputTokens);
   await db.runAsync(
-    'INSERT INTO bot_usage_log (id, chat_id, model, input_tokens, output_tokens, estimated_cost) VALUES (?, ?, ?, ?, ?, ?)',
-    [uuidv4(), args.chatId, args.model, args.inputTokens, args.outputTokens, cost],
+    'INSERT INTO bot_usage_log (id, chat_id, surface, model, input_tokens, output_tokens, estimated_cost) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [uuidv4(), args.chatId, args.surface ?? null, args.model, args.inputTokens, args.outputTokens, cost],
   );
 }
 
@@ -38,14 +38,21 @@ export interface ModelUsage extends UsageTotals {
   model: BotModelKey;
 }
 
+export interface SurfaceUsage extends UsageTotals {
+  /** The bot_usage_log.surface tag, or 'other' for pre-§A1 untagged rows. */
+  surface: string;
+}
+
 export interface BotUsageStats {
   overall: UsageTotals;
   weekly: WeeklyUsage[];
   byModel: ModelUsage[];
+  bySurface: SurfaceUsage[];
 }
 
 interface UsageRow {
   model: string;
+  surface: string | null;
   input_tokens: number;
   output_tokens: number;
   estimated_cost: number;
@@ -84,12 +91,13 @@ function fillWeeks(map: Map<string, WeeklyUsage>): WeeklyUsage[] {
 
 export async function loadBotUsageStats(db: DbClient): Promise<BotUsageStats> {
   const rows = await db.getAllAsync<UsageRow>(
-    'SELECT model, input_tokens, output_tokens, estimated_cost, created_at FROM bot_usage_log ORDER BY created_at ASC',
+    'SELECT model, surface, input_tokens, output_tokens, estimated_cost, created_at FROM bot_usage_log ORDER BY created_at ASC',
   );
 
   const overall: UsageTotals = { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 };
   const weekly = new Map<string, WeeklyUsage>();
   const byModel = new Map<BotModelKey, ModelUsage>();
+  const bySurface = new Map<string, SurfaceUsage>();
 
   for (const r of rows) {
     overall.calls += 1;
@@ -112,11 +120,20 @@ export async function loadBotUsageStats(db: DbClient): Promise<BotUsageStats> {
     m.outputTokens += r.output_tokens;
     m.costUsd += r.estimated_cost;
     byModel.set(key, m);
+
+    const surfaceKey = r.surface ?? 'other';
+    const s = bySurface.get(surfaceKey) ?? { surface: surfaceKey, calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 };
+    s.calls += 1;
+    s.inputTokens += r.input_tokens;
+    s.outputTokens += r.output_tokens;
+    s.costUsd += r.estimated_cost;
+    bySurface.set(surfaceKey, s);
   }
 
   return {
     overall,
     weekly: fillWeeks(weekly),
     byModel: [...byModel.values()].sort((a, b) => b.costUsd - a.costUsd),
+    bySurface: [...bySurface.values()].sort((a, b) => b.costUsd - a.costUsd),
   };
 }

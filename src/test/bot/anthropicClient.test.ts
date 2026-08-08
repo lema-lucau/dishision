@@ -16,6 +16,8 @@ describe('parseResponse (§7.1)', () => {
     );
     expect(result.assistantText).toBe("Here's a quick one.");
     expect(result.proposedRecipe?.name).toBe('Toast');
+    expect(result.toolUse).toHaveLength(1);
+    expect(result.toolUse[0].name).toBe('propose_recipe');
     expect(result.usage).toEqual({ inputTokens: 120, outputTokens: 45 });
     expect(result.model).toBe('claude-haiku-4-5-20251001');
   });

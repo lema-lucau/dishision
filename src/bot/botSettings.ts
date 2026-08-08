@@ -8,11 +8,15 @@ import { getSetting, getSettingWithDefault } from '../settings/getSetting';
 import { setSetting } from '../settings/setSetting';
 import {
   DEFAULT_BOT_SETTINGS,
+  DEFAULT_WEEKLY_PLANNING,
   type BotBehaviourSettings,
   type BotModelKey,
   type LaneAggressiveness,
+  type PlanningHorizon,
+  type PreferExisting,
   type PreferredUnits,
   type StepDetailLevel,
+  type WeeklyPlanningSettings,
 } from './types';
 
 const KEYS = {
@@ -22,6 +26,8 @@ const KEYS = {
   units: 'bot_units',
   defaultServings: 'bot_default_servings',
   cookingPreferences: 'bot_cooking_preferences',
+  planningHorizon: 'bot_planning_horizon',
+  preferExisting: 'bot_prefer_existing',
 } as const;
 
 function asOneOf<T extends string>(value: string, allowed: readonly T[], fallback: T): T {
@@ -73,4 +79,26 @@ export async function setBotDefaultServings(db: DbClient, value: number): Promis
 }
 export async function setBotCookingPreferences(db: DbClient, value: string): Promise<void> {
   await setSetting(db, KEYS.cookingPreferences, value);
+}
+
+// §A3 weekly-planning settings (read live, not snapshotted onto a chat).
+export async function getWeeklyPlanningSettings(db: DbClient): Promise<WeeklyPlanningSettings> {
+  const horizon = asOneOf<PlanningHorizon>(
+    await getSettingWithDefault(db, KEYS.planningHorizon, DEFAULT_WEEKLY_PLANNING.horizon),
+    ['3', '5', '7'],
+    DEFAULT_WEEKLY_PLANNING.horizon,
+  );
+  const preferExisting = asOneOf<PreferExisting>(
+    await getSettingWithDefault(db, KEYS.preferExisting, DEFAULT_WEEKLY_PLANNING.preferExisting),
+    ['strongly', 'balanced', 'open'],
+    DEFAULT_WEEKLY_PLANNING.preferExisting,
+  );
+  return { horizon, preferExisting };
+}
+
+export async function setBotPlanningHorizon(db: DbClient, value: PlanningHorizon): Promise<void> {
+  await setSetting(db, KEYS.planningHorizon, value);
+}
+export async function setBotPreferExisting(db: DbClient, value: PreferExisting): Promise<void> {
+  await setSetting(db, KEYS.preferExisting, value);
 }

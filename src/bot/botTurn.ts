@@ -4,14 +4,13 @@
 // only this — every DB write here is immediate, so a crash mid-turn loses
 // nothing (§4).
 import type { DbClient } from '../db/DbClient';
-import { getApiKey } from './apiKeyStore';
-import { runBotTurn, BotApiError, type BotTurnResult } from './anthropicClient';
+import { runSurfaceTurn, type BotSurface } from './botSession';
 import { appendMessage, getMessages, setModelUsed, updateDraft } from './chatRepo';
 import { buildApiMessages } from './contextWindow';
+import { PROPOSE_RECIPE_TOOL } from './proposeRecipeTool';
 import { proposedToDraft, resolveDraftIngredients } from './proposedToDraft';
-import { buildSystemPrompt } from './systemPrompt';
-import { logUsage } from './usageRepo';
-import { MODEL_IDS, type BotChat, type BotMessage, type ProposedRecipe } from './types';
+import { buildRecipeChatInstructions } from './systemPrompt';
+import { type BotChat, type BotMessage, type ProposedRecipe } from './types';
 import type { RecipeDraft } from '../recipes/recipeSave';
 
 export interface TurnProposal {
@@ -43,7 +42,7 @@ export async function sendUserTurn(
   chat: BotChat,
   userText: string,
   userName: string,
-  options: { fetchImpl?: typeof fetch } = {},
+  options: { fetchImpl?: typeof fetch; contextFragment?: string | null } = {},
 ): Promise<TurnResult> {
   await appendMessage(db, chat.id, 'user', userText);
   return runTurn(db, chat, userName, options);
@@ -55,7 +54,7 @@ export async function retryTurn(
   db: DbClient,
   chat: BotChat,
   userName: string,
-  options: { fetchImpl?: typeof fetch } = {},
+  options: { fetchImpl?: typeof fetch; contextFragment?: string | null } = {},
 ): Promise<TurnResult> {
   return runTurn(db, chat, userName, options);
 }
@@ -64,53 +63,51 @@ async function runTurn(
   db: DbClient,
   chat: BotChat,
   userName: string,
-  options: { fetchImpl?: typeof fetch } = {},
+  options: { fetchImpl?: typeof fetch; contextFragment?: string | null } = {},
 ): Promise<TurnResult> {
-  const apiKey = await getApiKey();
-  if (!apiKey) throw new BotApiError('No Dishision Bot API key set. Add one in Settings.', false);
-
   const previousDraft = chat.draft;
-  const system = buildSystemPrompt({
-    userName,
-    source: chat.source,
-    settings: chat.settings,
-    currentRecipe: previousDraft,
-  });
   const history = await getMessages(db, chat.id);
   const messages = buildApiMessages(history);
 
-  // On failure this throws with the user message left saved, so a retry (§10)
-  // re-runs from the same transcript via retryTurn().
-  const result: BotTurnResult = await runBotTurn({
-    apiKey,
-    model: MODEL_IDS[chat.settings.model],
-    system,
+  // Route the turn through the shared session layer (§A1): it owns the API key,
+  // prompt assembly, the call, and usage logging (tagged 'recipe_chat'). This
+  // surface contributes the recipe-chat instructions and the propose_recipe
+  // tool. On failure it throws with the user message left saved, so a retry
+  // (§10) re-runs from the same transcript via retryTurn().
+  // A cook-log refine is the same recipe-building flow, but tagged as its own
+  // surface for the Stats "by feature" view (§A1.4, §A2.3).
+  const surface: BotSurface = chat.source === 'cook_log' ? 'cook_log_refine' : 'recipe_chat';
+  const result = await runSurfaceTurn(db, {
+    surface,
+    userName,
+    settings: chat.settings,
+    instructions: buildRecipeChatInstructions(chat.source, chat.settings),
+    contextFragment: options.contextFragment ?? null,
+    currentRecipe: previousDraft,
+    tools: [PROPOSE_RECIPE_TOOL],
     messages,
-    fetchImpl: options.fetchImpl,
-  });
-
-  // Log usage regardless of whether a recipe came back — every call costs (§12).
-  await logUsage(db, {
     chatId: chat.id,
-    model: result.model,
-    inputTokens: result.usage.inputTokens,
-    outputTokens: result.usage.outputTokens,
+    fetchImpl: options.fetchImpl,
   });
   await setModelUsed(db, chat.id, result.model);
 
+  const recipeCall = result.toolUse.find((t) => t.name === 'propose_recipe');
+  const proposedRecipe: ProposedRecipe | null =
+    recipeCall && recipeCall.input && typeof recipeCall.input === 'object' ? (recipeCall.input as ProposedRecipe) : null;
+
   let proposal: TurnProposal | null = null;
-  if (result.proposedRecipe) {
-    const draft = proposedToDraft(result.proposedRecipe);
+  if (proposedRecipe) {
+    const draft = proposedToDraft(proposedRecipe);
     const { ingredients, newIngredientNames } = await resolveDraftIngredients(db, draft.ingredients);
-    proposal = { proposed: result.proposedRecipe, draft: { ...draft, ingredients }, newIngredientNames };
-    await updateDraft(db, chat.id, result.proposedRecipe);
+    proposal = { proposed: proposedRecipe, draft: { ...draft, ingredients }, newIngredientNames };
+    await updateDraft(db, chat.id, proposedRecipe);
   }
 
   const assistantMessage = await appendMessage(
     db,
     chat.id,
     'assistant',
-    result.assistantText || fallbackText(result.proposedRecipe),
+    result.assistantText || fallbackText(proposedRecipe),
   );
 
   return { assistantMessage, previousDraft, proposal };

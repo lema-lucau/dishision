@@ -14,6 +14,17 @@ import { loadBotUsageStats, type BotUsageStats } from '../bot/usageRepo';
 import { usdToEur } from '../bot/pricing';
 import { MODEL_LABELS, type BotModelKey } from '../bot/types';
 
+// User-facing names for the bot surfaces (§A1.4). 'other' covers rows logged
+// before surface tagging existed.
+const BOT_SURFACE_LABELS: Record<string, string> = {
+  recipe_chat: 'Recipe chat',
+  cook_log_refine: 'Cook log refine',
+  cooking_quick_ask: 'Cooking quick-ask',
+  weekly_planning: 'Weekly planning',
+  feeling_fallback: "'I'm feeling' fallback",
+  other: 'Other',
+};
+
 interface StatsScreenProps {
   onBack: () => void;
   /** Opens a recipe (e.g. tapping the "most cooked" card). */
@@ -427,6 +438,24 @@ export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
                   </View>
                 ))}
               </View>
+
+              {/* §A1.4: which bot feature is actually being used / costing anything. */}
+              {botUsage.bySurface.length > 1 && (
+                <>
+                  <Text style={styles.sectionLabel}>BY FEATURE</Text>
+                  <View style={styles.rankedCard}>
+                    {botUsage.bySurface.map((s) => (
+                      <View key={s.surface} style={styles.botModelRow}>
+                        <Text style={styles.botModelName}>{BOT_SURFACE_LABELS[s.surface] ?? s.surface}</Text>
+                        <Text style={styles.botModelMeta}>
+                          {s.calls} call{s.calls === 1 ? '' : 's'} · {formatTokens(s.inputTokens + s.outputTokens)} tok
+                        </Text>
+                        <Text style={styles.botModelCost}>{formatUsd(s.costUsd)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
               <Text style={styles.sectionHint}>
                 No spend cap here — set a hard limit on your API key in the Anthropic Console to be safe.
               </Text>

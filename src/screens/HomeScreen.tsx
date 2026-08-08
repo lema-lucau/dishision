@@ -23,6 +23,8 @@ import { dismissAndPromote, getDailyRecommendations } from '../recommend/dailyCa
 import { DecideForUs } from '../recommend/DecideForUs';
 import { FeelingPickerSheet } from '../recommend/FeelingPickerSheet';
 import { getMedianCostPerServing } from '../recommend/medianCostCache';
+import { getSurfaceEnabled } from '../bot/botSurfaceSettings';
+import { buildLeftoverContextFragment, buildPantryContextFragment } from '../bot/surfaceContext';
 import { getCurrencySymbol, getRecommendCategories } from '../settings/getSetting';
 import { MEAL_CATEGORIES, type MealCategory } from '../recommend/mealCategories';
 import type { CategoryKey } from '../theme/tokens';
@@ -87,12 +89,16 @@ function rotatingGreeting(state: 'planned' | 'suggesting' | 'empty', dayKey: str
 
 interface HomeScreenProps {
   onOpenRecipe: (recipeId: number, opts?: { startCooking?: boolean }) => void;
+  /** §A2.6: open a fresh Dishision Bot chat seeded with an "I'm feeling" request
+   * plus the pantry/leftover context. */
+  onCreateWithBot?: (message: string, context: string | null) => void;
 }
 
-export function HomeScreen({ onOpenRecipe }: HomeScreenProps) {
+export function HomeScreen({ onOpenRecipe, onCreateWithBot }: HomeScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
+  const [feelingFallbackEnabled, setFeelingFallbackEnabled] = useState(true);
 
   const [recipes, setRecipes] = useState<EnrichedRecipe[] | null>(null);
   const [leftovers, setLeftovers] = useState<LeftoverRow[]>([]);
@@ -136,6 +142,11 @@ export function HomeScreen({ onOpenRecipe }: HomeScreenProps) {
     reload();
   }, [reload]);
 
+  // §A2.6: only offer the bot fallback when the surface is enabled.
+  useEffect(() => {
+    getSurfaceEnabled(db, 'feeling_fallback').then(setFeelingFallbackEnabled);
+  }, [db]);
+
   async function handleEatConfirm() {
     if (!eatTarget) return;
     await eatLeftover(db, eatTarget.id, eatQty);
@@ -173,6 +184,19 @@ export function HomeScreen({ onOpenRecipe }: HomeScreenProps) {
           setFeelingChip(null);
           onOpenRecipe(recipe.id);
         }}
+        onCreateWithBot={
+          feelingFallbackEnabled && onCreateWithBot
+            ? async (message) => {
+                const [pantry, leftovers] = await Promise.all([
+                  buildPantryContextFragment(db),
+                  buildLeftoverContextFragment(db),
+                ]);
+                const context = [pantry, leftovers].filter(Boolean).join('\n\n') || null;
+                setFeelingChip(null);
+                onCreateWithBot(message, context);
+              }
+            : undefined
+        }
       />
     );
   }

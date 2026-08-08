@@ -21,6 +21,21 @@ export type LaneAggressiveness = 'never' | 'balanced' | 'aggressive';
 export type StepDetailLevel = 'brief' | 'detailed';
 export type PreferredUnits = 'metric' | 'imperial';
 
+// §A3 weekly-planning-only settings. Kept out of the per-chat snapshot
+// (BotBehaviourSettings) because planning isn't a 1:1 recipe chat — read live.
+export type PlanningHorizon = '3' | '5' | '7';
+export type PreferExisting = 'strongly' | 'balanced' | 'open';
+
+export interface WeeklyPlanningSettings {
+  horizon: PlanningHorizon;
+  preferExisting: PreferExisting;
+}
+
+export const DEFAULT_WEEKLY_PLANNING: WeeklyPlanningSettings = {
+  horizon: '7',
+  preferExisting: 'strongly',
+};
+
 // §5.1 tweakable behaviour, plus the model. Snapshotted onto each chat at
 // creation time so a later Settings change never retroactively alters how an
 // in-flight conversation behaves.
@@ -92,6 +107,8 @@ export interface BotChat {
   source: BotChatSource;
   sourceUrl: string | null;
   originalRecipeId: number | null;
+  /** The cook this refine chat was started from (§A2.3), else null. */
+  originCookLogId: number | null;
   /** Parsed ProposedRecipe, or null if the bot hasn't produced a candidate yet. */
   draft: ProposedRecipe | null;
   savedRecipeId: number | null;

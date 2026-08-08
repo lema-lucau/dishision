@@ -3,29 +3,37 @@
 // poking around the app finds. Covers the API key (masked, tap-to-reveal, test,
 // links out), the model, and the §5.1 tweakable behaviours.
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { clearApiKey, getApiKey, isSecureStoreAvailable, setApiKey } from './apiKeyStore';
 import { testApiKey } from './anthropicClient';
+import type { BotSurface } from './botSession';
 import {
   getBotSettings,
+  getWeeklyPlanningSettings,
   setBotCookingPreferences,
   setBotDefaultServings,
   setBotLaneAggressiveness,
   setBotModel,
+  setBotPlanningHorizon,
+  setBotPreferExisting,
   setBotStepDetail,
   setBotUnits,
 } from './botSettings';
+import { BOT_SURFACES, getAllSurfaceToggles, setSurfaceEnabled, SURFACE_TOGGLE_HINTS, SURFACE_TOGGLE_LABELS } from './botSurfaceSettings';
 import {
   MODEL_IDS,
   MODEL_LABELS,
   type BotBehaviourSettings,
   type BotModelKey,
   type LaneAggressiveness,
+  type PlanningHorizon,
+  type PreferExisting,
   type PreferredUnits,
   type StepDetailLevel,
+  type WeeklyPlanningSettings,
 } from './types';
 
 interface BotSettingsScreenProps {
@@ -67,6 +75,8 @@ export function BotSettingsScreen({ onBack }: BotSettingsScreenProps) {
   const { modal, notice } = useConfirmModal();
 
   const [settings, setSettings] = useState<BotBehaviourSettings | null>(null);
+  const [planning, setPlanning] = useState<WeeklyPlanningSettings | null>(null);
+  const [toggles, setToggles] = useState<Record<BotSurface, boolean> | null>(null);
   const [keyInput, setKeyInput] = useState('');
   const [hasStoredKey, setHasStoredKey] = useState(false);
   const [revealKey, setRevealKey] = useState(false);
@@ -76,6 +86,8 @@ export function BotSettingsScreen({ onBack }: BotSettingsScreenProps) {
   useEffect(() => {
     (async () => {
       setSettings(await getBotSettings(db));
+      setPlanning(await getWeeklyPlanningSettings(db));
+      setToggles(await getAllSurfaceToggles(db));
       const key = await getApiKey();
       if (key) {
         setKeyInput(key);
@@ -94,6 +106,19 @@ export function BotSettingsScreen({ onBack }: BotSettingsScreenProps) {
     if (update.units) await setBotUnits(db, update.units);
     if (update.defaultServings != null) await setBotDefaultServings(db, update.defaultServings);
     if (update.cookingPreferences != null) await setBotCookingPreferences(db, update.cookingPreferences);
+  }
+
+  async function patchHorizon(value: PlanningHorizon) {
+    if (planning) setPlanning({ ...planning, horizon: value });
+    await setBotPlanningHorizon(db, value);
+  }
+  async function patchPreferExisting(value: PreferExisting) {
+    if (planning) setPlanning({ ...planning, preferExisting: value });
+    await setBotPreferExisting(db, value);
+  }
+  async function patchToggle(surface: BotSurface, on: boolean) {
+    setToggles((prev) => (prev ? { ...prev, [surface]: on } : prev));
+    await setSurfaceEnabled(db, surface, on);
   }
 
   async function saveKey() {
@@ -163,6 +188,7 @@ export function BotSettingsScreen({ onBack }: BotSettingsScreenProps) {
         </View>
       )}
 
+      <Text style={styles.groupTitle}>Connection</Text>
       <Text style={styles.sectionLabel}>API KEY</Text>
       <View style={styles.card}>
         <View style={styles.keyRow}>
@@ -219,28 +245,8 @@ export function BotSettingsScreen({ onBack }: BotSettingsScreenProps) {
         choice.
       </Text>
 
-      <Text style={styles.sectionLabel}>LANE SPLITTING</Text>
-      <ChipRow<LaneAggressiveness>
-        options={[
-          { value: 'never', label: 'Never' },
-          { value: 'balanced', label: 'Balanced' },
-          { value: 'aggressive', label: 'Aggressive' },
-        ]}
-        value={settings.laneAggressiveness}
-        onChange={(v) => patch({ laneAggressiveness: v })}
-      />
-      <Text style={styles.hint}>How readily Dishision Bot splits steps into parallel lanes.</Text>
-
-      <Text style={styles.sectionLabel}>STEP DETAIL</Text>
-      <ChipRow<StepDetailLevel>
-        options={[
-          { value: 'brief', label: 'Brief' },
-          { value: 'detailed', label: 'Detailed' },
-        ]}
-        value={settings.stepDetail}
-        onChange={(v) => patch({ stepDetail: v })}
-      />
-      <Text style={styles.hint}>Brief matches Dishision's terse style; Detailed adds a little technique guidance.</Text>
+      <Text style={styles.groupTitle}>Global behaviour</Text>
+      <Text style={styles.hint}>Applies to every Dishision Bot feature.</Text>
 
       <Text style={styles.sectionLabel}>PREFERRED UNITS</Text>
       <ChipRow<PreferredUnits>
@@ -268,17 +274,89 @@ export function BotSettingsScreen({ onBack }: BotSettingsScreenProps) {
         </View>
       </View>
 
+      <Text style={styles.sectionLabel}>STEP DETAIL</Text>
+      <ChipRow<StepDetailLevel>
+        options={[
+          { value: 'brief', label: 'Brief' },
+          { value: 'detailed', label: 'Detailed' },
+        ]}
+        value={settings.stepDetail}
+        onChange={(v) => patch({ stepDetail: v })}
+      />
+      <Text style={styles.hint}>Brief matches Dishision's terse style; Detailed adds a little technique guidance.</Text>
+
       <Text style={styles.sectionLabel}>COOKING PREFERENCES</Text>
       <TextInput
         style={styles.prefsInput}
         value={settings.cookingPreferences}
         onChangeText={(v) => setSettings({ ...settings, cookingPreferences: v })}
         onBlur={() => patch({ cookingPreferences: settings.cookingPreferences })}
-        placeholder="e.g. no mushrooms, easy on the chilli, Tara doesn't eat pork"
+        placeholder="e.g. no mushrooms, easy on the chilli, I don't like seafood"
         placeholderTextColor={theme.colors.ink3}
         multiline
       />
       <Text style={styles.hint}>Standing notes injected into every chat, so you don't repeat yourself.</Text>
+
+      <Text style={styles.groupTitle}>Per-feature behaviour</Text>
+      <Text style={styles.hint}>Only shown where it applies — each feature's setting affects only that feature.</Text>
+
+      <Text style={styles.sectionLabel}>LANE SPLITTING</Text>
+      <Text style={styles.subHint}>Recipe chat &amp; cook log refine</Text>
+      <ChipRow<LaneAggressiveness>
+        options={[
+          { value: 'never', label: 'Never' },
+          { value: 'balanced', label: 'Balanced' },
+          { value: 'aggressive', label: 'Aggressive' },
+        ]}
+        value={settings.laneAggressiveness}
+        onChange={(v) => patch({ laneAggressiveness: v })}
+      />
+      <Text style={styles.hint}>How readily Dishision Bot splits steps into parallel lanes.</Text>
+
+      {planning && (
+        <>
+          <Text style={styles.sectionLabel}>PLANNING HORIZON</Text>
+          <Text style={styles.subHint}>Weekly planning</Text>
+          <ChipRow<PlanningHorizon>
+            options={[
+              { value: '3', label: '3 days' },
+              { value: '5', label: '5 days' },
+              { value: '7', label: '7 days' },
+            ]}
+            value={planning.horizon}
+            onChange={patchHorizon}
+          />
+
+          <Text style={styles.sectionLabel}>PREFER EXISTING RECIPES</Text>
+          <Text style={styles.subHint}>Weekly planning</Text>
+          <ChipRow<PreferExisting>
+            options={[
+              { value: 'strongly', label: 'Strongly' },
+              { value: 'balanced', label: 'Balanced' },
+              { value: 'open', label: 'Happy to suggest new' },
+            ]}
+            value={planning.preferExisting}
+            onChange={patchPreferExisting}
+          />
+          <Text style={styles.hint}>How much planning leans on recipes you already have vs. proposing new ones.</Text>
+        </>
+      )}
+
+      <Text style={styles.groupTitle}>Features</Text>
+      <Text style={styles.hint}>Turn any Dishision Bot feature off and its entry point disappears. Existing chats are kept.</Text>
+      {toggles && (
+        <View style={styles.card}>
+          {BOT_SURFACES.map((surface, index) => (
+            <View key={surface} style={[styles.toggleRow, index > 0 && styles.toggleDivider]}>
+              <View style={styles.toggleText}>
+                <Text style={styles.toggleLabel}>{SURFACE_TOGGLE_LABELS[surface]}</Text>
+                <Text style={styles.toggleHint}>{SURFACE_TOGGLE_HINTS[surface]}</Text>
+              </View>
+              <Switch value={toggles[surface]} onValueChange={(v) => patchToggle(surface, v)} />
+            </View>
+          ))}
+        </View>
+      )}
 
       {modal}
     </ScrollView>
@@ -295,8 +373,15 @@ const makeStyles = (theme: AppTheme) =>
     intro: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
     warnCard: { backgroundColor: theme.colors.redTint, borderRadius: theme.radius.card, padding: theme.spacing.base },
     warnText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.red },
+    groupTitle: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.md, color: theme.colors.ink, marginTop: theme.spacing.lg },
     sectionLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.ink3, letterSpacing: 0.5, marginTop: theme.spacing.md },
+    subHint: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.xs, color: theme.colors.accentText },
     hint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    toggleRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.sm },
+    toggleDivider: { borderTopWidth: 1, borderTopColor: theme.colors.border },
+    toggleText: { flex: 1, gap: 2 },
+    toggleLabel: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink },
+    toggleHint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
     card: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.card, borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.base, gap: theme.spacing.sm },
     keyRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
     keyInput: {

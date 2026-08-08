@@ -20,10 +20,19 @@ export interface ApiMessage {
   content: string;
 }
 
+/** A raw tool call the model made — surface-agnostic (§A1). The session layer /
+ * each surface interprets these by name (propose_recipe, propose_meal_plan, …). */
+export interface BotToolUse {
+  name: string;
+  input: unknown;
+}
+
 export interface BotTurnResult {
-  /** The conversational reply text (may be empty when the model only calls the tool). */
+  /** The conversational reply text (may be empty when the model only calls a tool). */
   assistantText: string;
-  /** The propose_recipe payload, or null for a pure clarifying question. */
+  /** Every tool call the model made this turn, in order. */
+  toolUse: BotToolUse[];
+  /** Convenience for the recipe surfaces: the propose_recipe payload, or null. */
   proposedRecipe: ProposedRecipe | null;
   usage: BotUsage;
   /** The concrete model id the API reports it served. */
@@ -45,11 +54,14 @@ interface RunBotTurnArgs {
   model: string;
   system: string;
   messages: ApiMessage[];
+  /** The tools available this turn. Defaults to just propose_recipe so existing
+   * recipe-chat callers are unchanged; other surfaces pass their own (or []). */
+  tools?: unknown[];
   /** Injected in tests; defaults to global fetch. */
   fetchImpl?: typeof fetch;
 }
 
-export async function runBotTurn({ apiKey, model, system, messages, fetchImpl }: RunBotTurnArgs): Promise<BotTurnResult> {
+export async function runBotTurn({ apiKey, model, system, messages, tools, fetchImpl }: RunBotTurnArgs): Promise<BotTurnResult> {
   const doFetch = fetchImpl ?? fetch;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -67,7 +79,7 @@ export async function runBotTurn({ apiKey, model, system, messages, fetchImpl }:
         model,
         max_tokens: MAX_TOKENS,
         system,
-        tools: [PROPOSE_RECIPE_TOOL],
+        tools: tools ?? [PROPOSE_RECIPE_TOOL],
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
       }),
       signal: controller.signal,
@@ -108,19 +120,23 @@ interface AnthropicResponse {
 export function parseResponse(data: AnthropicResponse, requestedModel: string): BotTurnResult {
   const blocks = Array.isArray(data.content) ? data.content : [];
   const textParts: string[] = [];
-  let proposedRecipe: ProposedRecipe | null = null;
+  const toolUse: BotToolUse[] = [];
 
   for (const block of blocks) {
     if (block.type === 'text' && typeof (block as { text?: unknown }).text === 'string') {
       textParts.push((block as { text: string }).text);
-    } else if (block.type === 'tool_use' && (block as { name?: string }).name === 'propose_recipe') {
-      const input = (block as { input?: unknown }).input;
-      if (input && typeof input === 'object') proposedRecipe = input as ProposedRecipe;
+    } else if (block.type === 'tool_use' && typeof (block as { name?: unknown }).name === 'string') {
+      toolUse.push({ name: (block as { name: string }).name, input: (block as { input?: unknown }).input });
     }
   }
 
+  // Convenience for the recipe surfaces (§A1) — the propose_recipe payload.
+  const recipeCall = toolUse.find((t) => t.name === 'propose_recipe');
+  const proposedRecipe = recipeCall && recipeCall.input && typeof recipeCall.input === 'object' ? (recipeCall.input as ProposedRecipe) : null;
+
   return {
     assistantText: textParts.join('\n').trim(),
+    toolUse,
     proposedRecipe,
     usage: {
       inputTokens: data.usage?.input_tokens ?? 0,

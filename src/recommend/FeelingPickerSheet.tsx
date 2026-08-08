@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { formatDurationCompact } from '../lib/formatDuration';
 import { EmojiTile } from '../recipes/EmojiTile';
-import { FilterChipBar } from '../recipes/FilterChipBar';
+import { CHIP_LABELS, FilterChipBar } from '../recipes/FilterChipBar';
 import type { EnrichedRecipe } from '../recipes/loadRecipes';
 import { runRecipeQuery, type ChipKey } from '../recipes/queryEngine';
 import { TimeSplitBar } from '../recipes/TimeSplitBar';
@@ -25,6 +25,20 @@ interface FeelingPickerSheetProps {
   currencySymbol: string;
   onBack: () => void;
   onSelectRecipe: (recipe: EnrichedRecipe) => void;
+  /** §A2.6: when set, a "Create this with Dishision Bot" option appears in the
+   * no-exact-match case, seeded with the selected criteria phrased naturally.
+   * The host only passes this when the "I'm feeling" fallback surface is on. */
+  onCreateWithBot?: (criteriaMessage: string) => void;
+}
+
+// Turn the selected chips into a natural request for Dishision Bot (§A2.6).
+function criteriaMessage(chips: ChipKey[]): string {
+  const usesPantry = chips.includes('usesWhatIHave');
+  const traits = chips.filter((c) => c !== 'usesWhatIHave').map((c) => CHIP_LABELS[c].toLowerCase());
+  let msg = 'Make me something';
+  if (traits.length) msg += ` ${traits.join(', ')}`;
+  if (usesPantry) msg += ' using what I have';
+  return `${msg}.`;
 }
 
 export function FeelingPickerSheet({
@@ -34,6 +48,7 @@ export function FeelingPickerSheet({
   currencySymbol,
   onBack,
   onSelectRecipe,
+  onCreateWithBot,
 }: FeelingPickerSheetProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -80,6 +95,14 @@ export function FeelingPickerSheet({
         {chips.length === 0 ? `${recipes.length} recipes` : `${result.items.length} match${result.items.length === 1 ? '' : 'es'}`}
       </Text>
       {result.relaxed && <Text style={styles.relaxedNote}>You've had these recently, but the cupboard's bare.</Text>}
+
+      {/* §A2.6: nothing matched exactly (only close/relaxed picks) — offer to
+          create one with Dishision Bot, seeded with these criteria. */}
+      {onCreateWithBot && chips.length > 0 && strict.items.length === 0 && (
+        <TouchableOpacity style={styles.botFallback} onPress={() => onCreateWithBot(criteriaMessage(chips))}>
+          <Text style={styles.botFallbackText}>✨ Nothing's an exact match — create one with Dishision Bot</Text>
+        </TouchableOpacity>
+      )}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {result.items.length === 0 ? (
@@ -208,6 +231,8 @@ const makeStyles = (theme: AppTheme) =>
     title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
     matchCount: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
     relaxedNote: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.amberText, fontStyle: 'italic' },
+    botFallback: { backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.card, paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.md, alignItems: 'center' },
+    botFallbackText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText, textAlign: 'center' },
     scroll: { flex: 1 },
     scrollContent: { gap: theme.spacing.sm, paddingBottom: theme.spacing.xxl },
     emptyText: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic' },

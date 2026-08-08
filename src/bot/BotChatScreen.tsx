@@ -24,6 +24,7 @@ import { BotSettingsScreen } from './BotSettingsScreen';
 import { buildNewChat, getChat, getMessages, persistChat, setSourceUrl, updateDraft } from './chatRepo';
 import { fetchAndExtract, linkMessage, LinkFetchError } from './linkFetch';
 import { draftToProposed, proposedToDraft, resolveDraftIngredients } from './proposedToDraft';
+import { buildCookRefineSeed, buildQuickStarts, type QuickStart } from './surfaceContext';
 import type { BotChat, BotMessage } from './types';
 
 type Phase = 'loading' | 'chat' | 'review' | 'diff' | 'history' | 'settings';
@@ -35,6 +36,14 @@ interface BotChatScreenProps {
   initialChatId?: string | null;
   /** Refine an existing saved recipe (§2.2) — seeds a fresh chat from it. */
   seedRecipeId?: number | null;
+  /** Prefill a fresh chat's input with a starter message (§A2.6 "I'm feeling"
+   * fallback) — editable, not auto-sent. */
+  seedMessage?: string | null;
+  /** Scoped context to attach to that seeded first turn (pantry/leftovers). */
+  seedContext?: string | null;
+  /** Refine from a specific cook (§A2.3) — seeds the recipe + that cook's
+   * feedback and auto-sends an opening turn so the bot proposes a change. */
+  seedCookLogId?: number | null;
 }
 
 interface DiffState {
@@ -50,7 +59,15 @@ async function hydrateDraft(db: ReturnType<typeof useDb>, proposed: BotChat['dra
   return { draft: { ...draft, ingredients }, newIngredientNames };
 }
 
-export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRecipeId }: BotChatScreenProps) {
+export function BotChatScreen({
+  onExit,
+  onOpenSavedRecipe,
+  initialChatId,
+  seedRecipeId,
+  seedMessage,
+  seedContext,
+  seedCookLogId,
+}: BotChatScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
@@ -73,8 +90,16 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
   const [dishisionAssisted, setDishisionAssistedState] = useState(false);
   const [saving, setSaving] = useState(false);
   const [noApiKey, setNoApiKey] = useState(false);
+  const [quickStarts, setQuickStarts] = useState<QuickStart[]>([]);
 
   const userNameRef = useRef('you');
+  // §A2.2: a quick-start chip attaches its scoped context (pantry, leftovers) to
+  // the next sent turn only. Held in a ref so it survives input edits and is
+  // consumed once.
+  const pendingContextRef = useRef<string | null>(null);
+  // §A2.3: a cook-log refine auto-sends one opening turn once the chat is ready,
+  // so the bot proposes a change straight into diff review. Fired once.
+  const autoSendRef = useRef<string | null>(null);
   const retryContextRef = useRef<{ fromReview: boolean } | null>(null);
   // Latest workingDraft for async turn handlers that need the pre-refinement
   // baseline without a stale closure.
@@ -103,8 +128,34 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
     (async () => {
       userNameRef.current = await getUserName(db);
       setNoApiKey(!(await hasApiKey()));
+      buildQuickStarts(db).then((qs) => {
+        if (!cancelled) setQuickStarts(qs);
+      });
       const settings = await getBotSettings(db);
-      if (initialChatId) {
+      if (seedCookLogId != null) {
+        // §A2.3 cook-log refine: seed the recipe + that cook's feedback, then
+        // queue an opening turn so the bot proposes a concrete change.
+        const seed = await buildCookRefineSeed(db, seedCookLogId);
+        if (seed && !cancelled) {
+          const loaded = await loadRecipeDraft(db, seed.recipeId);
+          const proposed = draftToProposed(loaded);
+          const c = buildNewChat({
+            source: 'cook_log',
+            settings,
+            originalRecipeId: seed.recipeId,
+            originCookLogId: seedCookLogId,
+            draft: proposed,
+          });
+          persistedRef.current = false;
+          pendingContextRef.current = seed.contextFragment;
+          autoSendRef.current = seed.autoMessage;
+          setChat(c);
+          setMessages([]);
+          setWorkingDraft(loaded);
+          setNewIngredientNames(new Set());
+          setDishisionAssistedState(false);
+        }
+      } else if (initialChatId) {
         const c = await getChat(db, initialChatId);
         // Reopened from history — already on disk.
         if (c && !cancelled) {
@@ -130,6 +181,8 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
         const c = buildNewChat({ source: 'chat', settings });
         if (!cancelled) {
           persistedRef.current = false;
+          // A §A2.6 seeded chat attaches its criteria context to the first turn.
+          pendingContextRef.current = seedMessage ? (seedContext ?? null) : null;
           setChat(c);
           setMessages([]);
           setWorkingDraft(null);
@@ -144,6 +197,18 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // §A2.3: once the seeded cook-log chat is ready, auto-send the opening turn.
+  // fromReview=true routes the bot's proposal straight into diff review, so the
+  // user lands on the proposed changes rather than an empty chat.
+  useEffect(() => {
+    if (chat && autoSendRef.current && phase === 'chat' && !sending) {
+      const msg = autoSendRef.current;
+      autoSendRef.current = null;
+      runSend(msg, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat?.id, phase]);
 
   async function reloadChat(): Promise<BotChat | null> {
     if (!chat) return null;
@@ -212,7 +277,10 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
         await updateDraft(db, chat.id, proposed);
         currentChat = { ...chat, draft: proposed };
       }
-      const result = await sendUserTurn(db, currentChat, text, userNameRef.current);
+      // Consume any pending quick-start context on this turn only (§A2.2).
+      const contextFragment = pendingContextRef.current;
+      pendingContextRef.current = null;
+      const result = await sendUserTurn(db, currentChat, text, userNameRef.current, { contextFragment });
       retryContextRef.current = null;
       await processResult(result, fromReview);
     } catch (e) {
@@ -270,6 +338,8 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
     const settings = await getBotSettings(db);
     const c = buildNewChat({ source: 'chat', settings });
     persistedRef.current = false;
+    pendingContextRef.current = null;
+    buildQuickStarts(db).then(setQuickStarts); // fresh pantry/leftover snapshot
     setChat(c);
     setMessages([]);
     setWorkingDraft(null);
@@ -460,6 +530,11 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
         onOpenSettings={() => setPhase('settings')}
         source={chat.source}
         sourceUrl={chat.sourceUrl}
+        quickStarts={quickStarts}
+        onQuickStartContext={(ctx) => {
+          pendingContextRef.current = ctx;
+        }}
+        initialInput={seedMessage ?? undefined}
       />
       {modal}
     </>

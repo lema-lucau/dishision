@@ -58,6 +58,8 @@ import {
   type RecipeStepTiming,
   type StepRuntimeState,
 } from '../cooking/sessionClock';
+import { getSurfaceEnabled } from '../bot/botSurfaceSettings';
+import { CookingQuickAskSheet } from '../bot/CookingQuickAskSheet';
 import { useDb } from '../db/DbContext';
 import { formatClock, formatDuration } from '../lib/formatDuration';
 import { useUiChromeStore } from '../navigation/uiChromeStore';
@@ -110,6 +112,10 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
     return () => setTabBarHidden(false);
   }, [setTabBarHidden]);
 
+  useEffect(() => {
+    getSurfaceEnabled(db, 'cooking_quick_ask').then(setQuickAskEnabled);
+  }, [db]);
+
   const prepSteps = useMemo(() => recipe.steps.filter((s) => s.phase === 'prep'), [recipe.steps]);
   const cookSteps = useMemo(() => recipe.steps.filter((s) => s.phase === 'cook'), [recipe.steps]);
   const prepIsTimed = prepSteps.some((s) => s.durationSeconds != null);
@@ -127,6 +133,9 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   const [stepRuntime, setStepRuntime] = useState<Map<number, StepRuntimeState>>(new Map());
   const [tickNow, setTickNow] = useState(() => Date.now());
   const [showStepList, setShowStepList] = useState(false);
+  // §A2.4: the mid-cook quick-ask sheet, gated on its surface toggle.
+  const [showQuickAsk, setShowQuickAsk] = useState(false);
+  const [quickAskEnabled, setQuickAskEnabled] = useState(false);
   const [takeoverStep, setTakeoverStep] = useState<EnrichedStep | null>(null);
   // Non-null while the cook is peeking at a step other than the live one
   // (§ manual nav must not be auto-corrected — see the effect below).
@@ -652,6 +661,11 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
         <TouchableOpacity onPress={() => setShowStepList(true)} style={styles.controlButton}>
           <ListIcon size={22} color={theme.colors.accentText} />
         </TouchableOpacity>
+        {quickAskEnabled && (
+          <TouchableOpacity onPress={() => setShowQuickAsk(true)} style={styles.controlButton} accessibilityLabel="Ask Dishision Bot">
+            <Text style={styles.quickAskGlyph}>✨</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {isReady ? (
@@ -673,6 +687,15 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
       <TouchableOpacity style={styles.exitButton} onPress={handleExit}>
         <Text style={styles.exitButtonText}>{isReady ? 'Exit' : 'Exit (keeps your progress)'}</Text>
       </TouchableOpacity>
+
+      <CookingQuickAskSheet
+        visible={showQuickAsk}
+        onClose={() => setShowQuickAsk(false)}
+        recipeId={recipe.id}
+        recipeName={recipe.name}
+        ingredientNames={recipe.ingredients.map((i) => i.displayName)}
+        currentStepInstruction={currentStep?.instruction ?? null}
+      />
 
       <StepListModal
         visible={showStepList}
@@ -833,6 +856,7 @@ const makeStyles = (theme: AppTheme) =>
     alignItems: 'center',
     justifyContent: 'center',
   },
+  quickAskGlyph: { fontSize: 22 },
   completeButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.card, paddingVertical: theme.spacing.base, alignItems: 'center' },
   completeButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
   exitButton: {

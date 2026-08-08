@@ -19,6 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { SourcePill } from './BotHistoryScreen';
+import type { QuickStart } from './surfaceContext';
 import { useVoiceInput } from './useVoiceInput';
 import type { BotChatSource, BotMessage } from './types';
 
@@ -47,6 +48,13 @@ interface BotChatViewProps {
   source: BotChatSource;
   /** The original page for a link-sourced chat, tappable to open (§B9). */
   sourceUrl: string | null;
+  /** §A2.2 quick-start chips for an empty new chat. */
+  quickStarts: QuickStart[];
+  /** Registers a chip's scoped context to attach to the next sent turn. */
+  onQuickStartContext: (context: string | null) => void;
+  /** Prefills the input once on mount (§A2.6 — a criteria-seeded chat). Never
+   * auto-sent, consistent with the mic and quick-start behaviour. */
+  initialInput?: string;
 }
 
 export function BotChatView(props: BotChatViewProps) {
@@ -55,7 +63,7 @@ export function BotChatView(props: BotChatViewProps) {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
 
-  const [chatInput, setChatInput] = useState('');
+  const [chatInput, setChatInput] = useState(props.initialInput ?? '');
   const [pasteInput, setPasteInput] = useState('');
   const [linkInput, setLinkInput] = useState('');
 
@@ -148,6 +156,24 @@ export function BotChatView(props: BotChatViewProps) {
             <Text style={styles.emptyBody}>
               Tell me what you've got, paste a recipe, or drop a link. I'll turn it into a Dishision recipe you can tweak and save.
             </Text>
+            {/* §A2.2: tap a chip to prefill a starter message (editable, never
+                auto-sent) and attach that context to the first turn. */}
+            {props.quickStarts.length > 0 && (
+              <View style={styles.quickStartRow}>
+                {props.quickStarts.map((qs) => (
+                  <TouchableOpacity
+                    key={qs.label}
+                    style={styles.quickStartChip}
+                    onPress={() => {
+                      setChatInput(qs.message);
+                      props.onQuickStartContext(qs.context);
+                    }}
+                  >
+                    <Text style={styles.quickStartText}>{qs.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         )}
         {props.messages.map((m) => (
@@ -277,6 +303,9 @@ const makeStyles = (theme: AppTheme) =>
     emptyEmoji: { fontSize: 40 },
     emptyTitle: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.lg, color: theme.colors.ink },
     emptyBody: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2, textAlign: 'center' },
+    quickStartRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: theme.spacing.sm, marginTop: theme.spacing.md },
+    quickStartChip: { backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm },
+    quickStartText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
     bubble: { maxWidth: '86%', borderRadius: theme.radius.card, paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm },
     userBubble: { alignSelf: 'flex-end', backgroundColor: theme.colors.accent },
     botBubble: { alignSelf: 'flex-start', backgroundColor: theme.colors.surfaceWarm },

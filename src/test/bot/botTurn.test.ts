@@ -65,12 +65,13 @@ describe('sendUserTurn orchestration (§7, §12)', () => {
     const canon = await db.getFirstAsync('SELECT id FROM canonical_ingredient WHERE name = ?', ['Miso paste']);
     expect(canon).not.toBeNull();
 
-    // Usage logged with a cost (§12).
-    const usage = await db.getFirstAsync<{ input_tokens: number; estimated_cost: number }>(
-      'SELECT input_tokens, estimated_cost FROM bot_usage_log',
+    // Usage logged with a cost (§12), tagged with the surface it came from (§A1.4).
+    const usage = await db.getFirstAsync<{ input_tokens: number; estimated_cost: number; surface: string }>(
+      'SELECT input_tokens, estimated_cost, surface FROM bot_usage_log',
     );
     expect(usage?.input_tokens).toBe(200);
     expect(usage?.estimated_cost).toBeGreaterThan(0);
+    expect(usage?.surface).toBe('recipe_chat');
   });
 
   it('keeps the user message saved and returns no proposal for a clarifying reply', async () => {

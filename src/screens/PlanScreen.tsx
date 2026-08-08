@@ -7,6 +7,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getSurfaceEnabled } from '../bot/botSurfaceSettings';
+import { WeeklyPlanningScreen } from '../bot/WeeklyPlanningScreen';
 import { MonthYearJumpModal } from '../components/MonthYearJumpModal';
 import { RecipePickerModal } from '../components/RecipePickerModal';
 import { useConfirmModal } from '../components/useConfirmModal';
@@ -70,9 +72,11 @@ interface MealFormState {
 interface PlanScreenProps {
   onOpenCookLog: (cookLogId: number) => void;
   onOpenRecipe?: (recipeId: number) => void;
+  /** §A2.5: open a fresh bot chat to create a recipe the planner proposed. */
+  onCreateWithBot?: (message: string, context: string | null) => void;
 }
 
-export function PlanScreen({ onOpenCookLog, onOpenRecipe }: PlanScreenProps) {
+export function PlanScreen({ onOpenCookLog, onOpenRecipe, onCreateWithBot }: PlanScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
@@ -91,7 +95,13 @@ export function PlanScreen({ onOpenCookLog, onOpenRecipe }: PlanScreenProps) {
   const [jumpOpen, setJumpOpen] = useState(false);
   const [mealForm, setMealForm] = useState<MealFormState | null>(null);
   const [recipePickerOpen, setRecipePickerOpen] = useState(false);
+  const [planningEnabled, setPlanningEnabled] = useState(false);
+  const [planningOpen, setPlanningOpen] = useState(false);
   const { modal, confirm } = useConfirmModal();
+
+  useEffect(() => {
+    getSurfaceEnabled(db, 'weekly_planning').then(setPlanningEnabled);
+  }, [db]);
 
   const year = referenceDate.getFullYear();
   const month = referenceDate.getMonth() + 1; // 1-indexed
@@ -184,6 +194,28 @@ export function PlanScreen({ onOpenCookLog, onOpenRecipe }: PlanScreenProps) {
         await reload();
       },
       true,
+    );
+  }
+
+  if (planningOpen) {
+    return (
+      <View style={styles.container}>
+        <WeeklyPlanningScreen
+          weekStartIso={weekStartKey}
+          onClose={async () => {
+            setPlanningOpen(false);
+            await reload();
+          }}
+          onCreateRecipeWithBot={(name) => {
+            setPlanningOpen(false);
+            onCreateWithBot?.(`Create a recipe called "${name}".`, null);
+          }}
+          onGenerateShoppingList={() => {
+            setPlanningOpen(false);
+            setTopSection('shopping');
+          }}
+        />
+      </View>
     );
   }
 
@@ -285,6 +317,13 @@ export function PlanScreen({ onOpenCookLog, onOpenRecipe }: PlanScreenProps) {
             </View>
           );
         })}
+
+        {/* §A2.5: plan the week conversationally with Dishision Bot. */}
+        {planningEnabled && (
+          <TouchableOpacity style={styles.planBotButton} onPress={() => setPlanningOpen(true)}>
+            <Text style={styles.planBotButtonText}>✨ Plan this week with Dishision Bot</Text>
+          </TouchableOpacity>
+        )}
 
         {weekEntries.length > 0 && (
           <TouchableOpacity style={styles.clearWeekButton} onPress={handleClearWeek}>
@@ -565,6 +604,8 @@ const makeStyles = (theme: AppTheme) =>
     borderRadius: theme.radius.tile,
   },
   clearWeekButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.red },
+  planBotButton: { backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.card, paddingVertical: theme.spacing.md, alignItems: 'center' },
+  planBotButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
 
   weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.lg },
   weekLabel: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink, minWidth: 180, textAlign: 'center' },

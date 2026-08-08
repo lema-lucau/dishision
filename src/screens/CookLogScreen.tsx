@@ -25,6 +25,7 @@ import { formatDMY, formatShortDate } from '../lib/formatDate';
 import { PhotoViewer } from '../photos/PhotoViewer';
 import { pickAndCompressPhotos } from '../photos/pickAndCompressPhoto';
 import { EmojiTile } from '../recipes/EmojiTile';
+import { getSurfaceEnabled } from '../bot/botSurfaceSettings';
 import { getSetting } from '../settings/getSetting';
 import { setSetting } from '../settings/setSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
@@ -48,9 +49,12 @@ interface CookLogScreenProps {
   /** Set by the Plan tab when tapping a cooked meal — jumps straight into that log's editor. */
   focusLogId?: number | null;
   onFocusHandled?: () => void;
+  /** §A2.3: refine the recipe with Dishision Bot from a cook log entry, seeded
+   * with that cook's feedback. Wired to the Recipes tab's bot chat. */
+  onRefineWithBot?: (cookLogId: number) => void;
 }
 
-export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps) {
+export function CookLogScreen({ focusLogId, onFocusHandled, onRefineWithBot }: CookLogScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
@@ -76,7 +80,12 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
   const [notFoundNotice, setNotFoundNotice] = useState(false);
   const [quickTagVocab, setQuickTagVocab] = useState<string[]>(BUILT_IN_QUICK_TAGS);
   const [tab, setTab] = useState<CookLogTab>('all');
+  const [cookRefineEnabled, setCookRefineEnabled] = useState(true);
   const { modal, confirm } = useConfirmModal();
+
+  useEffect(() => {
+    getSurfaceEnabled(db, 'cook_log_refine').then(setCookRefineEnabled);
+  }, [db]);
 
   useEffect(() => {
     loadCustomQuickTags(db).then((custom) => setQuickTagVocab([...BUILT_IN_QUICK_TAGS, ...custom]));
@@ -221,6 +230,7 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
           setEditing(null);
           await reload();
         }}
+        onRefineWithBot={onRefineWithBot && cookRefineEnabled ? () => onRefineWithBot(editing.id) : undefined}
       />
     );
   }
@@ -631,6 +641,7 @@ function CookLogEditor({
   onCancel,
   onSaved,
   onDeleted,
+  onRefineWithBot,
 }: {
   log: CookLogRow;
   quickTagVocab: string[];
@@ -639,6 +650,7 @@ function CookLogEditor({
   onCancel: () => void;
   onSaved: () => void;
   onDeleted: () => void;
+  onRefineWithBot?: () => void;
 }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -837,6 +849,13 @@ function CookLogEditor({
           <Text style={styles.rowMeta}>{formatShortDate(log.cookedAt)}</Text>
         </View>
       </View>
+
+      {/* §A2.3: hand this cook's feedback to Dishision Bot to propose changes. */}
+      {onRefineWithBot && (
+        <TouchableOpacity style={styles.refineBotRow} onPress={onRefineWithBot}>
+          <Text style={styles.refineBotText}>✨ Refine recipe with Dishision Bot</Text>
+        </TouchableOpacity>
+      )}
 
       <Text style={styles.label}>Stars</Text>
       <View style={styles.starsRow}>
@@ -1250,6 +1269,8 @@ const makeStyles = (theme: AppTheme) =>
   editorContent: { gap: theme.spacing.sm, paddingBottom: theme.spacing.xxl },
   editorHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
   editorHeaderText: { gap: 2 },
+  refineBotRow: { backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.card, paddingVertical: theme.spacing.md, alignItems: 'center' },
+  refineBotText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   backButton: { marginBottom: theme.spacing.sm },
   back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
   label: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.ink, marginTop: theme.spacing.lg, marginBottom: 2 },
