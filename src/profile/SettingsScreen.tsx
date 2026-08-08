@@ -45,6 +45,8 @@ import { useTheme, type AppTheme } from '../theme/ThemeContext';
 interface SettingsScreenProps {
   onBack: () => void;
   onOpenBackup: () => void;
+  /** Lets the sync-log detail jump to a local recipe (§B6). */
+  onOpenRecipe?: (recipeId: number) => void;
 }
 
 const STALENESS_OPTIONS: { label: string; value: CostStalenessDays }[] = [
@@ -108,7 +110,7 @@ function Stepper({ value, onChange, min = 0, step = 1, format }: { value: number
   );
 }
 
-export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
+export function SettingsScreen({ onBack, onOpenBackup, onOpenRecipe }: SettingsScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
@@ -208,7 +210,7 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
   }
 
   if (showSyncLog) {
-    return <SyncLogScreen onBack={() => setShowSyncLog(false)} />;
+    return <SyncLogScreen onBack={() => setShowSyncLog(false)} onOpenRecipe={onOpenRecipe} />;
   }
 
   if (showBotSettings) {

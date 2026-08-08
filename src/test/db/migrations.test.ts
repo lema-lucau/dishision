@@ -34,6 +34,7 @@ const EXPECTED_TABLES = [
   'household_recipe_cache',
   'household_rating',
   'sync_event',
+  'sync_log_item',
   'ingredient_price',
   'shared_cook_outbox',
 ];

@@ -7,6 +7,7 @@
 // needs the database and the "new ingredient" flagging.
 import type { DbClient } from '../db/DbClient';
 import { createUserIngredient } from '../recipes/ingredientSearch';
+import { stripPrepDescriptors } from './ingredientNameNormalize';
 import { resolveCanonicalIngredientId } from '../sharing/resolveCanonicalIngredient';
 import type { RecipeDraft, RecipeIngredientDraft, RecipeStepDraft } from '../recipes/recipeSave';
 import type { BaseUnit, Effort, Phase, RecipeUnit } from '../seed/types';
@@ -179,12 +180,20 @@ export async function resolveDraftIngredients(
       resolved.push({ ...ing });
       continue;
     }
-    const existingId = ing.canonicalId ?? (await resolveCanonicalIngredientId(db, name));
+    // §B5 Layer 2: match/create on the plain ingredient (prep descriptors
+    // stripped), but keep the displayed name as-is — the schema deliberately
+    // lets display_name carry prep ("chicken thigh, diced") while canonical_id
+    // points at the plain ingredient, so "Parmesan, grated" links to existing
+    // "parmesan" instead of spawning a duplicate row.
+    const matchName = stripPrepDescriptors(name);
+    const existingId = ing.canonicalId ?? (await resolveCanonicalIngredientId(db, matchName));
     if (existingId != null) {
       resolved.push({ ...ing, canonicalId: existingId });
       continue;
     }
-    const created = await createUserIngredient(db, name, baseUnitForRecipeUnit(ing.unit));
+    const created = await createUserIngredient(db, matchName, baseUnitForRecipeUnit(ing.unit));
+    // Badge against the on-screen display name (§6), which is what the Review
+    // screen renders and compares.
     newIngredientNames.add(name.toLowerCase());
     resolved.push({ ...ing, canonicalId: created.id });
   }

@@ -17,6 +17,7 @@ import { getHouseholdMember, markSynced, removeHouseholdMember, updateMemberProf
 import { applyReceivedRatings, listMyPublicRatings } from './opinionSync';
 import { applyReceivedSharedCooks, listPendingSharedCooks, markSharedCooksSynced } from './sharedCooks';
 import { deleteVanishedCacheRows, upsertHouseholdCacheEntry } from './syncCache';
+import { localRecipeIdForShareId, writeSyncItems, type SyncItemInput } from './syncLogItems';
 import { SyncAuthError, type ManifestItem, type PayloadEntry, type SyncChannel, type SyncMessage } from './syncTypes';
 
 export interface LocalIdentity {
@@ -25,13 +26,15 @@ export interface LocalIdentity {
   avatarEmoji: string;
 }
 
-async function writeSyncEvent(db: DbClient, personId: string, direction: 'sent' | 'received', kind: string, itemCount: number): Promise<void> {
-  await db.runAsync('INSERT INTO sync_event (person_id, direction, kind, item_count) VALUES (?, ?, ?, ?)', [
+// Returns the new sync_event id so callers can attach per-item detail (§B6).
+async function writeSyncEvent(db: DbClient, personId: string, direction: 'sent' | 'received', kind: string, itemCount: number): Promise<number> {
+  const result = await db.runAsync('INSERT INTO sync_event (person_id, direction, kind, item_count) VALUES (?, ?, ?, ?)', [
     personId,
     direction,
     kind,
     itemCount,
   ]);
+  return result.lastInsertRowId;
 }
 
 export interface InitiatorSyncResult {
@@ -112,16 +115,44 @@ export async function runInitiatorSync(
   // byte-identical.
   await db.execAsync('BEGIN');
   try {
+    // §B6: capture each recipe's before/after so the detail view can say added
+    // vs updated. The existence check runs before the upsert overwrites it.
+    const recipeItems: SyncItemInput[] = [];
     for (const entry of entries) {
+      const existed = await db.getFirstAsync<{ one: number }>(
+        'SELECT 1 AS one FROM household_recipe_cache WHERE person_id = ? AND share_id = ?',
+        [peerPersonId, entry.shareId],
+      );
       await upsertHouseholdCacheEntry(db, peerPersonId, entry);
+      recipeItems.push({
+        itemType: 'recipe',
+        action: existed ? 'updated' : 'added',
+        recipeId: await localRecipeIdForShareId(db, entry.shareId),
+        shareId: entry.shareId,
+        nameSnapshot: entry.payload.recipe.name,
+        detail: null,
+      });
     }
     const removed = await deleteVanishedCacheRows(db, peerPersonId, shareIds);
-    await writeSyncEvent(db, peerPersonId, 'received', 'recipes', entries.length);
+    const recipeEventId = await writeSyncEvent(db, peerPersonId, 'received', 'recipes', entries.length);
+    await writeSyncItems(db, recipeEventId, recipeItems);
     // Cooks were delivered to the peer (accepted or not, re-pushing won't help),
     // so clear them from the outbox and record what they accepted.
     if (pendingCooks.length > 0) {
       await markSharedCooksSynced(db, pendingCooks.map((c) => c.id));
-      await writeSyncEvent(db, peerPersonId, 'sent', 'shared_cooks', sharedCooksPushed);
+      const cookEventId = await writeSyncEvent(db, peerPersonId, 'sent', 'shared_cooks', sharedCooksPushed);
+      const cookItems: SyncItemInput[] = [];
+      for (const c of pendingCooks) {
+        cookItems.push({
+          itemType: 'cook_log',
+          action: 'sent',
+          recipeId: await localRecipeIdForShareId(db, c.recipeShareId),
+          shareId: c.recipeShareId,
+          nameSnapshot: c.recipeName,
+          detail: c.cookedAt,
+        });
+      }
+      await writeSyncItems(db, cookEventId, cookItems);
     }
     await markSynced(db, peerPersonId);
     await db.execAsync('COMMIT');
@@ -216,7 +247,19 @@ export async function runResponderSync(
   const requested = requestMsg.type === 'payload_request' ? requestMsg.shareIds : [];
   const entries = await buildPayloadEntries(db, requested);
   await channel.send({ type: 'payload', entries });
-  await writeSyncEvent(db, hello.personId, 'sent', 'recipes', entries.length);
+  const sentRecipeEventId = await writeSyncEvent(db, hello.personId, 'sent', 'recipes', entries.length);
+  const sentRecipeItems: SyncItemInput[] = [];
+  for (const entry of entries) {
+    sentRecipeItems.push({
+      itemType: 'recipe',
+      action: 'sent',
+      recipeId: await localRecipeIdForShareId(db, entry.shareId), // we own it, so this resolves
+      shareId: entry.shareId,
+      nameSnapshot: entry.payload.recipe.name,
+      detail: null,
+    });
+  }
+  await writeSyncItems(db, sentRecipeEventId, sentRecipeItems);
 
   // Receive cooks the peer logged "with" us and record them as our own cook
   // logs (matched to our recipe by share_id; unknown recipes are skipped).
@@ -225,7 +268,23 @@ export async function runResponderSync(
   const { applied, skipped } = await applyReceivedSharedCooks(db, incomingCooks);
   await channel.send({ type: 'shared_cooks_ack', applied: applied.length, skipped });
   if (applied.length > 0) {
-    await writeSyncEvent(db, hello.personId, 'received', 'shared_cooks', applied.length);
+    const cookEventId = await writeSyncEvent(db, hello.personId, 'received', 'shared_cooks', applied.length);
+    const cookItems: SyncItemInput[] = [];
+    for (const a of applied) {
+      const cook = await db.getFirstAsync<{ recipe_id: number; cooked_at: string }>(
+        'SELECT recipe_id, cooked_at FROM cook_log WHERE id = ?',
+        [a.cookLogId],
+      );
+      cookItems.push({
+        itemType: 'cook_log',
+        action: 'received',
+        recipeId: cook?.recipe_id ?? null,
+        shareId: null,
+        nameSnapshot: a.recipeName,
+        detail: cook?.cooked_at ?? null,
+      });
+    }
+    await writeSyncItems(db, cookEventId, cookItems);
   }
 
   await channel.receive(); // done
@@ -263,7 +322,20 @@ export async function runRatingsInitiator(
   await channel.send({ type: 'done' });
   channel.close();
 
-  await writeSyncEvent(db, peerPersonId, 'sent', 'ratings', ratings.length);
+  const ratingsEventId = await writeSyncEvent(db, peerPersonId, 'sent', 'ratings', ratings.length);
+  const ratingItems: SyncItemInput[] = [];
+  for (const rating of ratings) {
+    const recipe = await db.getFirstAsync<{ id: number; name: string }>('SELECT id, name FROM recipe WHERE share_id = ?', [rating.shareId]);
+    ratingItems.push({
+      itemType: 'rating',
+      action: 'sent',
+      recipeId: recipe?.id ?? null,
+      shareId: rating.shareId,
+      nameSnapshot: recipe?.name ?? 'Unknown recipe',
+      detail: `★${rating.stars.toFixed(1)}`,
+    });
+  }
+  await writeSyncItems(db, ratingsEventId, ratingItems);
   logger.info('sync', 'Sent ratings', { peerPersonId, sent: ratings.length, storedByPeer: stored });
   return { ratingsSent: ratings.length };
 }
@@ -303,8 +375,30 @@ export async function runRatingsResponder(
   await db.execAsync('BEGIN');
   let stored = 0;
   try {
+    // §B6: resolve each rating's recipe name and whether it's new, BEFORE the
+    // upsert overwrites the previous snapshot.
+    const ratingItems: SyncItemInput[] = [];
+    for (const entry of entries) {
+      const existed = await db.getFirstAsync<{ one: number }>(
+        'SELECT 1 AS one FROM household_rating WHERE person_id = ? AND share_id = ?',
+        [hello.personId, entry.shareId],
+      );
+      const local = await db.getFirstAsync<{ id: number; name: string }>('SELECT id, name FROM recipe WHERE share_id = ?', [entry.shareId]);
+      const cached = local
+        ? null
+        : await db.getFirstAsync<{ name: string }>('SELECT name FROM household_recipe_cache WHERE share_id = ? LIMIT 1', [entry.shareId]);
+      ratingItems.push({
+        itemType: 'rating',
+        action: existed ? 'updated' : 'added',
+        recipeId: local?.id ?? null,
+        shareId: entry.shareId,
+        nameSnapshot: local?.name ?? cached?.name ?? 'a recipe you don\'t have',
+        detail: `★${entry.stars.toFixed(1)}`,
+      });
+    }
     stored = await applyReceivedRatings(db, hello.personId, entries);
-    await writeSyncEvent(db, hello.personId, 'received', 'ratings', stored);
+    const ratingsEventId = await writeSyncEvent(db, hello.personId, 'received', 'ratings', stored);
+    await writeSyncItems(db, ratingsEventId, ratingItems);
     await db.execAsync('COMMIT');
   } catch (error) {
     await db.execAsync('ROLLBACK');

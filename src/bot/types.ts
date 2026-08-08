@@ -79,7 +79,10 @@ export interface ProposedRecipe {
 
 // ── chat / message rows (§4) ───────────────────────────────────────────────
 
-export type BotChatSource = 'chat' | 'paste_text' | 'link' | 'existing_recipe';
+// 'cook_log' is a refine chat started from a specific cook (§A2.3); it behaves
+// like 'existing_recipe' (original_recipe_id set) but carries that cook's
+// feedback and is traced back via origin_cook_log_id.
+export type BotChatSource = 'chat' | 'paste_text' | 'link' | 'existing_recipe' | 'cook_log';
 export type BotMessageRole = 'user' | 'assistant';
 
 export interface BotChat {

@@ -140,6 +140,20 @@ describe('opinion sync — protocol (§7.6)', () => {
 
     const events = await taraDb.getAllAsync<{ kind: string; direction: string }>('SELECT kind, direction FROM sync_event');
     expect(events).toContainEqual({ kind: 'ratings', direction: 'received' });
+
+    // §B6: per-item detail is captured on both sides. Tara receives a rating for
+    // a recipe she doesn't have (name falls back, no local recipe to link to).
+    const taraItems = await taraDb.getAllAsync<{ item_type: string; action: string; name_snapshot: string; detail: string; recipe_id: number | null }>(
+      'SELECT item_type, action, name_snapshot, detail, recipe_id FROM sync_log_item',
+    );
+    expect(taraItems).toHaveLength(1);
+    expect(taraItems[0]).toMatchObject({ item_type: 'rating', action: 'added', detail: '★4.5', recipe_id: null });
+    // I sent one rating, linked to my local Carbonara.
+    const myItems = await meDb.getAllAsync<{ item_type: string; action: string; name_snapshot: string; recipe_id: number | null }>(
+      'SELECT item_type, action, name_snapshot, recipe_id FROM sync_log_item',
+    );
+    expect(myItems).toHaveLength(1);
+    expect(myItems[0]).toMatchObject({ item_type: 'rating', action: 'sent', name_snapshot: 'Carbonara', recipe_id: recipeId });
   });
 
   it('orphan rule: a rating for a recipe the peer lacks persists and attaches on later import', async () => {

@@ -498,7 +498,8 @@ const makeStyles = (theme: AppTheme) =>
   heroTitle: {
     fontFamily: theme.fonts.display.bold,
     fontSize: theme.fontSize.hero,
-    lineHeight: theme.fontSize.hero * 1.08,
+    // 1.3 clears Fraunces descenders at hero size (B2).
+    lineHeight: theme.fontSize.hero * 1.3,
     letterSpacing: -0.4,
     color: theme.onPhoto.ink,
   },

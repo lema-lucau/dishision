@@ -141,6 +141,31 @@ describe('resolveDraftIngredients (§6 matching + auto-create)', () => {
     expect(newIngredientNames.size).toBe(0);
   });
 
+  it('matches a prep-suffixed name to the existing plain ingredient without a new row (§B5)', async () => {
+    const { ingredients, newIngredientNames } = await resolveDraftIngredients(db, [
+      // "spring onion, sliced" -> strips to "spring onion" -> alias match on Scallion.
+      { canonicalId: null, displayName: 'spring onion, sliced', quantity: 2, unit: 'unit', scalable: true, optional: false },
+    ]);
+    expect(ingredients[0].canonicalId).not.toBeNull();
+    expect(newIngredientNames.size).toBe(0);
+    // The on-screen display name keeps its prep detail; only the match key was stripped.
+    expect(ingredients[0].displayName).toBe('spring onion, sliced');
+    // No duplicate canonical row was created.
+    const count = (await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) as c FROM canonical_ingredient'))!.c;
+    expect(count).toBe(2);
+  });
+
+  it('auto-creates on the stripped name, not the descriptor form (§B5)', async () => {
+    const { ingredients } = await resolveDraftIngredients(db, [
+      { canonicalId: null, displayName: 'shallot, finely diced', quantity: 1, unit: 'unit', scalable: true, optional: false },
+    ]);
+    expect(ingredients[0].canonicalId).not.toBeNull();
+    // The new canonical row is the plain ingredient (capitalised by createUserIngredient),
+    // NOT the descriptor form "shallot, finely diced".
+    const row = await db.getFirstAsync<{ name: string }>(`SELECT name FROM canonical_ingredient WHERE LOWER(name) = 'shallot'`);
+    expect(row?.name).toBe('Shallot');
+  });
+
   it('auto-creates and flags an unmatched ingredient', async () => {
     const { ingredients, newIngredientNames } = await resolveDraftIngredients(db, [
       { canonicalId: null, displayName: 'Gochujang', quantity: 1, unit: 'tbsp', scalable: true, optional: false },

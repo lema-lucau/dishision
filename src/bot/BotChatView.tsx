@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -17,8 +18,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import { SourcePill } from './BotHistoryScreen';
 import { useVoiceInput } from './useVoiceInput';
-import type { BotMessage } from './types';
+import type { BotChatSource, BotMessage } from './types';
 
 export type InputMode = 'chat' | 'paste' | 'link';
 
@@ -41,6 +43,10 @@ interface BotChatViewProps {
   onExit: () => void;
   noApiKey: boolean;
   onOpenSettings: () => void;
+  /** How this chat was created (§B9) — shown as a pill in the header. */
+  source: BotChatSource;
+  /** The original page for a link-sourced chat, tappable to open (§B9). */
+  sourceUrl: string | null;
 }
 
 export function BotChatView(props: BotChatViewProps) {
@@ -82,7 +88,7 @@ export function BotChatView(props: BotChatViewProps) {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.header, { paddingTop: insets.top + theme.spacing.sm }]}>
         <TouchableOpacity onPress={props.onExit} hitSlop={8}>
           <Text style={styles.headerLink}>← Recipes</Text>
@@ -110,6 +116,21 @@ export function BotChatView(props: BotChatViewProps) {
           );
         })}
       </View>
+
+      {/* §B9: make it clear where an open chat came from. Skipped for a plain
+          'chat' (a "Chat" pill on every default chat is just noise). */}
+      {props.source !== 'chat' && (
+        <View style={styles.sourceRow}>
+          <SourcePill source={props.source} theme={theme} />
+          {props.source === 'link' && props.sourceUrl && (
+            <TouchableOpacity onPress={() => Linking.openURL(props.sourceUrl!)} hitSlop={8}>
+              <Text style={styles.sourceLink} numberOfLines={1}>
+                ↗ {props.sourceUrl}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {props.noApiKey && (
         <TouchableOpacity style={styles.keyBanner} onPress={props.onOpenSettings}>
@@ -246,6 +267,8 @@ const makeStyles = (theme: AppTheme) =>
     pillActive: { backgroundColor: theme.colors.accent },
     pillText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
     pillTextActive: { color: theme.colors.accentFg },
+    sourceRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.base, paddingBottom: theme.spacing.sm },
+    sourceLink: { flex: 1, fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.xs, color: theme.colors.accentText },
     keyBanner: { backgroundColor: theme.colors.amberTint, marginHorizontal: theme.spacing.base, borderRadius: theme.radius.card, padding: theme.spacing.sm, marginBottom: theme.spacing.sm },
     keyBannerText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.amberText },
     transcript: { flex: 1 },

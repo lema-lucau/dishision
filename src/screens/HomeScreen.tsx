@@ -472,7 +472,9 @@ const makeStyles = (theme: AppTheme) =>
     greeting: {
       fontFamily: theme.fonts.display.bold,
       fontSize: theme.fontSize.hero,
-      lineHeight: theme.fontSize.hero * 1.08,
+      // Fraunces is a tall serif; 1.3 clears descenders (g/y/p/j) and the
+      // italic accent word without clipping (B2). Anything near 1.1 clips.
+      lineHeight: theme.fontSize.hero * 1.3,
       letterSpacing: -0.4,
       color: theme.colors.ink,
     },

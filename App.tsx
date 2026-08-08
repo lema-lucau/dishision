@@ -65,7 +65,7 @@ function ThemedRoot({
     <>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
       {needsOnboarding ? (
-        <OnboardingScreen onDone={onOnboardingDone} />
+        <OnboardingScreen profile={profile} onDone={onOnboardingDone} />
       ) : (
         <TabShell profile={profile} onRestored={onRestored} />
       )}
@@ -124,7 +124,13 @@ export default function App() {
   }
 
   async function handleOnboardingDone() {
-    if (db) await setOnboardingComplete(db);
+    if (db) {
+      await setOnboardingComplete(db);
+      // Onboarding wrote the name/avatar straight to the profile row (§B3);
+      // reload it so Home/Profile render the chosen identity, not the stale
+      // first-run default, without needing a restart.
+      setProfile(await ensureProfile(db));
+    }
     setNeedsOnboarding(false);
   }
 

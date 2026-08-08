@@ -35,6 +35,7 @@ function sourceContext(source: BotChatSource): string {
     case 'link':
       return 'This chat began from a web link the user provided; the fetched, cleaned article text is the first user message.';
     case 'existing_recipe':
+    case 'cook_log':
       return 'This chat began from one of the user\'s existing saved recipes, which they want to refine (see CURRENT RECIPE STATE below).';
     case 'chat':
     default:
@@ -68,6 +69,10 @@ Detail level: ${DETAIL_LABEL[settings.stepDetail]}
 
 INGREDIENTS
 Use plain, ingredient-database-friendly names in display_name (e.g. "chicken thigh", not "boneless skinless chicken thighs, trimmed of excess fat") — the app matches these against an existing ingredient list. Write quantities in ${UNIT_LABEL[settings.units]} regardless of what unit system the source material used. Keep quantity and unit as separate fields; use a plain count folded into the name for wholes ("2 garlic cloves") per the app's convention for countable items.
+
+Ingredient names must be the plain ingredient only — never include preparation, state, or serving descriptors. Write "chicken breast", not "chicken breast, diced". Write "parmesan", not "parmesan, grated". Write "onion", not "finely chopped onion". Do not append things like diced, chopped, grated, minced, sliced, softened, melted, room temperature, to serve, for garnish, or divided.
+
+Preparation belongs in the steps, not the ingredient name. If an ingredient needs to be diced, say so in the step that uses it ("Dice the chicken breast."). If something is only for serving or garnish, say that in the relevant step. The app matches ingredient names against an existing ingredient database, and prep descriptors create duplicate entries that should be the same ingredient. (Genuine varietal distinctions like "smoked paprika" or "ground cumin" are not descriptors — keep those.)
 
 LANE SPLITTING
 Lane setting: ${LANE_LABEL[settings.laneAggressiveness]}

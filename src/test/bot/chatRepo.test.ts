@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../db/DbClient';
 import {
   appendMessage,
+  buildNewChat,
   createChat,
   deleteChat,
   getChat,
   getMessages,
   listChatSummaries,
   MAX_CHATS,
+  persistChat,
   setSavedRecipe,
   updateChatSettings,
   updateDraft,
@@ -108,6 +110,39 @@ describe('chatRepo (§4)', () => {
     expect(reloaded).not.toBeNull();
     expect(reloaded?.savedRecipeId).toBeNull();
     expect(reloaded?.originalRecipeId).toBeNull();
+  });
+
+  it('buildNewChat leaves no row on disk until persisted (§B7)', async () => {
+    const chat = buildNewChat({ source: 'chat', settings });
+    // Nothing written yet.
+    expect(await getChat(db, chat.id)).toBeNull();
+    const before = (await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) as c FROM bot_chat'))!.c;
+    expect(before).toBe(0);
+
+    await persistChat(db, chat);
+    const reloaded = await getChat(db, chat.id);
+    expect(reloaded?.id).toBe(chat.id);
+    expect(reloaded?.source).toBe('chat');
+  });
+
+  it('persistChat is idempotent — a second call adds no duplicate row (§B7)', async () => {
+    const chat = buildNewChat({ source: 'existing_recipe', settings, originalRecipeId: null, draft: sampleRecipe });
+    await persistChat(db, chat);
+    await persistChat(db, chat);
+    const count = (await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) as c FROM bot_chat WHERE id = ?', [chat.id]))!.c;
+    expect(count).toBe(1);
+    // The seeded draft survives the write.
+    expect((await getChat(db, chat.id))?.draft?.name).toBe('Miso Soup');
+  });
+
+  it('the 50-chat cap counts only persisted chats — building extras never evicts (§B7)', async () => {
+    const first = await createChat(db, { source: 'chat', settings });
+    for (let i = 1; i < MAX_CHATS; i++) await createChat(db, { source: 'chat', settings });
+    // Build many in-memory chats — none touch disk, so nothing is evicted.
+    for (let i = 0; i < 10; i++) buildNewChat({ source: 'chat', settings });
+    expect(await getChat(db, first.id)).not.toBeNull();
+    const count = (await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) as c FROM bot_chat'))!.c;
+    expect(count).toBe(MAX_CHATS);
   });
 
   it('per-chat settings override updates the snapshot', async () => {

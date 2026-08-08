@@ -80,25 +80,63 @@ async function enforceCap(db: DbClient): Promise<void> {
   if (rows.length > 0) logger.info('ui', 'Dishision Bot: evicted oldest chat(s) at 50-chat cap', { count: rows.length });
 }
 
-export async function createChat(db: DbClient, input: CreateChatInput): Promise<BotChat> {
+// Build a chat entirely in memory, with no DB write (§B7). A chat opened and
+// abandoned with nothing sent must leave no trace, so the row isn't written
+// until it first has real content — see persistChat, called on the first user
+// turn. buildNewChat is a pure constructor; the returned id is stable, so the
+// eventual INSERT and every message reference the same chat.
+export function buildNewChat(input: CreateChatInput): BotChat {
+  const now = new Date().toISOString();
+  return {
+    id: uuidv4(),
+    createdAt: now,
+    updatedAt: now,
+    source: input.source,
+    sourceUrl: input.sourceUrl ?? null,
+    originalRecipeId: input.originalRecipeId ?? null,
+    draft: input.draft ?? null,
+    savedRecipeId: null,
+    model: input.settings.model,
+    settings: input.settings,
+    dishisionAssisted: false,
+  };
+}
+
+// Write an in-memory chat (from buildNewChat) to disk the first time it earns
+// its keep — the first user message, fetched link, or save (§B7). Idempotent:
+// a second call for an already-written chat is a cheap no-op, so callers can
+// guard with a single `await persistChat` before any bot_chat-referencing
+// write. The 50-chat cap is enforced here, so only chats with real content
+// count toward it — empty throwaways can never evict genuine history.
+export async function persistChat(db: DbClient, chat: BotChat): Promise<void> {
+  const existing = await db.getFirstAsync<{ id: string }>('SELECT id FROM bot_chat WHERE id = ?', [chat.id]);
+  if (existing) return;
   await enforceCap(db);
-  const id = uuidv4();
   await db.runAsync(
     `INSERT INTO bot_chat (id, source, source_url, original_recipe_id, recipe_draft_json, model_used, lane_aggressiveness, dishision_assisted)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      id,
-      input.source,
-      input.sourceUrl ?? null,
-      input.originalRecipeId ?? null,
-      input.draft ? JSON.stringify(input.draft) : null,
-      input.settings.model,
-      JSON.stringify(input.settings),
+      chat.id,
+      chat.source,
+      chat.sourceUrl,
+      chat.originalRecipeId,
+      chat.draft ? JSON.stringify(chat.draft) : null,
+      chat.settings.model,
+      JSON.stringify(chat.settings),
+      chat.dishisionAssisted ? 1 : 0,
     ],
   );
-  const chat = await getChat(db, id);
-  if (!chat) throw new Error('Failed to create chat');
-  return chat;
+}
+
+// Eager create-and-return, kept for callers that genuinely want the row to
+// exist immediately (and for the parity tests). Internally it's just
+// buildNewChat + persistChat + reload.
+export async function createChat(db: DbClient, input: CreateChatInput): Promise<BotChat> {
+  const chat = buildNewChat(input);
+  await persistChat(db, chat);
+  const saved = await getChat(db, chat.id);
+  if (!saved) throw new Error('Failed to create chat');
+  return saved;
 }
 
 export async function getChat(db: DbClient, id: string): Promise<BotChat | null> {

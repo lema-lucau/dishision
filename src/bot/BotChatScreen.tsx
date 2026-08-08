@@ -21,7 +21,7 @@ import { BotDiffReview } from './BotDiffReview';
 import { BotHistoryScreen } from './BotHistoryScreen';
 import { BotReviewScreen } from './BotReviewScreen';
 import { BotSettingsScreen } from './BotSettingsScreen';
-import { createChat, deleteChat, getChat, getMessages, setSourceUrl, updateDraft } from './chatRepo';
+import { buildNewChat, getChat, getMessages, persistChat, setSourceUrl, updateDraft } from './chatRepo';
 import { fetchAndExtract, linkMessage, LinkFetchError } from './linkFetch';
 import { draftToProposed, proposedToDraft, resolveDraftIngredients } from './proposedToDraft';
 import type { BotChat, BotMessage } from './types';
@@ -80,6 +80,10 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
   // baseline without a stale closure.
   const workingDraftRef = useRef<RecipeDraft | null>(null);
   workingDraftRef.current = workingDraft;
+  // Whether this chat's row exists on disk yet (§B7). New/seed chats start in
+  // memory only and are written the first time they earn it — see
+  // ensurePersisted. Reopened chats (from history) start persisted.
+  const persistedRef = useRef(false);
 
   const applyChat = useCallback(
     async (c: BotChat) => {
@@ -102,20 +106,36 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
       const settings = await getBotSettings(db);
       if (initialChatId) {
         const c = await getChat(db, initialChatId);
-        if (c && !cancelled) await applyChat(c);
+        // Reopened from history — already on disk.
+        if (c && !cancelled) {
+          persistedRef.current = true;
+          await applyChat(c);
+        }
       } else if (seedRecipeId != null) {
         const loaded = await loadRecipeDraft(db, seedRecipeId);
         const proposed = draftToProposed(loaded);
-        const c = await createChat(db, { source: 'existing_recipe', settings, originalRecipeId: seedRecipeId, draft: proposed });
+        // In memory only — an existing-recipe refine that's opened and
+        // abandoned without a single instruction must leave no trace (§B7),
+        // even though it carries a pre-seeded draft.
+        const c = buildNewChat({ source: 'existing_recipe', settings, originalRecipeId: seedRecipeId, draft: proposed });
         if (cancelled) return;
+        persistedRef.current = false;
         setChat(c);
         setMessages([]);
         setWorkingDraft(loaded); // already resolved, no auto-created ingredients
         setNewIngredientNames(new Set());
         setDishisionAssistedState(false);
       } else {
-        const c = await createChat(db, { source: 'chat', settings });
-        if (!cancelled) await applyChat(c);
+        // Fresh from-scratch chat, in memory only until the first message (§B7).
+        const c = buildNewChat({ source: 'chat', settings });
+        if (!cancelled) {
+          persistedRef.current = false;
+          setChat(c);
+          setMessages([]);
+          setWorkingDraft(null);
+          setNewIngredientNames(new Set());
+          setDishisionAssistedState(false);
+        }
       }
       if (!cancelled) setPhase('chat');
     })();
@@ -130,6 +150,15 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
     const updated = await getChat(db, chat.id);
     if (updated) setChat(updated);
     return updated;
+  }
+
+  // §B7: write the chat to disk the first time it earns its keep — a sent
+  // message, a fetched link, or a save. Must run before any bot_chat-referencing
+  // write (messages, usage, draft updates all FK to bot_chat). Idempotent.
+  async function ensurePersisted(target: BotChat): Promise<void> {
+    if (persistedRef.current) return;
+    await persistChat(db, target);
+    persistedRef.current = true;
   }
 
   function toErrorMessage(e: unknown): string {
@@ -173,6 +202,8 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
       setRefineNote(null);
     }
     try {
+      // First real content — write the chat to disk before anything FKs to it (§B7).
+      await ensurePersisted(chat);
       // Sync manual on-screen edits into the chat draft so the model's CURRENT
       // RECIPE STATE reflects them (§7.3).
       let currentChat = chat;
@@ -220,6 +251,8 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
     setLinkLoading(true);
     try {
       const extracted = await fetchAndExtract(url);
+      // A fetched link is real content — persist before stamping source_url (§B7).
+      await ensurePersisted(chat);
       await setSourceUrl(db, chat.id, /^https?:\/\//i.test(url) ? url : `https://${url}`);
       await reloadChat();
       setMode('chat');
@@ -232,10 +265,16 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
   }
 
   async function startNewChat(): Promise<void> {
-    await deleteIfEmpty(chat);
+    // An unpersisted current chat simply evaporates (§B7); a persisted one is
+    // left in history untouched. Either way the new chat starts in memory.
     const settings = await getBotSettings(db);
-    const c = await createChat(db, { source: 'chat', settings });
-    await applyChat(c);
+    const c = buildNewChat({ source: 'chat', settings });
+    persistedRef.current = false;
+    setChat(c);
+    setMessages([]);
+    setWorkingDraft(null);
+    setNewIngredientNames(new Set());
+    setDishisionAssistedState(false);
     setMode('chat');
     setError(null);
     setRefineError(null);
@@ -278,28 +317,21 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
   }
 
   // Persist manual on-screen edits into the chat draft when leaving the review
-  // screen, so nothing is lost on reopen or crash (§4).
+  // screen, so nothing is lost on reopen or crash (§4). Only meaningful once the
+  // chat is on disk (§B7) — an unpersisted refine draft is discarded on leave.
   async function leaveReview(target: Phase) {
-    if (chat && workingDraftRef.current) {
+    if (persistedRef.current && chat && workingDraftRef.current) {
       await updateDraft(db, chat.id, draftToProposed(workingDraftRef.current));
     }
     setPhase(target);
   }
 
-  // A never-used throwaway chat (opened, then abandoned with no messages, no
-  // candidate, and nothing saved) shouldn't count against the 50-chat cap.
-  async function deleteIfEmpty(target: BotChat | null) {
-    if (!target) return;
-    if (target.originalRecipeId != null || target.savedRecipeId != null) return;
-    if (messages.length > 0 || workingDraftRef.current) return;
-    await deleteChat(db, target.id);
-  }
-
   async function handleExit() {
-    if (chat && workingDraftRef.current) {
+    // Only flush the draft if the chat actually exists on disk; an abandoned,
+    // never-sent chat leaves no trace at all (§B7).
+    if (persistedRef.current && chat && workingDraftRef.current) {
       await updateDraft(db, chat.id, draftToProposed(workingDraftRef.current));
     }
-    await deleteIfEmpty(chat);
     onExit();
   }
 
@@ -311,6 +343,9 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
     }
     setSaving(true);
     try {
+      // Saving is a keep — persist the chat so saved_recipe_id has a row to
+      // attach to, even if not a single message was ever sent (§B7).
+      await ensurePersisted(chat);
       const recipeId = await saveBotRecipe(db, { draft: workingDraft, chat, mode, dishisionAssisted });
       onOpenSavedRecipe(recipeId);
     } catch (e) {
@@ -350,6 +385,7 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
         onOpenChat={async (chatId) => {
           const c = await getChat(db, chatId);
           if (c) {
+            persistedRef.current = true; // came from history — already on disk
             await applyChat(c);
             setMode('chat');
             setError(null);
@@ -422,6 +458,8 @@ export function BotChatScreen({ onExit, onOpenSavedRecipe, initialChatId, seedRe
         onExit={handleExit}
         noApiKey={noApiKey}
         onOpenSettings={() => setPhase('settings')}
+        source={chat.source}
+        sourceUrl={chat.sourceUrl}
       />
       {modal}
     </>

@@ -141,7 +141,16 @@ export function ProfileScreen({
     );
   }
   if (view.mode === 'settings') {
-    return <SettingsScreen onBack={() => setView({ mode: 'hero' })} onOpenBackup={() => setView({ mode: 'backup' })} />;
+    return (
+      <SettingsScreen
+        onBack={() => setView({ mode: 'hero' })}
+        onOpenBackup={() => setView({ mode: 'backup' })}
+        onOpenRecipe={(recipeId) => {
+          setView({ mode: 'hero' });
+          onOpenRecipe(recipeId);
+        }}
+      />
+    );
   }
   if (view.mode === 'backup') {
     return (
