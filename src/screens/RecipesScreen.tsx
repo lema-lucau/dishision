@@ -34,6 +34,8 @@ import { buildDraftFromPayload, mergeRecipeLineage } from '../sharing/importReci
 import type { SharePayload } from '../sharing/payload';
 import { ShareSheetScreen } from '../sharing/ShareSheetScreen';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import { BotChatScreen } from '../bot/BotChatScreen';
+import { getSurfaceEnabled } from '../bot/botSurfaceSettings';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
 
@@ -49,7 +51,8 @@ type ViewState =
   | { mode: 'share'; recipeId: number }
   | { mode: 'importEntry' }
   | { mode: 'importPreview'; payload: SharePayload }
-  | { mode: 'mergeDuplicates' };
+  | { mode: 'mergeDuplicates' }
+  | { mode: 'bot'; seedRecipeId?: number; seedMessage?: string; seedContext?: string | null; seedCookLogId?: number };
 
 interface RecipesScreenProps {
   /** Set when arriving from the Profile page's "View all" favourites link (§5.10). */
@@ -60,6 +63,12 @@ interface RecipesScreenProps {
   /** When true alongside initialRecipeId, jumps straight into Cooking Mode rather than the detail screen. */
   initialStartCooking?: boolean;
   onInitialRecipeConsumed?: () => void;
+  /** §A2.6: open a fresh bot chat seeded with an "I'm feeling" request + context. */
+  initialBotSeed?: { message: string; context: string | null } | null;
+  onBotSeedConsumed?: () => void;
+  /** §A2.3: open a cook-log refine chat for this cook (from the Cook Log tab). */
+  initialBotCookLogId?: number | null;
+  onBotCookLogConsumed?: () => void;
 }
 
 export function RecipesScreen({
@@ -68,6 +77,10 @@ export function RecipesScreen({
   initialRecipeId = null,
   initialStartCooking = false,
   onInitialRecipeConsumed,
+  initialBotSeed = null,
+  onBotSeedConsumed,
+  initialBotCookLogId = null,
+  onBotCookLogConsumed,
 }: RecipesScreenProps = {}) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -77,6 +90,10 @@ export function RecipesScreen({
   const [ratingBreakdown, setRatingBreakdown] = useState<RatingBreakdown | null>(null);
   const [currencySymbol, setCurrencySymbol] = useState('€');
   const [view, setView] = useState<ViewState>({ mode: 'list' });
+  // §A3.2: the bot recipe-creation entry point is hidden when the surface is off.
+  const [botRecipeEnabled, setBotRecipeEnabled] = useState(true);
+  // §A2.3/§A3.2: the cook-complete "refine with bot" action.
+  const [cookLogRefineEnabled, setCookLogRefineEnabled] = useState(true);
   const [search, setSearch] = useState('');
   const [chips, setChips] = useState<ChipKey[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -120,6 +137,31 @@ export function RecipesScreen({
   useEffect(() => {
     reload();
   }, [reload]);
+
+  // Refresh the bot entry-point visibility each time we land back on the list,
+  // so a toggle change in Settings is reflected on return (§A3.2).
+  useEffect(() => {
+    if (view.mode === 'list') {
+      getSurfaceEnabled(db, 'recipe_chat').then(setBotRecipeEnabled);
+      getSurfaceEnabled(db, 'cook_log_refine').then(setCookLogRefineEnabled);
+    }
+  }, [db, view.mode]);
+
+  // §A2.6: a criteria-seeded bot chat handed in from Home's "I'm feeling" fallback.
+  useEffect(() => {
+    if (initialBotSeed) {
+      setView({ mode: 'bot', seedMessage: initialBotSeed.message, seedContext: initialBotSeed.context });
+      onBotSeedConsumed?.();
+    }
+  }, [initialBotSeed, onBotSeedConsumed]);
+
+  // §A2.3: a cook-log refine handed in from the Cook Log tab.
+  useEffect(() => {
+    if (initialBotCookLogId != null) {
+      setView({ mode: 'bot', seedCookLogId: initialBotCookLogId });
+      onBotCookLogConsumed?.();
+    }
+  }, [initialBotCookLogId, onBotCookLogConsumed]);
 
   // Turn the favourites scope on when navigated in from Profile, then clear the
   // parent's one-shot flag so it doesn't re-arm on the next render.
@@ -288,11 +330,29 @@ export function RecipesScreen({
     );
   }
 
+  if (view.mode === 'bot') {
+    return (
+      <BotChatScreen
+        seedRecipeId={view.seedRecipeId ?? null}
+        seedMessage={view.seedMessage ?? null}
+        seedContext={view.seedContext ?? null}
+        seedCookLogId={view.seedCookLogId ?? null}
+        onExit={() => setView({ mode: 'list' })}
+        onOpenSavedRecipe={async (recipeId) => {
+          await reload();
+          setView({ mode: 'detail', recipeId });
+        }}
+      />
+    );
+  }
+
   if ((view.mode === 'create' || view.mode === 'edit') && editDraft) {
+    const editingRecipeId = view.mode === 'edit' ? view.recipeId : null;
     return (
       <RecipeFormScreen
         title={view.mode === 'create' ? 'New recipe' : 'Edit recipe'}
         initialDraft={editDraft}
+        onRefineWithBot={editingRecipeId != null && botRecipeEnabled ? () => setView({ mode: 'bot', seedRecipeId: editingRecipeId }) : undefined}
         onCancel={() => setView(view.mode === 'edit' ? { mode: 'detail', recipeId: view.recipeId } : { mode: 'list' })}
         onSave={async (draft) => {
           if (view.mode === 'edit') {
@@ -385,6 +445,7 @@ export function RecipesScreen({
           setView({ mode: 'detail', recipeId: recipe.id });
         }}
         onCancel={() => setView({ mode: 'detail', recipeId: recipe.id })}
+        onRefineWithBot={cookLogRefineEnabled ? (cookLogId) => setView({ mode: 'bot', seedCookLogId: cookLogId }) : undefined}
       />
     );
   }
@@ -413,6 +474,14 @@ export function RecipesScreen({
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* §2.1: create a recipe by chatting with Dishision Bot. Hidden when the
+          recipe surface is turned off (§A3.2). */}
+      {botRecipeEnabled && (
+        <TouchableOpacity style={styles.botEntry} onPress={() => setView({ mode: 'bot' })}>
+          <Text style={styles.botEntryText}>✨ Create with Dishision Bot</Text>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.searchRow}>
         <Text style={styles.searchIcon}>🔍</Text>
@@ -580,6 +649,13 @@ const makeStyles = (theme: AppTheme) =>
   headerLinks: { flexDirection: 'row', gap: theme.spacing.base },
   title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
   addLink: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
+  botEntry: {
+    backgroundColor: theme.colors.accentTint,
+    borderRadius: theme.radius.pill,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  botEntryText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   favBanner: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -5,6 +5,7 @@
 // deduction, and any leftover.
 import { useEffect, useMemo, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { clearPendingCookNote, getPendingCookNote } from '../bot/cookNote';
 import { DatePickerModal } from '../components/DatePickerModal';
 import { PillButton, RecipePhoto } from '../components/ui';
 import { addShortfallToShoppingList, completeCook } from '../cooking/completeCook';
@@ -29,9 +30,12 @@ interface CookCompleteScreenProps {
   retroactive: boolean;
   onDone: () => void;
   onCancel: () => void;
+  /** §A2.3: when set, offers "Save & refine with Dishision Bot" — saves this cook
+   * then opens a refine chat seeded with its feedback. */
+  onRefineWithBot?: (cookLogId: number) => void;
 }
 
-export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: CookCompleteScreenProps) {
+export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel, onRefineWithBot }: CookCompleteScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
@@ -102,6 +106,18 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
     setQuickTags((tags) => (tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag]));
   }
 
+  // §A2.4: if a mid-cook "refine after cooking" note was left, surface it here
+  // by prefilling "what to change", then clear it so it doesn't reappear.
+  useEffect(() => {
+    getPendingCookNote(db, recipe.id).then((note) => {
+      if (note) {
+        setWhatToChange((prev) => prev || note);
+        setExpanded(true);
+        clearPendingCookNote(db, recipe.id);
+      }
+    });
+  }, [db, recipe.id]);
+
   async function handleAddManually(line: CookPreview['lines'][number]) {
     await addShortfallToShoppingList(db, {
       canonicalId: line.canonicalId,
@@ -112,7 +128,7 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
     setAddedManually((s) => new Set(s).add(line.canonicalId));
   }
 
-  async function commit() {
+  async function commit(refineAfter = false) {
     setSaving(true);
     try {
       const result = await completeCook(db, {
@@ -159,7 +175,8 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
           notes: expanded ? notes || null : null,
         });
       }
-      onDone();
+      if (refineAfter && onRefineWithBot) onRefineWithBot(result.cookLogId);
+      else onDone();
     } finally {
       setSaving(false);
     }
@@ -411,7 +428,7 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
       )}
 
       <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.doneButton} onPress={commit} disabled={saving}>
+        <TouchableOpacity style={styles.doneButton} onPress={() => commit()} disabled={saving}>
           <Text style={styles.doneButtonText}>{saving ? 'Saving…' : expanded ? 'Save log' : 'Done'}</Text>
         </TouchableOpacity>
         {!expanded && (
@@ -420,6 +437,13 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel }: Co
           </TouchableOpacity>
         )}
       </View>
+      {/* §A2.3: save this cook, then hand its feedback to Dishision Bot to
+          propose recipe changes. */}
+      {onRefineWithBot && (
+        <TouchableOpacity style={styles.refineBotButton} onPress={() => commit(true)} disabled={saving}>
+          <Text style={styles.refineBotButtonText}>✨ Save &amp; refine with Dishision Bot</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity onPress={onCancel}>
         <Text style={styles.cancelLink}>Cancel</Text>
       </TouchableOpacity>
@@ -498,7 +522,8 @@ const makeStyles = (theme: AppTheme) =>
   heroTitle: {
     fontFamily: theme.fonts.display.bold,
     fontSize: theme.fontSize.hero,
-    lineHeight: theme.fontSize.hero * 1.08,
+    // 1.3 clears Fraunces descenders at hero size (B2).
+    lineHeight: theme.fontSize.hero * 1.3,
     letterSpacing: -0.4,
     color: theme.onPhoto.ink,
   },
@@ -594,6 +619,8 @@ const makeStyles = (theme: AppTheme) =>
   buttonRow: { gap: theme.spacing.md, marginTop: theme.spacing.sm },
   doneButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.card, paddingVertical: theme.spacing.md, alignItems: 'center' },
   doneButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
+  refineBotButton: { backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.card, paddingVertical: theme.spacing.md, alignItems: 'center', marginTop: theme.spacing.sm },
+  refineBotButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   writeLogButton: { backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.card, paddingVertical: theme.spacing.base, alignItems: 'center' },
   writeLogButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   cancelLink: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, textAlign: 'center', marginTop: theme.spacing.xs },

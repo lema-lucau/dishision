@@ -198,7 +198,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders full data 1`]
                 "fontFamily": "Fraunces_700Bold",
                 "fontSize": 30,
                 "letterSpacing": -0.4,
-                "lineHeight": 32.400000000000006,
+                "lineHeight": 39,
               }
             }
           >
@@ -1922,7 +1922,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders partial macro
                 "fontFamily": "Fraunces_700Bold",
                 "fontSize": 30,
                 "letterSpacing": -0.4,
-                "lineHeight": 32.400000000000006,
+                "lineHeight": 39,
               }
             }
           >
@@ -3648,7 +3648,7 @@ exports[`RecipeDetailScreen (§5.5, §11.2 snapshot suite) renders the emoji til
                 "fontFamily": "Fraunces_700Bold",
                 "fontSize": 30,
                 "letterSpacing": -0.4,
-                "lineHeight": 32.400000000000006,
+                "lineHeight": 39,
               }
             }
           >

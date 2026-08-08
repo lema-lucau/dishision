@@ -4,6 +4,11 @@ import { migration003 } from './003_shopping_sections_and_unit_prefs';
 import { migration004 } from './004_ingredient_category_and_par_level';
 import { migration005 } from './005_ingredient_prices';
 import { migration006 } from './006_shared_cooks';
+import { migration007 } from './007_dishision_bot';
+import { migration008 } from './008_prune_empty_bot_chats';
+import { migration009 } from './009_sync_log_items';
+import { migration010 } from './010_bot_usage_surface';
+import { migration011 } from './011_bot_chat_cook_log';
 
 export interface Migration {
   version: number;
@@ -19,4 +24,9 @@ export const migrations: Migration[] = [
   { version: 4, sql: migration004 },
   { version: 5, sql: migration005 },
   { version: 6, sql: migration006 },
+  { version: 7, sql: migration007 },
+  { version: 8, sql: migration008 },
+  { version: 9, sql: migration009 },
+  { version: 10, sql: migration010 },
+  { version: 11, sql: migration011 },
 ];

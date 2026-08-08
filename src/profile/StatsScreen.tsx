@@ -10,6 +10,20 @@ import { formatCurrency } from '../lib/currency';
 import { getCurrencySymbol } from '../settings/getSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { loadStats, type Stats, type Trend } from './loadStats';
+import { loadBotUsageStats, type BotUsageStats } from '../bot/usageRepo';
+import { usdToEur } from '../bot/pricing';
+import { MODEL_LABELS, type BotModelKey } from '../bot/types';
+
+// User-facing names for the bot surfaces (§A1.4). 'other' covers rows logged
+// before surface tagging existed.
+const BOT_SURFACE_LABELS: Record<string, string> = {
+  recipe_chat: 'Recipe chat',
+  cook_log_refine: 'Cook log refine',
+  cooking_quick_ask: 'Cooking quick-ask',
+  weekly_planning: 'Weekly planning',
+  feeling_fallback: "'I'm feeling' fallback",
+  other: 'Other',
+};
 
 interface StatsScreenProps {
   onBack: () => void;
@@ -21,6 +35,25 @@ function weekLabel(weekStart: string): string {
   // "Mar 3" from a YYYY-MM-DD Monday key.
   const d = new Date(`${weekStart}T00:00:00`);
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+// §12: USD is exact (matches what's billed); EUR is an approximation. Tiny
+// fractions of a cent read as "<$0.01" rather than a misleading "$0.00".
+function formatUsd(v: number): string {
+  if (v <= 0) return '$0.00';
+  if (v < 0.01) return '<$0.01';
+  return `$${v.toFixed(2)}`;
+}
+function formatEur(usd: number): string {
+  const v = usdToEur(usd);
+  if (v <= 0) return '€0.00';
+  if (v < 0.01) return '<€0.01';
+  return `≈€${v.toFixed(2)}`;
+}
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
 }
 
 // A vertical bar chart with a baseline and first/last week axis labels. With
@@ -158,10 +191,12 @@ export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
   const db = useDb();
   const { modal, notice } = useConfirmModal();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [botUsage, setBotUsage] = useState<BotUsageStats | null>(null);
   const [currencySymbol, setCurrencySymbol] = useState('€');
 
   useEffect(() => {
     loadStats(db).then(setStats);
+    loadBotUsageStats(db).then(setBotUsage);
     getCurrencySymbol(db).then(setCurrencySymbol);
   }, [db]);
 
@@ -356,6 +391,76 @@ export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
               />
             </>
           )}
+
+          {/* §12: Dishision Bot usage & cost — visibility only, no cap. */}
+          {botUsage && botUsage.overall.calls > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>DISHISION BOT</Text>
+              <TouchableOpacity
+                style={styles.botCard}
+                activeOpacity={0.7}
+                onPress={() =>
+                  notice(
+                    'Dishision Bot usage',
+                    `${botUsage.overall.calls} call${botUsage.overall.calls === 1 ? '' : 's'} to Dishision Bot, ` +
+                      `${formatTokens(botUsage.overall.inputTokens)} input + ${formatTokens(botUsage.overall.outputTokens)} output tokens. ` +
+                      `Estimated cost ${formatUsd(botUsage.overall.costUsd)} (about ${formatEur(botUsage.overall.costUsd)}). ` +
+                      'USD is exact — it matches what Anthropic bills; the euro figure is a rough conversion.',
+                  )
+                }
+              >
+                <View style={styles.botCostRow}>
+                  <Text style={styles.botCostUsd}>{formatUsd(botUsage.overall.costUsd)}</Text>
+                  <Text style={styles.botCostEur}>{formatEur(botUsage.overall.costUsd)}</Text>
+                </View>
+                <Text style={styles.botCostLabel}>
+                  total estimated cost · {botUsage.overall.calls} call{botUsage.overall.calls === 1 ? '' : 's'} ·{' '}
+                  {formatTokens(botUsage.overall.inputTokens + botUsage.overall.outputTokens)} tokens
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={styles.sectionLabel}>COST PER WEEK</Text>
+              <BarChart
+                points={botUsage.weekly.map((w) => ({ weekStart: w.weekStart, value: w.costUsd > 0 ? w.costUsd : null }))}
+                color={theme.colors.accent}
+                formatValue={(v) => formatUsd(v)}
+              />
+
+              <Text style={styles.sectionLabel}>BY MODEL</Text>
+              <View style={styles.rankedCard}>
+                {botUsage.byModel.map((m) => (
+                  <View key={m.model} style={styles.botModelRow}>
+                    <Text style={styles.botModelName}>{MODEL_LABELS[m.model as BotModelKey]}</Text>
+                    <Text style={styles.botModelMeta}>
+                      {m.calls} call{m.calls === 1 ? '' : 's'} · {formatTokens(m.inputTokens + m.outputTokens)} tok
+                    </Text>
+                    <Text style={styles.botModelCost}>{formatUsd(m.costUsd)}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* §A1.4: which bot feature is actually being used / costing anything. */}
+              {botUsage.bySurface.length > 1 && (
+                <>
+                  <Text style={styles.sectionLabel}>BY FEATURE</Text>
+                  <View style={styles.rankedCard}>
+                    {botUsage.bySurface.map((s) => (
+                      <View key={s.surface} style={styles.botModelRow}>
+                        <Text style={styles.botModelName}>{BOT_SURFACE_LABELS[s.surface] ?? s.surface}</Text>
+                        <Text style={styles.botModelMeta}>
+                          {s.calls} call{s.calls === 1 ? '' : 's'} · {formatTokens(s.inputTokens + s.outputTokens)} tok
+                        </Text>
+                        <Text style={styles.botModelCost}>{formatUsd(s.costUsd)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
+              <Text style={styles.sectionHint}>
+                No spend cap here — set a hard limit on your API key in the Anthropic Console to be safe.
+              </Text>
+            </>
+          )}
         </>
       )}
       {modal}
@@ -460,6 +565,20 @@ const makeStyles = (theme: AppTheme) =>
       padding: theme.spacing.base,
       gap: theme.spacing.sm,
     },
+    botCard: {
+      backgroundColor: theme.colors.accentTint,
+      borderRadius: theme.radius.card,
+      padding: theme.spacing.base,
+      gap: 2,
+    },
+    botCostRow: { flexDirection: 'row', alignItems: 'baseline', gap: theme.spacing.sm },
+    botCostUsd: { fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
+    botCostEur: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.base, color: theme.colors.ink2 },
+    botCostLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+    botModelRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+    botModelName: { width: 72, fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink },
+    botModelMeta: { flex: 1, fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    botModelCost: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
     rankedRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
     rankedLabel: { width: 72, fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2, textTransform: 'capitalize' },
     rankedTrack: { flex: 1, height: 14, borderRadius: theme.radius.chip, backgroundColor: theme.colors.chipBg, overflow: 'hidden' },

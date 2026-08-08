@@ -25,7 +25,16 @@ import { formatDMY, formatShortDate } from '../lib/formatDate';
 import { PhotoViewer } from '../photos/PhotoViewer';
 import { pickAndCompressPhotos } from '../photos/pickAndCompressPhoto';
 import { EmojiTile } from '../recipes/EmojiTile';
+import { getSurfaceEnabled } from '../bot/botSurfaceSettings';
+import { getSetting } from '../settings/getSetting';
+import { setSetting } from '../settings/setSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import { CookLogByRecipe } from './CookLogByRecipe';
+
+// §B4: the two cook-log views. Persisted across launches so whichever you prefer
+// is the one you get.
+type CookLogTab = 'all' | 'byRecipe';
+const COOK_LOG_TAB_KEY = 'cook_log_tab';
 
 const VERDICTS: SubstitutionVerdict[] = ['better', 'same', 'worse'];
 
@@ -40,9 +49,12 @@ interface CookLogScreenProps {
   /** Set by the Plan tab when tapping a cooked meal — jumps straight into that log's editor. */
   focusLogId?: number | null;
   onFocusHandled?: () => void;
+  /** §A2.3: refine the recipe with Dishision Bot from a cook log entry, seeded
+   * with that cook's feedback. Wired to the Recipes tab's bot chat. */
+  onRefineWithBot?: (cookLogId: number) => void;
 }
 
-export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps) {
+export function CookLogScreen({ focusLogId, onFocusHandled, onRefineWithBot }: CookLogScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
@@ -67,11 +79,29 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
   const [deleteTarget, setDeleteTarget] = useState<CookLogRow | 'bulk' | null>(null);
   const [notFoundNotice, setNotFoundNotice] = useState(false);
   const [quickTagVocab, setQuickTagVocab] = useState<string[]>(BUILT_IN_QUICK_TAGS);
+  const [tab, setTab] = useState<CookLogTab>('all');
+  const [cookRefineEnabled, setCookRefineEnabled] = useState(true);
   const { modal, confirm } = useConfirmModal();
+
+  useEffect(() => {
+    getSurfaceEnabled(db, 'cook_log_refine').then(setCookRefineEnabled);
+  }, [db]);
 
   useEffect(() => {
     loadCustomQuickTags(db).then((custom) => setQuickTagVocab([...BUILT_IN_QUICK_TAGS, ...custom]));
   }, [db]);
+
+  // Restore the last-used tab (§B4).
+  useEffect(() => {
+    getSetting(db, COOK_LOG_TAB_KEY).then((v) => {
+      if (v === 'byRecipe' || v === 'all') setTab(v);
+    });
+  }, [db]);
+
+  function selectTab(next: CookLogTab) {
+    setTab(next);
+    setSetting(db, COOK_LOG_TAB_KEY, next);
+  }
 
   // Shared by the filter panel and the editor's own tag picker (§5.9) — a
   // tag added from either place is immediately available to both, and to
@@ -200,6 +230,7 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
           setEditing(null);
           await reload();
         }}
+        onRefineWithBot={onRefineWithBot && cookRefineEnabled ? () => onRefineWithBot(editing.id) : undefined}
       />
     );
   }
@@ -219,6 +250,32 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
   const clampedPage = Math.min(page, totalPages);
   const pageItems = searched.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
+  const tabBar = (
+    <View style={styles.tabBar}>
+      {(['all', 'byRecipe'] as CookLogTab[]).map((t) => (
+        <TouchableOpacity key={t} style={[styles.tabButton, tab === t && styles.tabButtonActive]} onPress={() => selectTab(t)}>
+          <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t === 'all' ? 'All' : 'By Recipe'}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  // §B4 "By Recipe" tab — its own grouped view + flip-through, kept out of the
+  // chronological "All" body so neither complicates the other.
+  if (tab === 'byRecipe') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Cook Log</Text>
+          <View style={styles.selectButtonSpacer} />
+        </View>
+        {tabBar}
+        <CookLogByRecipe />
+        {modal}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -233,6 +290,8 @@ export function CookLogScreen({ focusLogId, onFocusHandled }: CookLogScreenProps
           <Text style={[styles.selectButtonText, selectMode && styles.selectButtonTextActive]}>{selectMode ? 'Cancel' : 'Select'}</Text>
         </TouchableOpacity>
       </View>
+
+      {tabBar}
 
       <View style={styles.searchRow}>
         <Text style={styles.searchIcon}>🔍</Text>
@@ -582,6 +641,7 @@ function CookLogEditor({
   onCancel,
   onSaved,
   onDeleted,
+  onRefineWithBot,
 }: {
   log: CookLogRow;
   quickTagVocab: string[];
@@ -590,6 +650,7 @@ function CookLogEditor({
   onCancel: () => void;
   onSaved: () => void;
   onDeleted: () => void;
+  onRefineWithBot?: () => void;
 }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -788,6 +849,13 @@ function CookLogEditor({
           <Text style={styles.rowMeta}>{formatShortDate(log.cookedAt)}</Text>
         </View>
       </View>
+
+      {/* §A2.3: hand this cook's feedback to Dishision Bot to propose changes. */}
+      {onRefineWithBot && (
+        <TouchableOpacity style={styles.refineBotRow} onPress={onRefineWithBot}>
+          <Text style={styles.refineBotText}>✨ Refine recipe with Dishision Bot</Text>
+        </TouchableOpacity>
+      )}
 
       <Text style={styles.label}>Stars</Text>
       <View style={styles.starsRow}>
@@ -1050,6 +1118,12 @@ const makeStyles = (theme: AppTheme) =>
   selectButtonActive: { backgroundColor: theme.colors.accent },
   selectButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   selectButtonTextActive: { color: theme.colors.accentFg },
+  selectButtonSpacer: { width: 56 },
+  tabBar: { flexDirection: 'row', backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, padding: 3, gap: 3 },
+  tabButton: { flex: 1, paddingVertical: theme.spacing.sm, borderRadius: theme.radius.pill, alignItems: 'center' },
+  tabButtonActive: { backgroundColor: theme.colors.surface },
+  tabText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink3 },
+  tabTextActive: { color: theme.colors.ink },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1195,6 +1269,8 @@ const makeStyles = (theme: AppTheme) =>
   editorContent: { gap: theme.spacing.sm, paddingBottom: theme.spacing.xxl },
   editorHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
   editorHeaderText: { gap: 2 },
+  refineBotRow: { backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.card, paddingVertical: theme.spacing.md, alignItems: 'center' },
+  refineBotText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   backButton: { marginBottom: theme.spacing.sm },
   back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
   label: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.ink, marginTop: theme.spacing.lg, marginBottom: 2 },

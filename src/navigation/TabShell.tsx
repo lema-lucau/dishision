@@ -32,6 +32,10 @@ export function TabShell({ profile, onRestored }: TabShellProps) {
   const [recipesFavouritesOnly, setRecipesFavouritesOnly] = useState(false);
   const [recipesInitialRecipeId, setRecipesInitialRecipeId] = useState<number | null>(null);
   const [recipesInitialStartCooking, setRecipesInitialStartCooking] = useState(false);
+  // §A2.6: a criteria-seeded bot chat handed off from Home's "I'm feeling" fallback.
+  const [recipesBotSeed, setRecipesBotSeed] = useState<{ message: string; context: string | null } | null>(null);
+  // §A2.3: a cook-log refine handed off from the Cook Log tab.
+  const [recipesBotCookLogId, setRecipesBotCookLogId] = useState<number | null>(null);
   const debugModeEnabled = useSettingsStore((s) => s.debugMode);
   const tabBarHidden = useUiChromeStore((s) => s.tabBarHidden);
   const insets = useSafeAreaInsets();
@@ -79,6 +83,10 @@ export function TabShell({ profile, onRestored }: TabShellProps) {
               setRecipesInitialStartCooking(opts?.startCooking ?? false);
               setActiveTab('recipes');
             }}
+            onCreateWithBot={(message, context) => {
+              setRecipesBotSeed({ message, context });
+              setActiveTab('recipes');
+            }}
           />
         )}
         {activeTab === 'recipes' && (
@@ -88,6 +96,10 @@ export function TabShell({ profile, onRestored }: TabShellProps) {
             initialRecipeId={recipesInitialRecipeId}
             initialStartCooking={recipesInitialStartCooking}
             onInitialRecipeConsumed={() => setRecipesInitialRecipeId(null)}
+            initialBotSeed={recipesBotSeed}
+            onBotSeedConsumed={() => setRecipesBotSeed(null)}
+            initialBotCookLogId={recipesBotCookLogId}
+            onBotCookLogConsumed={() => setRecipesBotCookLogId(null)}
           />
         )}
         {activeTab === 'plan' && (
@@ -101,10 +113,21 @@ export function TabShell({ profile, onRestored }: TabShellProps) {
               setRecipesInitialStartCooking(false);
               setActiveTab('recipes');
             }}
+            onCreateWithBot={(message, context) => {
+              setRecipesBotSeed({ message, context });
+              setActiveTab('recipes');
+            }}
           />
         )}
         {activeTab === 'cookLog' && (
-          <CookLogScreen focusLogId={cookLogFocusId} onFocusHandled={() => setCookLogFocusId(null)} />
+          <CookLogScreen
+            focusLogId={cookLogFocusId}
+            onFocusHandled={() => setCookLogFocusId(null)}
+            onRefineWithBot={(cookLogId) => {
+              setRecipesBotCookLogId(cookLogId);
+              setActiveTab('recipes');
+            }}
+          />
         )}
         {activeTab === 'profile' && (
           <ProfileScreen

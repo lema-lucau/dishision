@@ -36,6 +36,25 @@ export interface RecipeFormScreenProps {
   title: string;
   onSave: (draft: RecipeDraft) => Promise<void>;
   onCancel: () => void;
+  /** Controlled mode (Dishision Bot review, §3.4): when provided, the parent
+   * owns the draft so it can refine from — and save — the live on-screen state,
+   * including manual edits. Omit for the standalone manual-CRUD flow. */
+  controlledDraft?: RecipeDraft;
+  onDraftChange?: (draft: RecipeDraft) => void;
+  /** Lowercased display names the app auto-created this session (§6) — badged
+   * "New" so near-duplicates are easy to spot and merge. */
+  newIngredientNames?: Set<string>;
+  /** Extra chrome rendered just above the save area (§3.4 refine box / open chat). */
+  extraActions?: React.ReactNode;
+  /** Hide the built-in Save button — the bot review supplies its own save row
+   * (Save & Overwrite / Save as New, §11). */
+  hideSave?: boolean;
+  saveLabel?: string;
+  /** Rendered in place of the built-in cancel label. */
+  cancelLabel?: string;
+  /** §2.2: when set (manual Edit screen), shows a "Refine with Dishision Bot"
+   * action that hands this recipe to a bot chat for conversational refinement. */
+  onRefineWithBot?: () => void;
 }
 
 function emptyIngredient(): RecipeIngredientDraft {
@@ -55,11 +74,27 @@ function deriveSequentialOffsets(steps: RecipeStepDraft[]): number[] {
   });
 }
 
-export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: RecipeFormScreenProps) {
+export function RecipeFormScreen({
+  initialDraft,
+  title,
+  onSave,
+  onCancel,
+  controlledDraft,
+  onDraftChange,
+  newIngredientNames,
+  extraActions,
+  hideSave = false,
+  saveLabel = 'Save recipe',
+  cancelLabel = '← Cancel',
+  onRefineWithBot,
+}: RecipeFormScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
-  const [draft, setDraft] = useState<RecipeDraft>(initialDraft);
+  const [internalDraft, setInternalDraft] = useState<RecipeDraft>(initialDraft);
+  const isControlled = controlledDraft !== undefined;
+  const draft = controlledDraft ?? internalDraft;
+  const isNewIngredient = (name: string) => newIngredientNames?.has(name.trim().toLowerCase()) ?? false;
   const [ingredientQuery, setIngredientQuery] = useState('');
   const [suggestions, setSuggestions] = useState<CanonicalIngredientOption[]>([]);
   const [saving, setSaving] = useState(false);
@@ -89,7 +124,9 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
   );
 
   function update(patch: Partial<RecipeDraft>) {
-    setDraft((d) => ({ ...d, ...patch }));
+    const next = { ...draft, ...patch };
+    if (isControlled) onDraftChange?.(next);
+    else setInternalDraft(next);
   }
 
   async function runIngredientSearch(text: string) {
@@ -222,9 +259,15 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <TouchableOpacity onPress={onCancel}>
-        <Text style={styles.back}>← Cancel</Text>
+        <Text style={styles.back}>{cancelLabel}</Text>
       </TouchableOpacity>
       <Text style={styles.title}>{title}</Text>
+
+      {onRefineWithBot && (
+        <TouchableOpacity style={styles.refineBotRow} onPress={onRefineWithBot}>
+          <Text style={styles.refineBotText}>✨ Refine with Dishision Bot</Text>
+        </TouchableOpacity>
+      )}
 
       <RecipePhotoField
         photoUri={draft.photoUri ?? null}
@@ -359,6 +402,11 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
                   {ing.optional ? ' (optional)' : ''}
                 </Text>
                 <Text style={styles.gridQty}>{ing.quantity ? `${ing.quantity} ${ing.unit}` : ing.unit}</Text>
+                {isNewIngredient(ing.displayName) && (
+                  <View style={styles.newIngredientBadge}>
+                    <Text style={styles.newIngredientBadgeText}>New ingredient</Text>
+                  </View>
+                )}
               </View>
             ))}
           </View>
@@ -385,6 +433,11 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
                 <Text style={styles.removeLink}>✕</Text>
               </TouchableOpacity>
             </View>
+            {isNewIngredient(ing.displayName) && (
+              <View style={styles.newIngredientBadge}>
+                <Text style={styles.newIngredientBadgeText}>New ingredient — check it isn't a duplicate</Text>
+              </View>
+            )}
             <View style={styles.inlineRow}>
               <TextInput
                 style={[styles.input, styles.flexSmall]}
@@ -610,9 +663,13 @@ export function RecipeFormScreen({ initialDraft, title, onSave, onCancel }: Reci
         )}
       </View>
 
-      <TouchableOpacity style={styles.primaryButton} onPress={handleSave} disabled={saving}>
-        <Text style={styles.primaryButtonText}>{saving ? 'Saving…' : 'Save recipe'}</Text>
-      </TouchableOpacity>
+      {extraActions}
+
+      {!hideSave && (
+        <TouchableOpacity style={styles.primaryButton} onPress={handleSave} disabled={saving}>
+          <Text style={styles.primaryButtonText}>{saving ? 'Saving…' : saveLabel}</Text>
+        </TouchableOpacity>
+      )}
 
       <Sheet
         visible={showSectionSheet}
@@ -648,6 +705,14 @@ const makeStyles = (theme: AppTheme) =>
   content: { padding: theme.spacing.base, gap: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
   back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
   title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
+  refineBotRow: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.accentTint,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+  },
+  refineBotText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   label: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2, marginBottom: theme.spacing.xs },
   input: {
     borderWidth: 1,
@@ -719,6 +784,15 @@ const makeStyles = (theme: AppTheme) =>
   },
   gridName: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink },
   gridQty: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
+  newIngredientBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.amberTint,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    marginTop: 2,
+  },
+  newIngredientBadgeText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.amberText },
   readStepRow: { gap: theme.spacing.xs, padding: theme.spacing.sm, borderRadius: theme.radius.card },
   stepBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: theme.spacing.xs },
   stepBadge: {
