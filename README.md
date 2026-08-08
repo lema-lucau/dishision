@@ -90,6 +90,11 @@ src/
 
   recipes/                  Recipe read/write path, detail, list items, Cooking Mode UI, forms,
                             RecipeDetailScreen, query/sort/filter engine, meal-type grouping, ingredients admin
+  bot/                     Dishision Bot: chat-based recipe creation & refinement.
+                            Anthropic client (fetch + propose_recipe tool), system prompt,
+                            proposed↔draft mapping + §6 ingredient resolution, chat/usage repos,
+                            context-window pruning, link fetch/extract, granular refine diff,
+                            secure API key store, and the Chat/Review/Diff/History/Settings screens
   recommend/               Recommendation engine: score, hard filters, diversity, relaxation ladder,
                             daily cache, median-cost cache, "I'm feeling…" picker
   cooking/                 Cook-side logic: session persistence & clock, drift, leftovers, cook log,
@@ -120,6 +125,7 @@ src/
 docs/design_implementation/
   dishision-spec.md                    Authoritative product/data/behaviour spec
   dishision-visual-redesign-spec.md    "Warm Editorial" visual redesign (S18)
+  dishision-ai-recipe-creation-spec.md Dishision Bot: chat-based recipe creation & refinement
 ```
 
 ### Where to make common changes

@@ -39,6 +39,7 @@ import { invalidateDailyRecommendations } from '../recommend/dailyCache';
 import { MealCategoryPickerModal } from '../recommend/MealCategoryPickerModal';
 import { MEAL_CATEGORIES, MEAL_CATEGORY_LABELS, type MealCategory } from '../recommend/mealCategories';
 import { useSettingsStore } from '../debug/settingsStore';
+import { BotSettingsScreen } from '../bot/BotSettingsScreen';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 interface SettingsScreenProps {
@@ -145,6 +146,7 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [showSyncLog, setShowSyncLog] = useState(false);
+  const [showBotSettings, setShowBotSettings] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -207,6 +209,10 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
 
   if (showSyncLog) {
     return <SyncLogScreen onBack={() => setShowSyncLog(false)} />;
+  }
+
+  if (showBotSettings) {
+    return <BotSettingsScreen onBack={() => setShowBotSettings(false)} />;
   }
 
   if (!loaded || !weights) {
@@ -410,6 +416,13 @@ export function SettingsScreen({ onBack, onOpenBackup }: SettingsScreenProps) {
 
       <TouchableOpacity style={styles.backupRow} onPress={onOpenBackup}>
         <Text style={styles.backupRowText}>Backup & export</Text>
+        <Text style={styles.chevron}>▸</Text>
+      </TouchableOpacity>
+
+      {/* §5: kept low-key at the very bottom, its own nested sub-screen. */}
+      <Text style={styles.sectionLabel}>DISHISION BOT</Text>
+      <TouchableOpacity style={styles.backupRow} onPress={() => setShowBotSettings(true)}>
+        <Text style={styles.backupRowText}>Dishision Bot</Text>
         <Text style={styles.chevron}>▸</Text>
       </TouchableOpacity>
 

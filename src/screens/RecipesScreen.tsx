@@ -34,6 +34,7 @@ import { buildDraftFromPayload, mergeRecipeLineage } from '../sharing/importReci
 import type { SharePayload } from '../sharing/payload';
 import { ShareSheetScreen } from '../sharing/ShareSheetScreen';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import { BotChatScreen } from '../bot/BotChatScreen';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
 
@@ -49,7 +50,8 @@ type ViewState =
   | { mode: 'share'; recipeId: number }
   | { mode: 'importEntry' }
   | { mode: 'importPreview'; payload: SharePayload }
-  | { mode: 'mergeDuplicates' };
+  | { mode: 'mergeDuplicates' }
+  | { mode: 'bot'; seedRecipeId?: number };
 
 interface RecipesScreenProps {
   /** Set when arriving from the Profile page's "View all" favourites link (§5.10). */
@@ -288,11 +290,26 @@ export function RecipesScreen({
     );
   }
 
+  if (view.mode === 'bot') {
+    return (
+      <BotChatScreen
+        seedRecipeId={view.seedRecipeId ?? null}
+        onExit={() => setView({ mode: 'list' })}
+        onOpenSavedRecipe={async (recipeId) => {
+          await reload();
+          setView({ mode: 'detail', recipeId });
+        }}
+      />
+    );
+  }
+
   if ((view.mode === 'create' || view.mode === 'edit') && editDraft) {
+    const editingRecipeId = view.mode === 'edit' ? view.recipeId : null;
     return (
       <RecipeFormScreen
         title={view.mode === 'create' ? 'New recipe' : 'Edit recipe'}
         initialDraft={editDraft}
+        onRefineWithBot={editingRecipeId != null ? () => setView({ mode: 'bot', seedRecipeId: editingRecipeId }) : undefined}
         onCancel={() => setView(view.mode === 'edit' ? { mode: 'detail', recipeId: view.recipeId } : { mode: 'list' })}
         onSave={async (draft) => {
           if (view.mode === 'edit') {
@@ -413,6 +430,11 @@ export function RecipesScreen({
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* §2.1: create a recipe by chatting with Dishision Bot. */}
+      <TouchableOpacity style={styles.botEntry} onPress={() => setView({ mode: 'bot' })}>
+        <Text style={styles.botEntryText}>✨ Create with Dishision Bot</Text>
+      </TouchableOpacity>
 
       <View style={styles.searchRow}>
         <Text style={styles.searchIcon}>🔍</Text>
@@ -580,6 +602,13 @@ const makeStyles = (theme: AppTheme) =>
   headerLinks: { flexDirection: 'row', gap: theme.spacing.base },
   title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
   addLink: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
+  botEntry: {
+    backgroundColor: theme.colors.accentTint,
+    borderRadius: theme.radius.pill,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  botEntryText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
   favBanner: {
     flexDirection: 'row',
     alignItems: 'center',
