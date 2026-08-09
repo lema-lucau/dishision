@@ -18,7 +18,7 @@ import { StatsScreen } from '../profile/StatsScreen';
 import type { Profile } from '../profile/ensureProfile';
 import { pickAndCompressPhoto } from '../photos/pickAndCompressPhoto';
 import { EmojiTile } from '../recipes/EmojiTile';
-import { useTheme, useThemeControls, type AppTheme } from '../theme/ThemeContext';
+import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { themes } from '../theme/themes';
 
 type ViewState = { mode: 'hero' } | { mode: 'stats' } | { mode: 'settings' } | { mode: 'backup' } | { mode: 'costRefresh' };
@@ -47,7 +47,6 @@ export function ProfileScreen({
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const db = useDb();
-  const { themeId } = useThemeControls();
   const [view, setView] = useState<ViewState>({ mode: 'hero' });
 
   const [displayName, setDisplayName] = useState(profile.display_name);
@@ -126,7 +125,6 @@ export function ProfileScreen({
     setAvatarUri(null);
   }
 
-  const currentTheme = themes[themeId];
   const themeCount = Object.keys(themes).length;
 
   if (view.mode === 'stats') {
@@ -287,7 +285,7 @@ export function ProfileScreen({
         <Text style={styles.sectionLabel}>THEME</Text>
         <TouchableOpacity style={styles.themeCard} onPress={onOpenThemePicker} activeOpacity={0.85}>
           <View style={styles.themeInfo}>
-            <Text style={styles.themeName}>{currentTheme.name}</Text>
+            <Text style={styles.themeName}>{theme.name}</Text>
             <Text style={styles.themeCount}>{themeCount} themes to try, light and dark</Text>
             <View style={styles.miniBar}>
               <View style={[styles.miniBarActive, { backgroundColor: theme.colors.accent }]} />
