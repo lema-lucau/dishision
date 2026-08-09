@@ -94,7 +94,9 @@ export interface ColourTokens {
 export type CategoryColours = Record<CategoryKey, string>;
 
 export interface Theme {
-  id: ThemeId;
+  // `string`, not `ThemeId`, because custom user themes carry `custom-…` ids
+  // that aren't in the built-in union. Built-in literals still satisfy this.
+  id: string;
   name: string;
   mode: ThemeMode; // drives status bar + keyboard appearance (§4.1)
   colors: ColourTokens;
