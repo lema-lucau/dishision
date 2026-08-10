@@ -158,7 +158,7 @@ export function OnboardingScreen({ profile, onDone }: OnboardingScreenProps) {
               style={styles.input}
               value={name}
               onChangeText={setName}
-              placeholder="e.g. Lema"
+              placeholder="Your name"
               placeholderTextColor={theme.colors.ink3}
               autoFocus
               autoCapitalize="words"

@@ -565,55 +565,65 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) opens in the ready sta
     </ViewManagerAdapter_ExpoLinearGradient>
   </View>
   <View
-    accessibilityState={
-      {
-        "busy": undefined,
-        "checked": undefined,
-        "disabled": undefined,
-        "expanded": undefined,
-        "selected": undefined,
-      }
-    }
-    accessibilityValue={
-      {
-        "max": undefined,
-        "min": undefined,
-        "now": undefined,
-        "text": undefined,
-      }
-    }
-    accessible={true}
-    collapsable={false}
-    focusable={true}
-    onClick={[Function]}
-    onResponderGrant={[Function]}
-    onResponderMove={[Function]}
-    onResponderRelease={[Function]}
-    onResponderTerminate={[Function]}
-    onResponderTerminationRequest={[Function]}
-    onStartShouldSetResponder={[Function]}
     style={
       {
-        "alignItems": "center",
-        "backgroundColor": "#F3E9DF",
-        "borderRadius": 13,
+        "flexDirection": "row",
+        "gap": 8,
         "marginBottom": 16,
-        "opacity": 1,
-        "paddingVertical": 8,
       }
     }
   >
-    <Text
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
       style={
         {
-          "color": "#7A6E64",
-          "fontFamily": "PublicSans_600SemiBold",
-          "fontSize": 12.5,
+          "alignItems": "center",
+          "backgroundColor": "#F3E9DF",
+          "borderRadius": 13,
+          "flex": 1,
+          "opacity": 1,
+          "paddingVertical": 8,
         }
       }
     >
-      Exit
-    </Text>
+      <Text
+        style={
+          {
+            "color": "#7A6E64",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        Exit
+      </Text>
+    </View>
   </View>
 </View>
 `;
@@ -745,6 +755,7 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) shows one tab per lane
             {
               "backgroundColor": "#F4E0D7",
             },
+            false,
           ]
         }
         testID="lane-tab-Curry"
@@ -828,6 +839,7 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) shows one tab per lane
               "paddingVertical": 8,
               "width": 112,
             },
+            false,
             false,
           ]
         }
@@ -1372,55 +1384,65 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) shows one tab per lane
     </ViewManagerAdapter_ExpoLinearGradient>
   </View>
   <View
-    accessibilityState={
-      {
-        "busy": undefined,
-        "checked": undefined,
-        "disabled": undefined,
-        "expanded": undefined,
-        "selected": undefined,
-      }
-    }
-    accessibilityValue={
-      {
-        "max": undefined,
-        "min": undefined,
-        "now": undefined,
-        "text": undefined,
-      }
-    }
-    accessible={true}
-    collapsable={false}
-    focusable={true}
-    onClick={[Function]}
-    onResponderGrant={[Function]}
-    onResponderMove={[Function]}
-    onResponderRelease={[Function]}
-    onResponderTerminate={[Function]}
-    onResponderTerminationRequest={[Function]}
-    onStartShouldSetResponder={[Function]}
     style={
       {
-        "alignItems": "center",
-        "backgroundColor": "#F3E9DF",
-        "borderRadius": 13,
+        "flexDirection": "row",
+        "gap": 8,
         "marginBottom": 16,
-        "opacity": 1,
-        "paddingVertical": 8,
       }
     }
   >
-    <Text
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
       style={
         {
-          "color": "#7A6E64",
-          "fontFamily": "PublicSans_600SemiBold",
-          "fontSize": 12.5,
+          "alignItems": "center",
+          "backgroundColor": "#F3E9DF",
+          "borderRadius": 13,
+          "flex": 1,
+          "opacity": 1,
+          "paddingVertical": 8,
         }
       }
     >
-      Exit
-    </Text>
+      <Text
+        style={
+          {
+            "color": "#7A6E64",
+            "fontFamily": "PublicSans_600SemiBold",
+            "fontSize": 12.5,
+          }
+        }
+      >
+        Exit
+      </Text>
+    </View>
   </View>
 </View>
 `;

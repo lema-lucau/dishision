@@ -3,10 +3,22 @@
 // derives a full, coordinated palette live (see customTheme.ts). An optional
 // Advanced section exposes every derived token for hand-tweaking. From the
 // preview they can Save, or Save & apply.
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sheet } from '../components/ui';
+import type { ApiMessage } from '../bot/anthropicClient';
 import { getBotSettings } from '../bot/botSettings';
 import { runSurfaceTurn } from '../bot/botSession';
 import { getSurfaceEnabled } from '../bot/botSurfaceSettings';
@@ -61,52 +73,75 @@ export function ThemeCreatorScreen({ editing, onClose }: ThemeCreatorScreenProps
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [picker, setPicker] = useState<PickerTarget | null>(null);
   const [previewing, setPreviewing] = useState(false);
-  // §B4 theme-creator bot: generate a palette from a description.
+  // §A1 theme-creator bot: a conversation that refines ONE live draft. History
+  // lives only here — ephemeral, cleared when the modal closes (see closeBot).
   const [botEnabled, setBotEnabled] = useState(false);
-  const [botSheetOpen, setBotSheetOpen] = useState(false);
-  const [botPrompt, setBotPrompt] = useState('');
+  const [botModalOpen, setBotModalOpen] = useState(false);
+  const [botMessages, setBotMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [botInput, setBotInput] = useState('');
   const [botSending, setBotSending] = useState(false);
   const [botError, setBotError] = useState<string | null>(null);
+  // Whether the conversation has produced at least one palette this session —
+  // gates the "View generated theme" button.
+  const [botProduced, setBotProduced] = useState(false);
+  const botScrollRef = useRef<ScrollView | null>(null);
 
   useEffect(() => {
     getSurfaceEnabled(db, 'theme_creator').then(setBotEnabled);
   }, [db]);
 
-  async function generatePalette() {
-    const prompt = botPrompt.trim();
-    if (!prompt || botSending) return;
+  // §A1: opening/closing the chat starts fresh — no persistence, no chat list.
+  function closeBot() {
+    setBotModalOpen(false);
+    setBotMessages([]);
+    setBotInput('');
+    setBotError(null);
+  }
+
+  async function sendBotMessage() {
+    const text = botInput.trim();
+    if (!text || botSending) return;
     setBotSending(true);
     setBotError(null);
+    const history = [...botMessages, { role: 'user' as const, content: text }];
+    setBotMessages(history);
+    setBotInput('');
     try {
       const [settings, userName] = await Promise.all([getBotSettings(db), getUserName(db)]);
+      const apiMessages: ApiMessage[] = history.map((m) => ({ role: m.role, content: m.content }));
       const result = await runSurfaceTurn(db, {
         surface: 'theme_creator',
         userName,
         settings,
         instructions:
-          'The user is designing an app colour theme. Call propose_theme with a mode, three hex colours, and an evocative name that capture the described mood. Ensure the accent and secondary read clearly against the background.',
+          'The user is designing an app colour theme through a conversation. Each turn, call propose_theme with a mode, three hex colours (background, accent, secondary), and an evocative name that capture the described mood, ensuring the accent and secondary read clearly against the background. This is ONE evolving draft: when the user asks to refine (e.g. "make it warmer", "more contrast", "calmer secondary"), adjust the SAME palette rather than starting over — change only what the request implies. You may fine-tune specific derived tokens via the overrides map when a request is about a particular colour (e.g. body text, a tint). Keep a short, friendly reply describing what you changed.',
         includeCurrentRecipe: false,
         tools: [PROPOSE_THEME_TOOL],
-        messages: [{ role: 'user', content: prompt }],
+        messages: apiMessages,
         chatId: null,
       });
       const call = result.toolUse.find((t) => t.name === 'propose_theme');
       const proposed = call ? parseProposedTheme(call.input) : null;
-      if (!proposed) {
-        setBotError(result.assistantText || "Couldn't read a palette from that — try describing the mood differently.");
-        return;
+      setBotMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: result.assistantText || (proposed ? 'Updated the palette — take a look.' : "I couldn't quite get that — try describing it differently.") },
+      ]);
+      if (proposed) {
+        // Refine the SAME draft in place (§A1.2): the seed drives the live
+        // preview; overrides are MERGED, not wiped, unless the mode flipped
+        // (colours tuned for one ground read wrong on the other).
+        const modeFlipped = proposed.mode !== mode;
+        setMode(proposed.mode);
+        setSeed({ bg: proposed.background, accent: proposed.accent, secondary: proposed.secondary });
+        setOverrides((prev) => (modeFlipped ? proposed.overrides ?? {} : { ...prev, ...(proposed.overrides ?? {}) }));
+        if (!name.trim()) setName(proposed.name);
+        setBotProduced(true);
       }
-      // Fill the creator's fields for review — never auto-save (§B4).
-      setMode(proposed.mode);
-      setSeed({ bg: proposed.background, accent: proposed.accent, secondary: proposed.secondary });
-      setOverrides({});
-      if (!name.trim()) setName(proposed.name);
-      setBotSheetOpen(false);
-      setBotPrompt('');
     } catch (e) {
       setBotError(e instanceof Error ? e.message : String(e));
     } finally {
       setBotSending(false);
+      requestAnimationFrame(() => botScrollRef.current?.scrollToEnd({ animated: true }));
     }
   }
 
@@ -212,10 +247,10 @@ export function ThemeCreatorScreen({ editing, onClose }: ThemeCreatorScreenProps
           </View>
         </View>
 
-        {/* §B4: generate a palette from a description */}
+        {/* §A1: design a palette in conversation with Dishision Bot */}
         {botEnabled && (
-          <TouchableOpacity style={styles.botButton} onPress={() => setBotSheetOpen(true)}>
-            <Text style={styles.botButtonText}>✨ Generate a palette with Dishision Bot</Text>
+          <TouchableOpacity style={styles.botButton} onPress={() => setBotModalOpen(true)}>
+            <Text style={styles.botButtonText}>✨ Design a palette with Dishision Bot</Text>
           </TouchableOpacity>
         )}
 
@@ -333,28 +368,78 @@ export function ThemeCreatorScreen({ editing, onClose }: ThemeCreatorScreenProps
         onClose={() => setPicker(null)}
       />
 
-      <Sheet visible={botSheetOpen} onRequestClose={() => setBotSheetOpen(false)} title="Generate a palette">
-        <View style={styles.botSheet}>
-          <Text style={styles.botSheetHint}>Describe a mood, place, or season — Dishision Bot will fill the colours for you to tweak.</Text>
-          <TextInput
-            style={styles.botSheetInput}
-            value={botPrompt}
-            onChangeText={setBotPrompt}
-            placeholder="e.g. cozy autumn evening, coastal morning, neon arcade"
-            placeholderTextColor={theme.colors.ink3}
-            multiline
-            editable={!botSending}
-          />
-          {botError && <Text style={styles.botSheetError}>{botError}</Text>}
-          <TouchableOpacity
-            style={[styles.botSheetButton, (!botPrompt.trim() || botSending) && styles.botSheetButtonDisabled]}
-            onPress={generatePalette}
-            disabled={!botPrompt.trim() || botSending}
-          >
-            {botSending ? <ActivityIndicator color={theme.colors.accentFg} /> : <Text style={styles.botSheetButtonText}>Generate</Text>}
-          </TouchableOpacity>
-        </View>
-      </Sheet>
+      {/* §A2: the theme-bot chat as a CENTRED modal (like Add-ingredients /
+          ConfirmModal), not a bottom sheet. Keyboard-avoiding so the input
+          stays visible while typing. */}
+      <Modal visible={botModalOpen} transparent animationType="fade" onRequestClose={closeBot}>
+        <KeyboardAvoidingView style={styles.botBackdrop} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeBot} />
+          <View style={styles.botCard}>
+            <View style={styles.botCardHeader}>
+              {/* §A1.4: a pill badging the conversation as a theme chat. */}
+              <View style={styles.botPill}>
+                <Text style={styles.botPillText}>🎨 Theme</Text>
+              </View>
+              <TouchableOpacity onPress={closeBot} hitSlop={8}>
+                <Text style={styles.botClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              ref={botScrollRef}
+              style={styles.botMessages}
+              contentContainerStyle={styles.botMessagesContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              {botMessages.length === 0 && (
+                <Text style={styles.botEmptyHint}>
+                  Describe a mood, place, or season — then refine it. Try “cozy autumn evening”, then “warmer”, “more contrast”, or “calmer secondary”.
+                </Text>
+              )}
+              {botMessages.map((m, i) => (
+                <View key={i} style={[styles.botBubble, m.role === 'user' ? styles.botBubbleUser : styles.botBubbleAssistant]}>
+                  <Text style={[styles.botBubbleText, m.role === 'user' && styles.botBubbleTextUser]}>{m.content}</Text>
+                </View>
+              ))}
+              {botSending && <ActivityIndicator style={styles.botSpinner} color={theme.colors.accent} />}
+              {botError && <Text style={styles.botSheetError}>{botError}</Text>}
+
+              {/* §A1.5: revealed once a palette exists, tinted with the NEW
+                  theme's own accent so the change is visible at a glance. */}
+              {botProduced && (
+                <TouchableOpacity
+                  style={[styles.botViewButton, { backgroundColor: builtTheme.colors.accent }]}
+                  onPress={() => {
+                    closeBot();
+                    setPreviewing(true);
+                  }}
+                >
+                  <Text style={[styles.botViewButtonText, { color: builtTheme.colors.accentFg }]}>View generated theme</Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+
+            <View style={styles.botInputRow}>
+              <TextInput
+                style={styles.botInput}
+                value={botInput}
+                onChangeText={setBotInput}
+                placeholder={botMessages.length === 0 ? 'Describe a theme…' : 'Refine it…'}
+                placeholderTextColor={theme.colors.ink3}
+                multiline
+                editable={!botSending}
+              />
+              <TouchableOpacity
+                style={[styles.botSendButton, (!botInput.trim() || botSending) && styles.botSheetButtonDisabled]}
+                onPress={sendBotMessage}
+                disabled={!botInput.trim() || botSending}
+              >
+                <Text style={styles.botSendButtonText}>{botSending ? '…' : 'Send'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -535,10 +620,41 @@ const makeStyles = (theme: AppTheme) =>
       marginBottom: theme.spacing.sm,
     },
     botButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
-    botSheet: { gap: theme.spacing.sm },
-    botSheetHint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
-    botSheetInput: {
-      minHeight: 72,
+    botSheetError: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.red },
+    botSheetButtonDisabled: { opacity: 0.45 },
+
+    // §A2 centred theme-bot modal.
+    botBackdrop: { flex: 1, backgroundColor: theme.colors.scrim, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.base },
+    botCard: {
+      width: '100%',
+      maxWidth: 460,
+      maxHeight: '80%',
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.hero,
+      padding: theme.spacing.base,
+      gap: theme.spacing.sm,
+      ...theme.elevation.e3,
+    },
+    botCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    botPill: { backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: 4 },
+    botPillText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+    botClose: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.md, color: theme.colors.ink3, paddingHorizontal: theme.spacing.xs },
+    botMessages: { flexGrow: 0 },
+    botMessagesContent: { gap: theme.spacing.sm, paddingVertical: theme.spacing.xs },
+    botEmptyHint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3, fontStyle: 'italic' },
+    botBubble: { borderRadius: theme.radius.card, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, maxWidth: '88%' },
+    botBubbleUser: { alignSelf: 'flex-end', backgroundColor: theme.colors.accent },
+    botBubbleAssistant: { alignSelf: 'flex-start', backgroundColor: theme.colors.chipBg },
+    botBubbleText: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink },
+    botBubbleTextUser: { color: theme.colors.accentFg },
+    botSpinner: { alignSelf: 'flex-start', marginVertical: theme.spacing.xs },
+    botViewButton: { borderRadius: theme.radius.card, paddingVertical: theme.spacing.md, alignItems: 'center', marginTop: theme.spacing.xs },
+    botViewButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.md },
+    botInputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: theme.spacing.sm },
+    botInput: {
+      flex: 1,
+      maxHeight: 100,
+      minHeight: 40,
       borderWidth: 1,
       borderColor: theme.colors.borderStrong,
       borderRadius: theme.radius.card,
@@ -548,12 +664,10 @@ const makeStyles = (theme: AppTheme) =>
       fontFamily: theme.fonts.body.regular,
       fontSize: theme.fontSize.base,
       color: theme.colors.ink,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.bg,
     },
-    botSheetError: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.red },
-    botSheetButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.card, paddingVertical: theme.spacing.md, alignItems: 'center' },
-    botSheetButtonDisabled: { opacity: 0.45 },
-    botSheetButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
+    botSendButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.md, justifyContent: 'center' },
+    botSendButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentFg },
     footerPrimary: {
       flex: 2,
       paddingVertical: theme.spacing.md,

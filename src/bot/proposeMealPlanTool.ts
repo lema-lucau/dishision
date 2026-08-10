@@ -1,87 +1,69 @@
-// §A2.5 Weekly Planning: the propose_meal_plan tool. The bot returns a set of
-// day-slot assignments, each either referencing an existing saved recipe by id
-// or naming a new one to create, with a one-line reason. Unlike propose_recipe
-// this doesn't build a recipe — it arranges the week.
+// §A2.5 / batch-2 E Weekly Planning: the propose_meal_plan tool. The bot returns
+// an ORDERED list of fresh dinners to cook — each either a saved recipe id or a
+// new recipe name, with a one-line reason. It does NOT assign dates or mark
+// leftover days: the app schedules leftover days deterministically between the
+// cooks from batch/household size (see plan/leftoverPlanner.ts).
 export const PROPOSE_MEAL_PLAN_TOOL = {
   name: 'propose_meal_plan',
   description:
-    'Propose a set of meals for the requested days. Prefer existing saved recipes where they fit; only propose a new recipe where nothing suitable exists. Space cooks out across the week: mark days that live off a previous cook\'s leftovers with is_leftover so you are not scheduling a cook every day.',
+    'Propose an ORDERED list of fresh dinners to cook across the planning span. The app schedules leftover days between them automatically from batch size, so do NOT assign dates or mark leftover days yourself — just return the cooks in the order they should happen. Prefer existing saved recipes where they fit; only name a new recipe where nothing suitable exists. Provide enough cooks to fill the span in the worst case (up to one per day); the app stops early once coverage is reached.',
   input_schema: {
     type: 'object',
     properties: {
-      days: {
+      cooks: {
         type: 'array',
+        description: 'Ordered fresh dinners to cook. The app inserts leftover days between them.',
         items: {
           type: 'object',
           properties: {
-            date: { type: 'string', description: 'ISO date (YYYY-MM-DD)' },
-            is_leftover: {
-              type: ['boolean', 'null'],
-              description:
-                'True for a leftover day — no new cook. Point existing_recipe_id at the recipe the leftovers come from. Requires no new_recipe_name.',
-            },
             existing_recipe_id: {
               type: ['integer', 'null'],
-              description: 'Reference a saved recipe by id where one fits (required for a leftover day: the source recipe).',
+              description: 'Reference a saved recipe by id where one fits.',
             },
             new_recipe_name: { type: ['string', 'null'], description: 'Only if proposing something not already saved.' },
             reasoning: {
               type: 'string',
-              description: 'One short line on why this fits — uses up leftovers, haven\'t cooked in a while, quick on a busy day, etc.',
+              description: 'One short line on why this fits — haven\'t cooked in a while, quick on a busy day, uses the pantry, etc.',
             },
           },
-          required: ['date'],
         },
       },
       notes: { type: 'string' },
     },
-    required: ['days'],
+    required: ['cooks'],
   },
 } as const;
 
-export interface ProposedMealPlanDay {
-  date: string;
-  /** §J: a leftover day — no new cook; existing_recipe_id names the source. */
-  isLeftover?: boolean;
+export interface ProposedCook {
   existing_recipe_id?: number | null;
   new_recipe_name?: string | null;
   reasoning?: string;
 }
 
 export interface ProposedMealPlan {
-  days: ProposedMealPlanDay[];
+  cooks: ProposedCook[];
   notes?: string;
 }
 
-// Normalise a raw propose_meal_plan tool input into a clean plan, dropping
-// malformed days and coercing types.
+// Normalise a raw propose_meal_plan tool input into a clean ordered cook list,
+// dropping malformed entries (a cook must point somewhere — an id or a name).
 export function parseMealPlan(input: unknown): ProposedMealPlan | null {
   if (!input || typeof input !== 'object') return null;
-  const raw = input as { days?: unknown; notes?: unknown };
-  if (!Array.isArray(raw.days)) return null;
-  const days: ProposedMealPlanDay[] = [];
-  for (const d of raw.days) {
-    if (!d || typeof d !== 'object') continue;
-    const day = d as { date?: unknown; is_leftover?: unknown; existing_recipe_id?: unknown; new_recipe_name?: unknown; reasoning?: unknown };
-    if (typeof day.date !== 'string' || !day.date.trim()) continue;
-    const existingId = typeof day.existing_recipe_id === 'number' ? day.existing_recipe_id : null;
-    const newName = typeof day.new_recipe_name === 'string' && day.new_recipe_name.trim() ? day.new_recipe_name.trim() : null;
-    const isLeftover = day.is_leftover === true;
-    // A cook day needs to point somewhere; a leftover day must name its source
-    // recipe (existing_recipe_id) and never carries a new recipe.
-    if (isLeftover) {
-      if (existingId == null) continue;
-    } else if (existingId == null && newName == null) {
-      continue;
-    }
-    days.push({
-      date: day.date.slice(0, 10),
-      isLeftover,
+  const raw = input as { cooks?: unknown; notes?: unknown };
+  if (!Array.isArray(raw.cooks)) return null;
+  const cooks: ProposedCook[] = [];
+  for (const c of raw.cooks) {
+    if (!c || typeof c !== 'object') continue;
+    const cook = c as { existing_recipe_id?: unknown; new_recipe_name?: unknown; reasoning?: unknown };
+    const existingId = typeof cook.existing_recipe_id === 'number' ? cook.existing_recipe_id : null;
+    const newName = typeof cook.new_recipe_name === 'string' && cook.new_recipe_name.trim() ? cook.new_recipe_name.trim() : null;
+    if (existingId == null && newName == null) continue;
+    cooks.push({
       existing_recipe_id: existingId,
-      new_recipe_name: isLeftover ? null : newName,
-      reasoning: typeof day.reasoning === 'string' ? day.reasoning : undefined,
+      new_recipe_name: newName,
+      reasoning: typeof cook.reasoning === 'string' ? cook.reasoning : undefined,
     });
   }
-  if (days.length === 0) return null;
-  return { days, notes: typeof raw.notes === 'string' ? raw.notes : undefined };
+  if (cooks.length === 0) return null;
+  return { cooks, notes: typeof raw.notes === 'string' ? raw.notes : undefined };
 }

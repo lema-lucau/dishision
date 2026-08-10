@@ -1,9 +1,10 @@
 // §5.8 pantry editor. The pantry is "the pool" — fully hand-editable since
 // nothing else tells the app you binned the wilted spinach. Staples now live
 // inline in the same list (§C1): the always-have items carry a badge and their
-// par-level / running-low controls, and a "Staples only" filter narrows to them.
+// restock-at / running-low controls, and a "Staples only" filter narrows to them.
 // The list is read-only until you tap Edit (§C3), which turns on the quantity /
-// unit / par-level inputs, per-row delete, and bulk selection together.
+// unit / restock-at inputs and bulk selection together. Removal is bulk-only
+// (multi-select → Delete); the per-row bin was dropped (batch-2 D1).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
@@ -228,15 +229,6 @@ export function PantryScreen() {
         </View>
       </View>
 
-      {filter === 'staples' && (
-        <Text style={styles.helpText}>
-          Running low is calculated automatically once a staple has a par level set: it flags whenever your pantry quantity for that item
-          drops below the par level. Staples with no par level use a manual toggle instead — tap the pill (in Edit) to flip it. Either way, a
-          staple flagged running low comes back onto your next generated shopping list; staples are normally left off since you always have
-          them.
-        </Text>
-      )}
-
       <View style={styles.searchRow}>
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
@@ -306,9 +298,6 @@ export function PantryScreen() {
                     selected={selectedIds.has(item.canonicalId)}
                     onToggleSelect={() => toggleSelected(item.canonicalId)}
                     onOpenUnitPicker={() => setUnitPickerTarget(item)}
-                    onDelete={() =>
-                      deleteRows([item.canonicalId], stapleIdSet, `Remove ${item.name} from the pantry?`)
-                    }
                     onReload={reload}
                   />
                 </View>
@@ -390,7 +379,6 @@ function PantryRow({
   selected,
   onToggleSelect,
   onOpenUnitPicker,
-  onDelete,
   onReload,
 }: {
   item: UnifiedPantryRow;
@@ -398,7 +386,6 @@ function PantryRow({
   selected: boolean;
   onToggleSelect: () => void;
   onOpenUnitPicker: () => void;
-  onDelete: () => void;
   onReload: () => Promise<void>;
 }) {
   const theme = useTheme();
@@ -465,17 +452,12 @@ function PantryRow({
         ) : (
           <Text style={styles.unitText}>{unitPillLabel(item, displayUnit, displayed.value)}</Text>
         )}
-        {editMode && (
-          <TouchableOpacity onPress={onDelete} hitSlop={6} style={styles.deleteIcon}>
-            <Text style={styles.deleteIconText}>🗑</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {item.isStaple && (
         <View style={styles.stapleControls}>
           <View style={styles.parLevelCol}>
-            <Text style={styles.parLevelLabel}>Par level</Text>
+            <Text style={styles.parLevelLabel}>Restock at</Text>
             {editMode ? (
               <TextInput
                 style={styles.parLevelInput}
@@ -516,7 +498,6 @@ function PantryRow({
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     container: { flex: 1, padding: theme.spacing.base, gap: theme.spacing.sm },
-    helpText: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3, fontStyle: 'italic' },
 
     toolsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm },
     filterChips: { flexDirection: 'row', gap: theme.spacing.xs },
@@ -623,8 +604,6 @@ const makeStyles = (theme: AppTheme) =>
     unitPill: { paddingHorizontal: theme.spacing.sm, paddingVertical: 4, borderRadius: theme.radius.chip, backgroundColor: theme.colors.chipBg, minWidth: 44, alignItems: 'center' },
     unitPillText: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink2 },
     unitText: { minWidth: 44, fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
-    deleteIcon: { paddingHorizontal: theme.spacing.xs },
-    deleteIconText: { fontSize: theme.fontSize.md },
     lowToggle: { paddingHorizontal: theme.spacing.sm, paddingVertical: 4, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
     lowToggleActive: { backgroundColor: theme.colors.amberTint },
     lowToggleText: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },

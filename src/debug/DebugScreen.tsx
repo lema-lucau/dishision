@@ -2,7 +2,7 @@
 // debug screen (search, date range, level filter, expand/collapse all, an
 // expandable detail panel per row, and an Export / Import / Clear action bar)
 // but rendered entirely through Dishision's theme tokens — no hardcoded colour.
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
@@ -11,6 +11,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { DatePickerModal } from '../components/DatePickerModal';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { formatDMY } from '../lib/formatDate';
+import { paginate } from '../lib/paginate';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { JsonViewer } from './JsonViewer';
 import { useLogStore } from './logStore';
@@ -20,6 +21,10 @@ import { LOG_CATEGORIES, LOG_LEVELS, type LogCategory, type LogEntry, type LogLe
 function toggle<T>(set: T[], value: T): T[] {
   return set.includes(value) ? set.filter((v) => v !== value) : [...set, value];
 }
+
+// Debug logs can run long; page them so the list stays scrollable (batch-2 H).
+const PAGE_SIZE_OPTIONS = [50, 100, 150, 200] as const;
+const DEFAULT_PAGE_SIZE = 50;
 
 // NDJSON export → parse: one LogEntry per line. Anything that isn't a
 // well-formed entry is dropped; a file with zero valid lines is rejected.
@@ -145,6 +150,8 @@ export function DebugScreen() {
   const [datePickerFor, setDatePickerFor] = useState<'from' | 'to' | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -157,6 +164,17 @@ export function DebugScreen() {
       .slice()
       .reverse();
   }, [entries, categories, levels, search, dateFrom, dateTo]);
+
+  // Reset to page 1 whenever the filtered set can change out from under us, so
+  // the current page never silently points past the new results.
+  useEffect(() => {
+    setPage(1);
+  }, [categories, levels, search, dateFrom, dateTo, pageSize]);
+
+  const { pageItems, totalPages, clampedPage } = useMemo(
+    () => paginate(filtered, page, pageSize),
+    [filtered, page, pageSize],
+  );
 
   const levelCounts = useMemo(() => {
     const counts: Record<LogLevel, number> = { debug: 0, info: 0, warn: 0, error: 0 };
@@ -228,7 +246,7 @@ export function DebugScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Debug</Text>
         <Text style={styles.subtitle}>
-          {entries.length} logs · {filtered.length} shown
+          {entries.length} logs · {filtered.length} match · page {clampedPage}/{totalPages}
         </Text>
       </View>
 
@@ -323,19 +341,47 @@ export function DebugScreen() {
         </View>
       )}
 
+      {/* Per-page size (paging over the filtered set) */}
+      <View style={styles.pageSizeRow}>
+        <Text style={styles.pageSizeLabel}>Per page</Text>
+        {PAGE_SIZE_OPTIONS.map((size) => (
+          <TouchableOpacity
+            key={size}
+            onPress={() => setPageSize(size)}
+            style={[styles.pageSizeButton, pageSize === size && styles.pageSizeButtonActive]}
+          >
+            <Text style={[styles.pageSizeButtonText, pageSize === size && styles.pageSizeButtonTextActive]}>{size}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {filtered.length === 0 ? (
         <View style={styles.list}>
           <Text style={styles.empty}>{entries.length === 0 ? 'No logs captured yet.' : 'No logs match the current filters.'}</Text>
         </View>
       ) : (
         <FlatList
-          data={filtered}
+          data={pageItems}
           keyExtractor={(e) => String(e.id)}
           renderItem={renderItem}
           style={styles.list}
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
         />
+      )}
+
+      {totalPages > 1 && (
+        <View style={styles.pagination}>
+          <TouchableOpacity disabled={clampedPage <= 1} onPress={() => setPage(clampedPage - 1)}>
+            <Text style={[styles.pageLink, clampedPage <= 1 && styles.pageLinkDisabled]}>‹ Prev</Text>
+          </TouchableOpacity>
+          <Text style={styles.pageLabel}>
+            Page {clampedPage} of {totalPages}
+          </Text>
+          <TouchableOpacity disabled={clampedPage >= totalPages} onPress={() => setPage(clampedPage + 1)}>
+            <Text style={[styles.pageLink, clampedPage >= totalPages && styles.pageLinkDisabled]}>Next ›</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
@@ -435,6 +481,17 @@ const makeStyles = (theme: AppTheme) =>
     pillText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, textTransform: 'uppercase', letterSpacing: 0.5 },
     pillTextIdle: { color: theme.colors.ink2 },
     pillTextActive: { color: theme.colors.accentFg },
+
+    pageSizeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    pageSizeLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2, marginRight: 2 },
+    pageSizeButton: { paddingHorizontal: theme.spacing.md, paddingVertical: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+    pageSizeButtonActive: { backgroundColor: theme.colors.accent },
+    pageSizeButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+    pageSizeButtonTextActive: { color: theme.colors.accentFg },
+    pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.xl, paddingVertical: theme.spacing.xs },
+    pageLink: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+    pageLinkDisabled: { color: theme.colors.ink4 },
+    pageLabel: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
 
     list: { flex: 1 },
     listContent: { gap: theme.spacing.sm, paddingVertical: theme.spacing.xs },

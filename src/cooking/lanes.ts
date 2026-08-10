@@ -51,6 +51,11 @@ export interface LaneStatus {
   /** Seconds remaining on a running step, or until a waiting step is due.
    *  Null when there is nothing to count (untimed step, or the lane is done). */
   seconds: number | null;
+  /** Whether the live step has actually been started (its clock rebased). A lane
+   *  whose live step's scheduled time has arrived but that the cook hasn't
+   *  engaged is "idle but should be running" — the §C3 banner trigger. Optional
+   *  so callers building a status by hand may omit it (treated as not started). */
+  liveStepStarted?: boolean;
   completedCount: number;
   totalCount: number;
 }
@@ -65,10 +70,12 @@ export function laneStatus(
 ): LaneStatus {
   const completedCount = lane.stepIds.filter((id) => runtime.get(id)?.completed).length;
   const liveStepId = lane.stepIds.find((id) => !runtime.get(id)?.completed) ?? null;
+  const liveStepStarted = liveStepId != null && runtime.get(liveStepId)?.actualStartOffsetSeconds != null;
   const base = {
     key: lane.key,
     name: lane.name,
     liveStepId,
+    liveStepStarted,
     completedCount,
     totalCount: lane.stepIds.length,
   };
@@ -112,6 +119,33 @@ export function laneNeedingAttention(statuses: LaneStatus[]): string | null {
     .filter((s) => s.state === 'running' && s.seconds != null)
     .sort((a, b) => (a.seconds as number) - (b.seconds as number));
   return running[0]?.key ?? null;
+}
+
+/** §C3 (batch-2): the lane the cook should be nudged to start now. With
+ *  auto-advance off, a parallel lane can sit idle while the cook works another —
+ *  this returns the most urgent lane OTHER than the visible one whose live step's
+ *  scheduled time has arrived (`overdue`, or `running` because an untimed step is
+ *  due) but that hasn't been started yet, skipping any the cook already
+ *  dismissed. Returns null when no lane is asking. Pure + tested. */
+export function laneBannerTarget(
+  statuses: LaneStatus[],
+  visibleLaneKey: string,
+  dismissedLaneKeys: string[],
+): LaneStatus | null {
+  const dismissed = new Set(dismissedLaneKeys);
+  const candidates = statuses.filter(
+    (s) =>
+      s.key !== visibleLaneKey &&
+      !dismissed.has(s.key) &&
+      s.liveStepId != null &&
+      !s.liveStepStarted &&
+      (s.state === 'overdue' || s.state === 'running'),
+  );
+  if (candidates.length === 0) return null;
+  // Overdue (its window has fully arrived) outranks merely-running; keep the
+  // original lane order as the tiebreak so the choice is stable.
+  const rank = (s: LaneStatus) => (s.state === 'overdue' ? 0 : 1);
+  return [...candidates].sort((a, b) => rank(a) - rank(b))[0];
 }
 
 /** §D1 auto-advance: the live steps whose timer has already elapsed and so

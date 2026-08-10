@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MAIN_LANE_KEY,
   buildLanes,
+  laneBannerTarget,
   laneNeedingAttention,
   laneStatus,
   laneStatuses,
@@ -257,6 +258,55 @@ describe('lanesReadyToAdvance (§D1)', () => {
     const s = laneStatus(lane, timings(timing(1, 0, null)), runtime(), 300, 0);
     expect(s.state).toBe('running');
     expect(lanesReadyToAdvance([s])).toEqual([]);
+  });
+});
+
+describe('laneBannerTarget (§C3 — nudge to start an idle parallel lane)', () => {
+  it('returns an idle, unstarted overdue lane other than the visible one', () => {
+    const statuses: LaneStatus[] = [
+      status({ key: 'Curry', state: 'running', seconds: 200 }),
+      status({ key: 'Rice', state: 'overdue', liveStepStarted: false }),
+    ];
+    expect(laneBannerTarget(statuses, 'Curry', [])?.key).toBe('Rice');
+  });
+
+  it('never targets the visible lane', () => {
+    const statuses: LaneStatus[] = [status({ key: 'Rice', state: 'overdue', liveStepStarted: false })];
+    expect(laneBannerTarget(statuses, 'Rice', [])).toBeNull();
+  });
+
+  it('ignores a lane the cook already started', () => {
+    const statuses: LaneStatus[] = [
+      status({ key: 'Curry', state: 'running', seconds: 200 }),
+      status({ key: 'Rice', state: 'overdue', liveStepStarted: true }),
+    ];
+    expect(laneBannerTarget(statuses, 'Curry', [])).toBeNull();
+  });
+
+  it('ignores a dismissed lane', () => {
+    const statuses: LaneStatus[] = [
+      status({ key: 'Curry', state: 'running', seconds: 200 }),
+      status({ key: 'Rice', state: 'overdue', liveStepStarted: false }),
+    ];
+    expect(laneBannerTarget(statuses, 'Curry', ['Rice'])).toBeNull();
+  });
+
+  it('does not nudge for a lane that is only waiting or done', () => {
+    const statuses: LaneStatus[] = [
+      status({ key: 'Curry', state: 'running', seconds: 200 }),
+      status({ key: 'Rice', state: 'waiting', seconds: 90, liveStepStarted: false }),
+      status({ key: 'Salad', state: 'done', liveStepId: null }),
+    ];
+    expect(laneBannerTarget(statuses, 'Curry', [])).toBeNull();
+  });
+
+  it('prefers an overdue lane over a merely-running unstarted one', () => {
+    const statuses: LaneStatus[] = [
+      status({ key: 'Curry', state: 'running', seconds: 200 }),
+      status({ key: 'Salad', state: 'running', seconds: null, liveStepStarted: false }),
+      status({ key: 'Rice', state: 'overdue', liveStepStarted: false }),
+    ];
+    expect(laneBannerTarget(statuses, 'Curry', [])?.key).toBe('Rice');
   });
 });
 

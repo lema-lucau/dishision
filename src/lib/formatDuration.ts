@@ -40,6 +40,21 @@ export function formatDurationPrecise(seconds: number): string {
   return secs === 0 ? minLabel : `${minLabel} ${secs} sec`;
 }
 
+// Compact minutes+seconds for step badges and the recipe/editor displays
+// (batch-2 B1): "45s", "2m", "2m 30s", "1h 5m 30s". Whole minutes drop the
+// seconds segment; a sub-minute step reads seconds-only; zero reads "0s".
+export function formatMinSec(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const parts: string[] = [];
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (secs > 0) parts.push(`${secs}s`);
+  return parts.length > 0 ? parts.join(' ') : '0s';
+}
+
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }

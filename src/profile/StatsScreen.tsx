@@ -6,9 +6,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
-import { formatCurrency } from '../lib/currency';
-import { getCurrencySymbol } from '../settings/getSetting';
+import { formatCurrency, type Currency } from '../lib/currency';
+import { convertCurrency } from '../lib/currencyRates';
+import { getCurrencyState } from '../settings/getSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import type { Bucket } from './bucketize';
 import { loadStats, type Stats, type Trend } from './loadStats';
 import { loadBotUsageStats, type BotUsageStats } from '../bot/usageRepo';
 import { usdToEur } from '../bot/pricing';
@@ -31,10 +33,21 @@ interface StatsScreenProps {
   onOpenRecipe?: (recipeId: number) => void;
 }
 
-function weekLabel(weekStart: string): string {
-  // "Mar 3" from a YYYY-MM-DD Monday key.
-  const d = new Date(`${weekStart}T00:00:00`);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+// §F1: the window pills. null = All time. Default 30d.
+const WINDOWS: { days: number | null; label: string }[] = [
+  { days: 1, label: '1d' },
+  { days: 7, label: '7d' },
+  { days: 14, label: '14d' },
+  { days: 30, label: '30d' },
+  { days: 90, label: '90d' },
+  { days: null, label: 'All' },
+];
+
+// A human phrase for a window, used to relabel the windowed cards dynamically.
+function windowPhrase(windowDays: number | null): string {
+  if (windowDays == null) return 'all time';
+  if (windowDays === 1) return 'the last day';
+  return `the last ${windowDays} days`;
 }
 
 // §12: USD is exact (matches what's billed); EUR is an approximation. Tiny
@@ -56,50 +69,56 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
-// A vertical bar chart with a baseline and first/last week axis labels. With
-// nothing selected the header shows the overall average across every week
-// with data; tapping a bar swaps it for that bar's exact value and week
-// ("breakdown"), and tapping the same bar again returns to the average.
+// A vertical bar chart over adaptive buckets (per-day or per-week, §F1.3). With
+// nothing selected the header shows the average across bars with data; tapping a
+// bar swaps it for that bar's exact value and label, and tapping again returns
+// to the average.
 function BarChart({
-  points,
+  buckets,
+  unit,
   color,
   formatValue,
   formatAverage = formatValue,
 }: {
-  points: { weekStart: string; value: number | null }[];
+  buckets: Bucket[];
+  /** 'day' or 'week' — names the bars in the header/hint. */
+  unit: 'day' | 'week';
   color: string;
   formatValue: (v: number) => string;
   /**
    * Formats the header average specifically — defaults to formatValue, but a
-   * series like weekly cook count (where every week has a real value, even
-   * 0, rather than null-when-no-data) needs its own formatter: rounding a
-   * genuinely small average like 0.3/week down to the nearest whole cook
-   * displays "0" even though real cooks are in the window.
+   * series like cook count (where every bar has a real value, even 0, rather
+   * than null-when-no-data) needs its own formatter so a genuinely small
+   * average isn't rounded to a misleading "0".
    */
   formatAverage?: (v: number) => string;
 }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [selected, setSelected] = useState<number | null>(null);
-  const max = Math.max(1, ...points.map((p) => p.value ?? 0));
-  const withData = points.filter((p) => p.value != null);
-  const average = withData.length > 0 ? withData.reduce((sum, p) => sum + (p.value ?? 0), 0) / withData.length : null;
-  const selectedPoint = selected != null ? points[selected] : null;
+  const max = Math.max(1, ...buckets.map((b) => b.value ?? 0));
+  const withData = buckets.filter((b) => b.value != null);
+  const average = withData.length > 0 ? withData.reduce((sum, b) => sum + (b.value ?? 0), 0) / withData.length : null;
+  const selectedBucket = selected != null ? buckets[selected] : null;
 
   return (
     <View style={styles.chartCard}>
       <View style={styles.chartHeaderRow}>
         <Text style={styles.chartLatest}>
-          {selectedPoint ? (selectedPoint.value != null ? formatValue(selectedPoint.value) : '—') : average != null ? formatAverage(average) : '—'}
+          {selectedBucket ? (selectedBucket.value != null ? formatValue(selectedBucket.value) : '—') : average != null ? formatAverage(average) : '—'}
         </Text>
         <Text style={styles.chartLatestLabel}>
-          {selectedPoint ? `week of ${weekLabel(selectedPoint.weekStart)}` : withData.length > 0 ? `average over ${withData.length} week${withData.length === 1 ? '' : 's'}` : 'no data'}
+          {selectedBucket
+            ? `${unit} of ${selectedBucket.label}`
+            : withData.length > 0
+              ? `average over ${withData.length} ${unit}${withData.length === 1 ? '' : 's'}`
+              : 'no data'}
         </Text>
       </View>
       <View style={styles.barRow}>
-        {points.map((p, i) => (
+        {buckets.map((b, i) => (
           <TouchableOpacity
-            key={p.weekStart}
+            key={b.key}
             style={styles.barSlot}
             activeOpacity={0.7}
             onPress={() => setSelected((prev) => (prev === i ? null : i))}
@@ -107,7 +126,7 @@ function BarChart({
             <View
               style={[
                 styles.bar,
-                { height: p.value == null ? 2 : Math.max(3, (p.value / max) * 90), backgroundColor: color },
+                { height: b.value == null ? 2 : Math.max(3, (b.value / max) * 90), backgroundColor: color },
                 i === selected && styles.barSelected,
               ]}
             />
@@ -115,10 +134,10 @@ function BarChart({
         ))}
       </View>
       <View style={styles.axisRow}>
-        <Text style={styles.axisLabel}>{points.length > 0 ? weekLabel(points[0].weekStart) : ''}</Text>
-        <Text style={styles.axisLabel}>{points.length > 0 ? weekLabel(points[points.length - 1].weekStart) : ''}</Text>
+        <Text style={styles.axisLabel}>{buckets.length > 0 ? buckets[0].label : ''}</Text>
+        <Text style={styles.axisLabel}>{buckets.length > 0 ? buckets[buckets.length - 1].label : ''}</Text>
       </View>
-      <Text style={styles.chartTapHint}>Tap a bar for that week's value, tap again for the average</Text>
+      <Text style={styles.chartTapHint}>Tap a bar for its value, tap again for the average</Text>
     </View>
   );
 }
@@ -182,7 +201,7 @@ function trendSentence(label: string, trend: Trend): string {
   const dir = trend.direction === 'up' ? 'higher' : trend.direction === 'down' ? 'lower' : 'about the same';
   const magnitude = trend.changePct == null ? '' : ` (${Math.abs(Math.round(trend.changePct))}%)`;
   if (trend.changePct == null) return `${label}: not enough data yet to show a trend.`;
-  return `${label}: your recent weeks are ${dir}${magnitude} than the weeks before.`;
+  return `${label}: the recent half of this window is ${dir}${magnitude} than the earlier half.`;
 }
 
 export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
@@ -192,16 +211,38 @@ export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
   const { modal, notice } = useConfirmModal();
   const [stats, setStats] = useState<Stats | null>(null);
   const [botUsage, setBotUsage] = useState<BotUsageStats | null>(null);
-  const [currencySymbol, setCurrencySymbol] = useState('€');
+  const [shortlist, setShortlist] = useState<Currency[]>([]);
+  const [activeCurrency, setActiveCurrency] = useState<Currency | null>(null);
+  const [windowDays, setWindowDays] = useState<number | null>(30);
+  const [reloading, setReloading] = useState(false);
 
   useEffect(() => {
-    loadStats(db).then(setStats);
-    loadBotUsageStats(db).then(setBotUsage);
-    getCurrencySymbol(db).then(setCurrencySymbol);
+    getCurrencyState(db).then(({ shortlist: sl, activeIndex }) => {
+      setShortlist(sl);
+      setActiveCurrency(sl[activeIndex] ?? sl[0] ?? null);
+    });
   }, [db]);
 
+  // §F1: re-derive the whole page whenever the window changes.
+  useEffect(() => {
+    let cancelled = false;
+    setReloading(true);
+    Promise.all([loadStats(db, { windowDays }), loadBotUsageStats(db, { windowDays })]).then(([s, u]) => {
+      if (cancelled) return;
+      setStats(s);
+      setBotUsage(u);
+      setReloading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [db, windowDays]);
+
+  const currencySymbol = activeCurrency?.symbol ?? '€';
   const macros = stats?.avgMacros;
   const macroTotal = (macros?.protein ?? 0) + (macros?.carbs ?? 0) + (macros?.fat ?? 0);
+  const unit: 'day' | 'week' = stats?.granularity ?? 'week';
+  const phrase = windowPhrase(windowDays);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -210,25 +251,42 @@ export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
       </TouchableOpacity>
       <Text style={styles.title}>Stats</Text>
 
+      {/* §F1: window pills drive every figure below. */}
+      <View style={styles.windowRow}>
+        {WINDOWS.map((w) => {
+          const active = windowDays === w.days;
+          return (
+            <TouchableOpacity
+              key={w.label}
+              style={[styles.windowPill, active && styles.windowPillActive]}
+              onPress={() => setWindowDays(w.days)}
+            >
+              <Text style={[styles.windowPillText, active && styles.windowPillTextActive]}>{w.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+        {reloading && <ActivityIndicator size="small" color={theme.colors.accent} style={styles.windowSpinner} />}
+      </View>
+
       {!stats ? (
         <ActivityIndicator color={theme.colors.accent} />
       ) : (
         <>
-          {/* Headline stat cards — tap for what each one means */}
+          {/* Headline stat cards — all figures within the selected window. */}
           <View style={styles.statGrid}>
             <TouchableOpacity
               style={styles.statCard}
               activeOpacity={0.7}
-              onPress={() => notice('Total cooks', `You've completed ${stats.totalCooks} cook${stats.totalCooks === 1 ? '' : 's'} in total, counting every time you finished cooking a recipe.`)}
+              onPress={() => notice('Cooks', `You cooked ${stats.totalCooks} time${stats.totalCooks === 1 ? '' : 's'} in ${phrase}.`)}
             >
               <Text style={styles.statEmoji}>🍳</Text>
               <Text style={styles.statValue}>{stats.totalCooks}</Text>
-              <Text style={styles.statLabel}>total cooks</Text>
+              <Text style={styles.statLabel}>{windowDays == null ? 'total cooks' : `cooks (${phrase})`}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.statCard}
               activeOpacity={0.7}
-              onPress={() => notice('Recipes cooked', `You've cooked ${stats.distinctRecipesCooked} different recipe${stats.distinctRecipesCooked === 1 ? '' : 's'} — how much variety you've had.`)}
+              onPress={() => notice('Recipes cooked', `You cooked ${stats.distinctRecipesCooked} different recipe${stats.distinctRecipesCooked === 1 ? '' : 's'} in ${phrase} — how much variety you've had.`)}
             >
               <Text style={styles.statEmoji}>📖</Text>
               <Text style={styles.statValue}>{stats.distinctRecipesCooked}</Text>
@@ -237,25 +295,16 @@ export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
             <TouchableOpacity
               style={styles.statCard}
               activeOpacity={0.7}
-              onPress={() => notice('Cooks in the last 30 days', `You've cooked ${stats.cooksLast30} time${stats.cooksLast30 === 1 ? '' : 's'} in the last 30 days.`)}
-            >
-              <Text style={styles.statEmoji}>🔁</Text>
-              <Text style={styles.statValue}>{stats.cooksLast30}</Text>
-              <Text style={styles.statLabel}>times cooked in the last 30 days</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.statCard}
-              activeOpacity={0.7}
-              onPress={() => notice('Active cooking days', `You cooked on ${stats.cookedDaysLast30} of the last 30 days — distinct days, not total cooks.`)}
+              onPress={() => notice('Active cooking days', `You cooked on ${stats.cookedDaysInWindow} distinct day${stats.cookedDaysInWindow === 1 ? '' : 's'} in ${phrase} — distinct days, not total cooks.`)}
             >
               <Text style={styles.statEmoji}>📅</Text>
-              <Text style={styles.statValue}>{stats.cookedDaysLast30}</Text>
-              <Text style={styles.statLabel}>active cooking days (last 30)</Text>
+              <Text style={styles.statValue}>{stats.cookedDaysInWindow}</Text>
+              <Text style={styles.statLabel}>{windowDays == null ? 'active cooking days' : `active days (${phrase})`}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.statCard}
               activeOpacity={0.7}
-              onPress={() => notice('Average rating', stats.avgRating != null ? `Your cooks average ${stats.avgRating.toFixed(1)} out of 5 stars across every rating you've given.` : 'Rate your cooks to see your average here.')}
+              onPress={() => notice('Average rating', stats.avgRating != null ? `Your cooks in ${phrase} average ${stats.avgRating.toFixed(1)} out of 5 stars.` : 'Rate your cooks to see your average here.')}
             >
               <Text style={styles.statEmoji}>⭐</Text>
               <Text style={styles.statValue}>{stats.avgRating != null ? stats.avgRating.toFixed(1) : '—'}</Text>
@@ -264,7 +313,7 @@ export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
             <TouchableOpacity
               style={styles.statCard}
               activeOpacity={0.7}
-              onPress={() => notice('Total spend', stats.totalSpend != null ? `Estimated ${formatCurrency(stats.totalSpend, currencySymbol)} spent across your cooks, from each recipe's cost per serving × servings made.` : 'Add ingredient prices to estimate your spend.')}
+              onPress={() => notice('Total spend', stats.totalSpend != null ? `Estimated ${formatCurrency(stats.totalSpend, currencySymbol)} spent in ${phrase}, from each recipe's cost per serving × servings made.` : 'Add ingredient prices to estimate your spend.')}
             >
               <Text style={styles.statEmoji}>💶</Text>
               <Text style={styles.statValue}>{stats.totalSpend != null ? formatCurrency(stats.totalSpend, currencySymbol) : '—'}</Text>
@@ -291,8 +340,8 @@ export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
           )}
 
           {/* Trends */}
-          <Text style={styles.sectionLabel}>RECENT TRENDS</Text>
-          <Text style={styles.sectionHint}>Recent weeks vs the weeks before.</Text>
+          <Text style={styles.sectionLabel}>TRENDS</Text>
+          <Text style={styles.sectionHint}>The recent half of this window vs the earlier half.</Text>
           <View style={styles.trendRow}>
             <TrendPill label="Cooks" trend={stats.trends.cooks} tone="goodUp" onPress={() => notice('Cooks trend', trendSentence('Cooks', stats.trends.cooks))} />
             <TrendPill label="Rating" trend={stats.trends.rating} tone="goodUp" onPress={() => notice('Rating trend', trendSentence('Rating', stats.trends.rating))} />
@@ -300,34 +349,23 @@ export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
             <TrendPill label="Spend" trend={stats.trends.spend} tone="neutral" onPress={() => notice('Spend trend', trendSentence('Spend', stats.trends.spend))} />
           </View>
 
-          <Text style={styles.sectionLabel}>COOKS PER WEEK</Text>
+          <Text style={styles.sectionLabel}>COOKS PER {unit === 'day' ? 'DAY' : 'WEEK'}</Text>
           <BarChart
-            points={stats.cooksPerWeek.map((p) => ({ weekStart: p.weekStart, value: p.cooks }))}
+            buckets={stats.series.cooks}
+            unit={unit}
             color={theme.colors.accent}
             formatValue={(v) => `${Math.round(v)} cook${Math.round(v) === 1 ? '' : 's'}`}
-            formatAverage={(v) => `${Number.isInteger(v) ? v : v.toFixed(1)} cooks/wk`}
+            formatAverage={(v) => `${Number.isInteger(v) ? v : v.toFixed(1)} cooks/${unit === 'day' ? 'day' : 'wk'}`}
           />
 
-          <Text style={styles.sectionLabel}>RATING PER WEEK</Text>
-          <BarChart
-            points={stats.ratingDrift.map((p) => ({ weekStart: p.weekStart, value: p.avgStars }))}
-            color={theme.colors.amber}
-            formatValue={(v) => `★ ${v.toFixed(1)}`}
-          />
+          <Text style={styles.sectionLabel}>RATING PER {unit === 'day' ? 'DAY' : 'WEEK'}</Text>
+          <BarChart buckets={stats.series.rating} unit={unit} color={theme.colors.amber} formatValue={(v) => `★ ${v.toFixed(1)}`} />
 
-          <Text style={styles.sectionLabel}>AVG CALORIES PER WEEK</Text>
-          <BarChart
-            points={stats.nutritionPerWeek.map((p) => ({ weekStart: p.weekStart, value: p.avgKcal }))}
-            color={theme.colors.green}
-            formatValue={(v) => `${Math.round(v)} kcal`}
-          />
+          <Text style={styles.sectionLabel}>AVG CALORIES PER {unit === 'day' ? 'DAY' : 'WEEK'}</Text>
+          <BarChart buckets={stats.series.calories} unit={unit} color={theme.colors.green} formatValue={(v) => `${Math.round(v)} kcal`} />
 
-          <Text style={styles.sectionLabel}>SPEND PER WEEK</Text>
-          <BarChart
-            points={stats.spendPerWeek.map((p) => ({ weekStart: p.weekStart, value: p.totalSpend }))}
-            color={theme.colors.accent}
-            formatValue={(v) => formatCurrency(v, currencySymbol)}
-          />
+          <Text style={styles.sectionLabel}>SPEND PER {unit === 'day' ? 'DAY' : 'WEEK'}</Text>
+          <BarChart buckets={stats.series.spend} unit={unit} color={theme.colors.accent} formatValue={(v) => formatCurrency(v, currencySymbol)} />
 
           {/* Average macro split */}
           {macros && macroTotal > 0 && (
@@ -419,12 +457,8 @@ export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
                 </Text>
               </TouchableOpacity>
 
-              <Text style={styles.sectionLabel}>COST PER WEEK</Text>
-              <BarChart
-                points={botUsage.weekly.map((w) => ({ weekStart: w.weekStart, value: w.costUsd > 0 ? w.costUsd : null }))}
-                color={theme.colors.accent}
-                formatValue={(v) => formatUsd(v)}
-              />
+              <Text style={styles.sectionLabel}>COST PER {unit === 'day' ? 'DAY' : 'WEEK'}</Text>
+              <BarChart buckets={botUsage.buckets} unit={unit} color={theme.colors.accent} formatValue={(v) => formatUsd(v)} />
 
               <Text style={styles.sectionLabel}>BY MODEL</Text>
               <View style={styles.rankedCard}>
@@ -461,6 +495,35 @@ export function StatsScreen({ onBack, onOpenRecipe }: StatsScreenProps) {
               </Text>
             </>
           )}
+
+          {/* §F2: the windowed spend converted into every currency you use, via
+              rough static rates. Stats-only — ingredient values never convert. */}
+          {stats.totalSpend != null && activeCurrency && shortlist.length > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>SPEND IN YOUR CURRENCIES</Text>
+              <View style={styles.rankedCard}>
+                {shortlist.map((c, i) => {
+                  const isSource = c.name === activeCurrency.name;
+                  const converted = isSource
+                    ? stats.totalSpend
+                    : convertCurrency(stats.totalSpend as number, activeCurrency.name, c.name);
+                  if (converted == null) return null;
+                  return (
+                    <View key={`${c.name}-${i}`} style={styles.currencyRow}>
+                      <Text style={styles.currencyName}>
+                        {c.name}
+                        {isSource ? ' · recorded' : ''}
+                      </Text>
+                      <Text style={[styles.currencyValue, isSource && styles.currencyValueSource]}>{formatCurrency(converted, c.symbol)}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+              <Text style={styles.sectionHint}>
+                Rough static rates — for comparison only. Changing your active currency never re-values ingredients.
+              </Text>
+            </>
+          )}
         </>
       )}
       {modal}
@@ -474,6 +537,18 @@ const makeStyles = (theme: AppTheme) =>
     content: { padding: theme.spacing.base, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
     back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
     title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
+
+    windowRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.xs },
+    windowPill: { paddingHorizontal: theme.spacing.md, paddingVertical: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+    windowPillActive: { backgroundColor: theme.colors.accent },
+    windowPillText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+    windowPillTextActive: { color: theme.colors.accentFg },
+    windowSpinner: { marginLeft: theme.spacing.xs },
+
+    currencyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    currencyName: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+    currencyValue: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.base, color: theme.colors.ink },
+    currencyValueSource: { fontFamily: theme.fonts.data.semiBold, color: theme.colors.accentText },
 
     statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
     statCard: {

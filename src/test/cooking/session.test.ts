@@ -4,10 +4,12 @@ import {
   abandonSession,
   advanceToStep,
   completeStep,
+  discardSession,
   finishSession,
   findUnfinishedSession,
   loadStepRuntime,
   pauseSession,
+  resetToStep,
   resumeSession,
   startSession,
 } from '../../cooking/session';
@@ -113,5 +115,47 @@ describe('cooking_session persistence (§2.3, §5.6, §11.2)', () => {
 
     await finishSession(db, session!.id);
     expect(await findUnfinishedSession(db, recipeId)).toBeNull();
+  });
+
+  it('resetToStep un-completes the target + later lane steps, moves the pointer, and rebases the clock (§C2)', async () => {
+    const { recipeId, stepIds } = await insertRecipeWithSteps(db);
+    await startSession(db, recipeId, 2, 'cook', stepIds[0], '2026-07-16T18:00:00.000Z');
+    let session = await findUnfinishedSession(db, recipeId);
+    // Cook through both steps: step 0 done, moved to step 1, step 1 done.
+    await advanceToStep(db, session!, stepIds[0], '2026-07-16T18:00:00.000Z');
+    await completeStep(db, session!.id, stepIds[0], '2026-07-16T18:05:00.000Z');
+    await advanceToStep(db, session!, stepIds[1], '2026-07-16T18:05:00.000Z');
+    await completeStep(db, session!.id, stepIds[1], '2026-07-16T18:10:00.000Z');
+
+    session = await findUnfinishedSession(db, recipeId);
+    // Accidentally advanced past step 0 — reset back to it.
+    await resetToStep(db, session!, stepIds[0], stepIds, '2026-07-16T18:12:00.000Z');
+
+    const reopened = await findUnfinishedSession(db, recipeId);
+    expect(reopened?.currentStepId).toBe(stepIds[0]);
+
+    const runtime = await loadStepRuntime(db, reopened!.id, reopened!.startedAt);
+    // Target un-completed and its clock rebased to the reset instant (12 min).
+    expect(runtime.get(stepIds[0])?.completed).toBe(false);
+    expect(runtime.get(stepIds[0])?.actualStartOffsetSeconds).toBe(720);
+    // Later lane step un-completed and back to pristine (not started).
+    expect(runtime.get(stepIds[1])?.completed).toBe(false);
+    expect(runtime.get(stepIds[1])?.actualStartOffsetSeconds).toBeNull();
+  });
+
+  it('discardSession leaves no resumable session and writes no cook log (§C4)', async () => {
+    const { recipeId, stepIds } = await insertRecipeWithSteps(db);
+    await startSession(db, recipeId, 2, 'cook', stepIds[0]);
+    const session = await findUnfinishedSession(db, recipeId);
+    await advanceToStep(db, session!, stepIds[0]);
+    await completeStep(db, session!.id, stepIds[0]);
+
+    await discardSession(db, session!.id);
+
+    expect(await findUnfinishedSession(db, recipeId)).toBeNull();
+    const steps = await db.getAllAsync('SELECT * FROM cooking_session_step WHERE session_id = ?', [session!.id]);
+    expect(steps).toHaveLength(0);
+    const logs = await db.getAllAsync('SELECT * FROM cook_log');
+    expect(logs).toHaveLength(0);
   });
 });

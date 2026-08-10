@@ -152,6 +152,40 @@ export async function advanceToStep(
   ]);
 }
 
+// §C2 (batch-2): recover from an accidental instant-advance. Makes `stepId` the
+// current step again and restarts its timer from `now`, un-completing that step
+// and every later step *in its lane* (`laneStepIds`, in lane order) so the cook
+// can re-run them. The master clock keeps running — only the step's recorded
+// start is rebased, exactly how a step's start is established on advance.
+export async function resetToStep(
+  db: DbClient,
+  session: CookingSessionRow,
+  stepId: number,
+  laneStepIds: number[],
+  now: string = new Date().toISOString(),
+): Promise<void> {
+  await checkpoint(db, session, now);
+  const idx = laneStepIds.indexOf(stepId);
+  const affected = idx >= 0 ? laneStepIds.slice(idx) : [stepId];
+
+  // Later steps in the lane go back to pristine — not started, not completed.
+  for (const id of affected.slice(1)) {
+    await db.runAsync('UPDATE cooking_session_step SET started_at = NULL, completed_at = NULL WHERE session_id = ? AND step_id = ?', [
+      session.id,
+      id,
+    ]);
+  }
+  // The target becomes the live step again with its clock restarted at `now`.
+  await db.runAsync('INSERT OR IGNORE INTO cooking_session_step (session_id, step_id, started_at) VALUES (?, ?, ?)', [session.id, stepId, now]);
+  await db.runAsync('UPDATE cooking_session_step SET started_at = ?, completed_at = NULL WHERE session_id = ? AND step_id = ?', [
+    now,
+    session.id,
+    stepId,
+  ]);
+  await db.runAsync('UPDATE cooking_session SET current_step_id = ?, updated_at = ? WHERE id = ?', [stepId, now, session.id]);
+  logger.info('engine', 'Cooking step timer reset', { sessionId: session.id, stepId });
+}
+
 export async function completeStep(
   db: DbClient,
   sessionId: number,
@@ -201,6 +235,17 @@ export async function setPhase(
 // there's nothing to resume once a cook is done.
 export async function finishSession(db: DbClient, sessionId: number): Promise<void> {
   await db.runAsync('DELETE FROM cooking_session WHERE id = ?', [sessionId]);
+}
+
+// §C4 (batch-2): "Cancel cook" — throw the session away entirely. Unlike
+// `finishSession` (part of the Complete/logging path), this writes NO cook log
+// and leaves nothing resumable: the session and its step rows are deleted so a
+// later entry starts fresh. Step rows would cascade off the session delete, but
+// we remove them explicitly so it holds even if FK enforcement is off.
+export async function discardSession(db: DbClient, sessionId: number): Promise<void> {
+  await db.runAsync('DELETE FROM cooking_session_step WHERE session_id = ?', [sessionId]);
+  await db.runAsync('DELETE FROM cooking_session WHERE id = ?', [sessionId]);
+  logger.info('engine', 'Cooking session discarded', { sessionId });
 }
 
 export async function loadStepRuntime(db: DbClient, sessionId: number, sessionStartedAt: string): Promise<Map<number, StepRuntimeState>> {

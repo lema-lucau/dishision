@@ -4,14 +4,16 @@
 // Hidden themes are gated behind a "View hidden themes" screen where they can be
 // un-hidden. Deletion (custom themes only) is permanent.
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { useBackHandler } from '../navigation/backStore';
 import { parseHHMM } from './autoThemeSchedule';
 import { isCustomThemeId, type CustomThemeDef } from './customTheme';
+import { sortThemesByName } from './sortThemes';
 import { ThemeCreatorScreen } from './ThemeCreatorScreen';
+import { TimePickerModal } from './TimePickerModal';
 import { ThemePreview } from './ThemePreview';
 import { useAutoTheme, useCustomThemes, useTheme, useThemeControls, type AppTheme, type AutoThemeConfig } from './ThemeContext';
 import { DARK_THEME_IDS, DEFAULT_THEME_ID, LIGHT_THEME_IDS, themes, type Theme } from './themes';
@@ -333,10 +335,15 @@ function AutoThemeSection({ resolve }: { resolve: (id: string) => Theme | undefi
   const { autoTheme, setAutoTheme } = useAutoTheme();
   const [pick, setPick] = useState<null | 'day' | 'night'>(null);
 
-  const selectableIds = useMemo(
-    () => [...LIGHT_THEME_IDS, ...DARK_THEME_IDS, ...Object.keys(customThemes)],
-    [customThemes],
-  );
+  // Merge built-in + custom, then sort alphabetically by display name so a
+  // specific theme is easy to find in the day/night choosers (batch-2 A4).
+  const selectableIds = useMemo(() => {
+    const ids = [...LIGHT_THEME_IDS, ...DARK_THEME_IDS, ...Object.keys(customThemes)];
+    const named = ids
+      .map((id) => ({ id, name: resolve(id)?.name ?? id }))
+      .filter((x) => !!x.name);
+    return sortThemesByName(named).map((x) => x.id);
+  }, [customThemes, resolve]);
 
   const update = (patch: Partial<AutoThemeConfig>) => setAutoTheme({ ...autoTheme, ...patch });
   const dayName = resolve(autoTheme.dayId)?.name ?? 'Choose a theme';
@@ -381,30 +388,26 @@ function AutoThemeSection({ resolve }: { resolve: (id: string) => Theme | undefi
 
 function TimeField({ label, value, onChange, theme }: { label: string; value: string; onChange: (t: string) => void; theme: AppTheme }) {
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const [text, setText] = useState(value);
-  useEffect(() => setText(value), [value]);
-  function commit() {
-    // Normalise whatever was typed to a canonical HH:MM before persisting.
-    const mins = parseHHMM(text);
-    const norm = `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
-    setText(norm);
-    if (norm !== value) onChange(norm);
-  }
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // Normalise the stored value to a canonical HH:MM for display.
+  const mins = parseHHMM(value);
+  const display = `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
   return (
-    <View style={styles.autoRow}>
-      <Text style={styles.autoRowLabel}>{label}</Text>
-      <TextInput
-        style={styles.timeInput}
-        value={text}
-        onChangeText={setText}
-        onEndEditing={commit}
-        onBlur={commit}
-        placeholder="HH:MM"
-        placeholderTextColor={theme.colors.ink3}
-        keyboardType="numbers-and-punctuation"
-        maxLength={5}
+    <>
+      <TouchableOpacity style={styles.autoRow} onPress={() => setPickerOpen(true)}>
+        <Text style={styles.autoRowLabel}>{label}</Text>
+        <Text style={styles.timeValue}>{display} ›</Text>
+      </TouchableOpacity>
+      <TimePickerModal
+        visible={pickerOpen}
+        title={label}
+        value={display}
+        onSelect={(t) => {
+          if (t !== value) onChange(t);
+        }}
+        onClose={() => setPickerOpen(false)}
       />
-    </View>
+    </>
   );
 }
 
@@ -710,12 +713,12 @@ const makeStyles = (theme: AppTheme) =>
     },
     autoRowLabel: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.base, color: theme.colors.ink },
     autoRowValue: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
-    timeInput: {
+    timeValue: {
       minWidth: 72,
       textAlign: 'right',
-      fontFamily: theme.fonts.data.medium,
+      fontFamily: theme.fonts.data.semiBold,
       fontSize: theme.fontSize.base,
-      color: theme.colors.ink,
+      color: theme.colors.accentText,
     },
     choiceSheet: {
       backgroundColor: theme.colors.surface,

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../db/DbClient';
 import {
   getAlertSound,
-  getAlertTakeover,
   getAlertVibrate,
   getCostStalenessDays,
   getCurrencyCode,
@@ -47,7 +46,6 @@ describe('setting reads (§2.3, §5.10)', () => {
     expect(await getDefaultServingSize(db)).toBe(2);
     expect(await getAlertVibrate(db)).toBe(true);
     expect(await getAlertSound(db)).toBe(true);
-    expect(await getAlertTakeover(db)).toBe(true);
     expect(await getCurrencyCode(db)).toBe('EUR');
     expect(await getCostStalenessDays(db)).toBe(90);
   });

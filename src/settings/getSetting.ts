@@ -62,17 +62,23 @@ export async function getDefaultServingSize(db: DbClient): Promise<number> {
   return Number(await getSettingWithDefault(db, 'default_serving_size', '2'));
 }
 
-// §5.6 Cooking Mode alert toggles — vibrate/takeover are already read
-// directly by CookingModeScreen via getSettingWithDefault; these wrappers
-// exist for the Settings screen and keep the default values in one place.
+// §E (batch-2) household size — how many people a batch is divided across. Drives
+// the deterministic leftover planner's coverage math and the planning prompt so
+// the two agree. Default 2; at least 1.
+export async function getHouseholdSize(db: DbClient): Promise<number> {
+  const n = Number(await getSettingWithDefault(db, 'household_size', '2'));
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 2;
+}
+
+// §5.6 Cooking Mode alert toggles — vibrate is read directly by
+// CookingModeScreen via getSettingWithDefault; these wrappers exist for the
+// Settings screen and keep the default values in one place. (The full-screen
+// "takeover" alert was retired in batch-2 C1 in favour of a non-blocking flash.)
 export async function getAlertVibrate(db: DbClient): Promise<boolean> {
   return (await getSettingWithDefault(db, 'alert_vibrate', '1')) === '1';
 }
 export async function getAlertSound(db: DbClient): Promise<boolean> {
   return (await getSettingWithDefault(db, 'alert_sound', '1')) === '1';
-}
-export async function getAlertTakeover(db: DbClient): Promise<boolean> {
-  return (await getSettingWithDefault(db, 'alert_takeover', '1')) === '1';
 }
 
 // §D1: auto-advance cooking steps by default. When off, a step that becomes due

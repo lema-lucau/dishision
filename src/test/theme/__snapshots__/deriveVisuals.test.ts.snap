@@ -85,6 +85,7 @@ exports[`deriveVisuals across every theme (§11.2, R9) > snapshots the whole der
   },
   "onPhoto": {
     "chipBg": "rgba(255, 246, 240, 0.92)",
+    "chipInk": "rgba(26, 16, 10, 0.96)",
     "ink": "rgba(255, 255, 255, 0.98)",
     "inkDim": "rgba(255, 255, 255, 0.72)",
     "qrQuietZone": "#FFFFFF",
@@ -192,6 +193,7 @@ exports[`deriveVisuals across every theme (§11.2, R9) > snapshots the whole der
   },
   "onPhoto": {
     "chipBg": "rgba(255, 246, 240, 0.92)",
+    "chipInk": "rgba(26, 16, 10, 0.96)",
     "ink": "rgba(255, 255, 255, 0.98)",
     "inkDim": "rgba(255, 255, 255, 0.72)",
     "qrQuietZone": "#FFFFFF",

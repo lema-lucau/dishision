@@ -24,4 +24,28 @@ describe('parseProposedTheme (§B4)', () => {
     expect(parseProposedTheme({ name: 'x', mode: 'light', accent: '#111111', secondary: '#222222' })).toBeNull();
     expect(parseProposedTheme(null)).toBeNull();
   });
+
+  it('keeps valid token overrides and drops unknown keys / bad hex (batch-2 A1)', () => {
+    const p = parseProposedTheme({
+      name: 'x',
+      mode: 'light',
+      background: '#000000',
+      accent: '#111111',
+      secondary: '#222222',
+      overrides: { ink2: 'abc', amber: '#ff8800', bogusKey: '#ffffff', red: 'not-a-color' },
+    });
+    expect(p?.overrides).toEqual({ ink2: '#AABBCC', amber: '#FF8800' });
+  });
+
+  it('omits overrides entirely when none are valid', () => {
+    const p = parseProposedTheme({
+      name: 'x',
+      mode: 'light',
+      background: '#000000',
+      accent: '#111111',
+      secondary: '#222222',
+      overrides: { bogusKey: '#ffffff' },
+    });
+    expect(p).not.toHaveProperty('overrides');
+  });
 });

@@ -31,9 +31,6 @@ export async function setAlertVibrate(db: DbClient, on: boolean): Promise<void> 
 export async function setAlertSound(db: DbClient, on: boolean): Promise<void> {
   await setSetting(db, 'alert_sound', on ? '1' : '0');
 }
-export async function setAlertTakeover(db: DbClient, on: boolean): Promise<void> {
-  await setSetting(db, 'alert_takeover', on ? '1' : '0');
-}
 
 export async function setCookAutoAdvance(db: DbClient, on: boolean): Promise<void> {
   await setSetting(db, 'cook_auto_advance', on ? '1' : '0');

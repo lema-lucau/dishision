@@ -92,7 +92,10 @@ const makeStyles = (theme: AppTheme) =>
       fontFamily: theme.fonts.body.bold,
       fontSize: theme.fontSize.xs,
       letterSpacing: theme.fontSize.xs * 0.13,
-      color: theme.colors.ink,
+      // On-photo chip ink — fixed near-black that reads on the light chip in
+      // both light and dark themes (batch-2 A5). Not `colors.ink`, which is
+      // near-white in dark themes and disappears against `chipBg`.
+      color: theme.onPhoto.chipInk,
     },
     title: {
       fontFamily: theme.fonts.display.bold,

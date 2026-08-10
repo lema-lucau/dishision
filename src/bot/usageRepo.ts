@@ -5,6 +5,7 @@
 // visibility only.
 import type { DbClient } from '../db/DbClient';
 import { uuidv4 } from '../utils/uuid';
+import { bucketize, windowStartKey, type Bucket } from '../profile/bucketize';
 import { estimateCostUsd, normalizeModel } from './pricing';
 import type { BotModelKey } from './types';
 
@@ -26,14 +27,6 @@ export interface UsageTotals {
   costUsd: number;
 }
 
-export interface WeeklyUsage {
-  weekStart: string; // YYYY-MM-DD Monday key
-  costUsd: number;
-  calls: number;
-  inputTokens: number;
-  outputTokens: number;
-}
-
 export interface ModelUsage extends UsageTotals {
   model: BotModelKey;
 }
@@ -45,9 +38,15 @@ export interface SurfaceUsage extends UsageTotals {
 
 export interface BotUsageStats {
   overall: UsageTotals;
-  weekly: WeeklyUsage[];
+  /** Adaptive-granularity cost series over the window (§F1.4). */
+  buckets: Bucket[];
   byModel: ModelUsage[];
   bySurface: SurfaceUsage[];
+}
+
+export interface LoadBotUsageOptions {
+  windowDays?: number | null;
+  now?: Date;
 }
 
 interface UsageRow {
@@ -71,47 +70,27 @@ export function weekStartKey(iso: string): string {
   return `${y}-${m}-${dd}`;
 }
 
-// Build a contiguous run of Monday week-keys from the first week with data to
-// the current week, so the bar chart has no gaps for quiet weeks.
-function fillWeeks(map: Map<string, WeeklyUsage>): WeeklyUsage[] {
-  const keys = [...map.keys()].sort();
-  if (keys.length === 0) return [];
-  const start = new Date(`${keys[0]}T00:00:00`);
-  const end = new Date(`${weekStartKey(new Date().toISOString())}T00:00:00`);
-  const out: WeeklyUsage[] = [];
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const key = `${y}-${m}-${dd}`;
-    out.push(map.get(key) ?? { weekStart: key, costUsd: 0, calls: 0, inputTokens: 0, outputTokens: 0 });
-  }
-  return out;
-}
-
-export async function loadBotUsageStats(db: DbClient): Promise<BotUsageStats> {
+export async function loadBotUsageStats(db: DbClient, options: LoadBotUsageOptions = {}): Promise<BotUsageStats> {
+  // Distinguish an explicit null (all time) from an omitted option (default 30).
+  const windowDays = options.windowDays === undefined ? 30 : options.windowDays;
+  const now = options.now ?? new Date();
   const rows = await db.getAllAsync<UsageRow>(
     'SELECT model, surface, input_tokens, output_tokens, estimated_cost, created_at FROM bot_usage_log ORDER BY created_at ASC',
   );
 
+  // Every figure reflects the selected window (§F1.4).
+  const startKey = windowStartKey(windowDays, now); // null = all time
+  const windowed = rows.filter((r) => startKey == null || r.created_at.slice(0, 10) >= startKey);
+
   const overall: UsageTotals = { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 };
-  const weekly = new Map<string, WeeklyUsage>();
   const byModel = new Map<BotModelKey, ModelUsage>();
   const bySurface = new Map<string, SurfaceUsage>();
 
-  for (const r of rows) {
+  for (const r of windowed) {
     overall.calls += 1;
     overall.inputTokens += r.input_tokens;
     overall.outputTokens += r.output_tokens;
     overall.costUsd += r.estimated_cost;
-
-    const wk = weekStartKey(r.created_at);
-    const w = weekly.get(wk) ?? { weekStart: wk, costUsd: 0, calls: 0, inputTokens: 0, outputTokens: 0 };
-    w.calls += 1;
-    w.costUsd += r.estimated_cost;
-    w.inputTokens += r.input_tokens;
-    w.outputTokens += r.output_tokens;
-    weekly.set(wk, w);
 
     const key = normalizeModel(r.model);
     const m = byModel.get(key) ?? { model: key, calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 };
@@ -130,9 +109,18 @@ export async function loadBotUsageStats(db: DbClient): Promise<BotUsageStats> {
     bySurface.set(surfaceKey, s);
   }
 
+  const buckets = bucketize({
+    items: windowed,
+    windowDays,
+    now,
+    dateOf: (r) => r.created_at,
+    valueOf: (r) => r.estimated_cost,
+    aggregate: 'sum',
+  });
+
   return {
     overall,
-    weekly: fillWeeks(weekly),
+    buckets,
     byModel: [...byModel.values()].sort((a, b) => b.costUsd - a.costUsd),
     bySurface: [...bySurface.values()].sort((a, b) => b.costUsd - a.costUsd),
   };

@@ -7,6 +7,7 @@ import { Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } f
 import { useDb } from '../db/DbContext';
 import { loadEnrichedRecipes, type EnrichedRecipe } from '../recipes/loadRecipes';
 import { EmojiTile } from '../recipes/EmojiTile';
+import { MEAL_CATEGORIES, MEAL_CATEGORY_LABELS, recipeMealCategories, type MealCategory } from '../recommend/mealCategories';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { setRecipeVisibility } from './householdMutations';
 
@@ -17,6 +18,9 @@ interface ManageVisibilityScreenProps {
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
 type Layout = 'list' | 'grid';
 type SectionKey = 'public' | 'private';
+// §G: narrow by course. 'all' shows everything; 'uncategorised' catches recipes
+// with no meal-type tag so they're still reachable.
+type CourseFilter = MealCategory | 'all' | 'uncategorised';
 
 export function ManageVisibilityScreen({ onBack }: ManageVisibilityScreenProps) {
   const theme = useTheme();
@@ -25,6 +29,7 @@ export function ManageVisibilityScreen({ onBack }: ManageVisibilityScreenProps) 
   const [recipes, setRecipes] = useState<EnrichedRecipe[] | null>(null);
   const [layout, setLayout] = useState<Layout>('list');
   const [pageSize, setPageSize] = useState(10);
+  const [course, setCourse] = useState<CourseFilter>('all');
   const [collapsed, setCollapsed] = useState<Record<SectionKey, boolean>>({ public: false, private: false });
   const [pages, setPages] = useState<Record<SectionKey, number>>({ public: 1, private: 1 });
 
@@ -32,10 +37,18 @@ export function ManageVisibilityScreen({ onBack }: ManageVisibilityScreenProps) 
     loadEnrichedRecipes(db).then(setRecipes);
   }, [db]);
 
-  // A page-size change can leave a section on an out-of-range page.
+  // A page-size or course change can leave a section on an out-of-range page.
   useEffect(() => {
     setPages({ public: 1, private: 1 });
-  }, [pageSize]);
+  }, [pageSize, course]);
+
+  // §G: does a recipe belong to the active course filter?
+  function matchesCourse(recipe: EnrichedRecipe): boolean {
+    if (course === 'all') return true;
+    const cats = recipeMealCategories(recipe);
+    if (course === 'uncategorised') return cats.length === 0;
+    return cats.includes(course);
+  }
 
   async function toggle(recipe: EnrichedRecipe) {
     const next = recipe.visibility === 'public' ? 'private' : 'public';
@@ -43,8 +56,8 @@ export function ManageVisibilityScreen({ onBack }: ManageVisibilityScreenProps) 
     setRecipes((prev) => prev?.map((r) => (r.id === recipe.id ? { ...r, visibility: next } : r)) ?? null);
   }
 
-  const publicRecipes = recipes?.filter((r) => r.visibility === 'public') ?? [];
-  const privateRecipes = recipes?.filter((r) => r.visibility === 'private') ?? [];
+  const publicRecipes = recipes?.filter((r) => r.visibility === 'public' && matchesCourse(r)) ?? [];
+  const privateRecipes = recipes?.filter((r) => r.visibility === 'private' && matchesCourse(r)) ?? [];
 
   function renderThumb(recipe: EnrichedRecipe, size: number) {
     return recipe.photoUri ? (
@@ -169,6 +182,23 @@ export function ManageVisibilityScreen({ onBack }: ManageVisibilityScreenProps) 
         </View>
       </View>
 
+      {/* §G: narrow to a course so a whole meal type can be bulk-toggled. */}
+      <View style={styles.courseRow}>
+        {(['all', ...MEAL_CATEGORIES, 'uncategorised'] as CourseFilter[]).map((c) => {
+          const label = c === 'all' ? 'All' : c === 'uncategorised' ? 'Uncategorised' : MEAL_CATEGORY_LABELS[c];
+          const active = course === c;
+          return (
+            <TouchableOpacity
+              key={c}
+              onPress={() => setCourse(c)}
+              style={[styles.courseChip, active && styles.courseChipActive]}
+            >
+              <Text style={[styles.courseChipText, active && styles.courseChipTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       {renderSection('public', 'PUBLIC', publicRecipes)}
       {renderSection('private', 'PRIVATE', privateRecipes)}
     </ScrollView>
@@ -182,6 +212,11 @@ const makeStyles = (theme: AppTheme) =>
     back: { fontFamily: theme.fonts.body.semiBold, color: theme.colors.accentText },
     title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.xl, color: theme.colors.ink },
     hint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3 },
+    courseRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs, marginTop: theme.spacing.xs },
+    courseChip: { paddingHorizontal: theme.spacing.md, paddingVertical: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.chipBg },
+    courseChipActive: { backgroundColor: theme.colors.accent },
+    courseChipText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+    courseChipTextActive: { color: theme.colors.accentFg },
     controlsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: theme.spacing.sm },
     pageSizeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
     pageSizeLabel: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2, marginRight: 2 },

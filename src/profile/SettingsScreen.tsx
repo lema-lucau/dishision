@@ -9,7 +9,6 @@ import { useDb } from '../db/DbContext';
 import { SyncLogScreen } from '../household/SyncLogScreen';
 import {
   getAlertSound,
-  getAlertTakeover,
   getAlertVibrate,
   getAutoAddShortfalls,
   getAutoSyncEnabled,
@@ -25,7 +24,6 @@ import {
 } from '../settings/getSetting';
 import {
   setAlertSound,
-  setAlertTakeover,
   setAlertVibrate,
   setAutoAddShortfalls,
   setAutoSyncEnabled,
@@ -83,9 +81,8 @@ const TIPS = {
   servings: "The serving count new recipes and the 'add to shopping list' prompts start from.",
   vibrate: 'Vibrate the phone when a cooking-mode step timer finishes.',
   sound: 'Play a sound with the step-timer notification. Only the notification makes a sound; on-screen alerts while the app is open are silent (they vibrate instead).',
-  takeover: 'Show a full-screen alert when a step timer finishes — handy when the phone is propped up across the kitchen.',
   autoAdvance:
-    "Move to the next step automatically when the current step's timer finishes. Turn off to be asked 'ready for the next step?' first, so cooking mode waits for you.",
+    "Move to the next step automatically when the current step's timer finishes. Turn off to step through by hand — the master clock keeps running so you can see your pacing, and the forward arrow advances instantly when you're ready.",
   autoSync:
     'Keep household recipes and ratings in sync automatically when you and a member are on the same WiFi — on app open and shortly after a change. You can still tap "Sync now" on a member any time.',
   autoAdd:
@@ -140,7 +137,6 @@ export function SettingsScreen({ onBack, onOpenBackup, onOpenRecipe }: SettingsS
   const [servingSize, setServingSize] = useState(2);
   const [vibrate, setVibrate] = useState(true);
   const [sound, setSound] = useState(true);
-  const [takeover, setTakeover] = useState(true);
   const [autoAdvance, setAutoAdvance] = useState(true);
   const [autoSync, setAutoSync] = useState(true);
   const [autoAdd, setAutoAdd] = useState(true);
@@ -161,7 +157,6 @@ export function SettingsScreen({ onBack, onOpenBackup, onOpenRecipe }: SettingsS
       setServingSize(await getDefaultServingSize(db));
       setVibrate(await getAlertVibrate(db));
       setSound(await getAlertSound(db));
-      setTakeover(await getAlertTakeover(db));
       setAutoAdvance(await getCookAutoAdvance(db));
       setAutoSync(await getAutoSyncEnabled(db));
       setAutoAdd(await getAutoAddShortfalls(db));
@@ -314,19 +309,6 @@ export function SettingsScreen({ onBack, onOpenBackup, onOpenRecipe }: SettingsS
             onValueChange={async (v) => {
               setSound(v);
               await setAlertSound(db, v);
-            }}
-          />
-        </View>
-        <View style={[styles.row, styles.rowDivider]}>
-          <View style={styles.labelWithInfo}>
-            <Text style={styles.rowLabel}>Full-screen takeover</Text>
-            {info('Full-screen takeover', TIPS.takeover)}
-          </View>
-          <Switch
-            value={takeover}
-            onValueChange={async (v) => {
-              setTakeover(v);
-              await setAlertTakeover(db, v);
             }}
           />
         </View>
