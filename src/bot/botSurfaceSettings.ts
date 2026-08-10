@@ -15,6 +15,7 @@ export const BOT_SURFACES: BotSurface[] = [
   'cooking_quick_ask',
   'weekly_planning',
   'feeling_fallback',
+  'theme_creator',
 ];
 
 export const SURFACE_TOGGLE_LABELS: Record<BotSurface, string> = {
@@ -23,6 +24,7 @@ export const SURFACE_TOGGLE_LABELS: Record<BotSurface, string> = {
   cooking_quick_ask: 'Cooking mode quick-ask',
   weekly_planning: 'Weekly planning',
   feeling_fallback: "'I'm feeling' fallback",
+  theme_creator: 'Theme creator palette',
 };
 
 export const SURFACE_TOGGLE_HINTS: Record<BotSurface, string> = {
@@ -31,6 +33,7 @@ export const SURFACE_TOGGLE_HINTS: Record<BotSurface, string> = {
   cooking_quick_ask: 'A quick question sheet while you\'re cooking — substitutions, doneness, terms.',
   weekly_planning: 'A conversational "help me plan this week".',
   feeling_fallback: 'A "Create this with Dishision Bot" option when nothing matches on the "I\'m feeling" screen.',
+  theme_creator: 'A "Generate a palette" helper in the theme creator that fills the colours from a description.',
 };
 
 const TOGGLE_KEYS: Record<BotSurface, string> = {
@@ -39,6 +42,7 @@ const TOGGLE_KEYS: Record<BotSurface, string> = {
   cooking_quick_ask: 'bot_surface_cooking_quick_ask',
   weekly_planning: 'bot_surface_weekly_planning',
   feeling_fallback: 'bot_surface_feeling_fallback',
+  theme_creator: 'bot_surface_theme_creator',
 };
 
 export async function getSurfaceEnabled(db: DbClient, surface: BotSurface): Promise<boolean> {

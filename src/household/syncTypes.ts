@@ -18,7 +18,9 @@ export interface PayloadEntry {
 export type SyncMessage =
   | { type: 'hello'; personId: string; secret: string }
   | { type: 'hello_ack'; personId: string }
-  | { type: 'profile'; displayName: string; avatarEmoji: string }
+  // §E: address is re-exchanged each sync so a peer whose DHCP lease changed
+  // self-heals its stored last_known_address next time they connect either way.
+  | { type: 'profile'; displayName: string; avatarEmoji: string; address?: string | null }
   | { type: 'tombstone_check' }
   | { type: 'tombstone'; removed: boolean }
   | { type: 'manifest_request' }

@@ -114,6 +114,34 @@ export function laneNeedingAttention(statuses: LaneStatus[]): string | null {
   return running[0]?.key ?? null;
 }
 
+/** §D1 auto-advance: the live steps whose timer has already elapsed and so
+ *  should advance to the next step *in their own lane* without user input. This
+ *  is per-lane (an overdue lane advances even if it sits late in the merged
+ *  timeline), which is what fixes intra-lane stalls. Untimed live steps have no
+ *  timer to elapse, so they are never auto-advanced — the cook ticks those. */
+export function lanesReadyToAdvance(statuses: LaneStatus[]): number[] {
+  return statuses.filter((s) => s.state === 'overdue' && s.liveStepId != null).map((s) => s.liveStepId as number);
+}
+
+/** §D2: the ≤`count` lanes to show in the strip right now. The visible lane is
+ *  always included and comes first; the rest are filled by relevance
+ *  (attention-needing lanes, then the remaining lanes in their natural order),
+ *  so the cook sees the lane they're on plus the ones most likely to need them
+ *  next, and scrolls for the others. Order within the window is preserved from
+ *  `statuses` apart from the visible lane being hoisted to the front. */
+export function visibleLaneWindow(statuses: LaneStatus[], visibleKey: string, count = 3): LaneStatus[] {
+  if (statuses.length <= count) return statuses;
+  const visible = statuses.find((s) => s.key === visibleKey);
+  const rank = (s: LaneStatus): number => (s.state === 'overdue' ? 0 : s.state === 'running' ? 1 : s.state === 'waiting' ? 2 : 3);
+  const rest = statuses
+    .filter((s) => s.key !== visibleKey)
+    .map((s, i) => ({ s, i }))
+    .sort((a, b) => rank(a.s) - rank(b.s) || a.i - b.i)
+    .map((x) => x.s);
+  const chosen = visible ? [visible, ...rest] : rest;
+  return chosen.slice(0, count);
+}
+
 export interface VisibleLaneInput {
   statuses: LaneStatus[];
   /** The lane the cook selected by hand, if any — a pin (§5.6). */

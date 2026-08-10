@@ -29,6 +29,9 @@ interface BotReviewScreenProps {
   onSaveNew: () => Promise<void>;
   onSaveOverwrite: () => Promise<void>;
   saving: boolean;
+  /** §B2 persisted version history. */
+  versionCount: number;
+  onOpenVersions: () => void;
 }
 
 export function BotReviewScreen({
@@ -47,6 +50,8 @@ export function BotReviewScreen({
   onSaveNew,
   onSaveOverwrite,
   saving,
+  versionCount,
+  onOpenVersions,
 }: BotReviewScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -84,9 +89,16 @@ export function BotReviewScreen({
       </View>
       {refineError && <Text style={styles.refineError}>{refineError}</Text>}
       {refineNote && <Text style={styles.refineNote}>{refineNote}</Text>}
-      <TouchableOpacity onPress={onOpenChat} hitSlop={8}>
-        <Text style={styles.openChatLink}>Open full chat ↗</Text>
-      </TouchableOpacity>
+      <View style={styles.chromeLinks}>
+        <TouchableOpacity onPress={onOpenChat} hitSlop={8}>
+          <Text style={styles.openChatLink}>Open full chat ↗</Text>
+        </TouchableOpacity>
+        {versionCount > 0 && (
+          <TouchableOpacity onPress={onOpenVersions} hitSlop={8}>
+            <Text style={styles.openChatLink}>Versions ({versionCount})</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       <View style={styles.assistedRow}>
         <View style={styles.assistedText}>
@@ -162,6 +174,7 @@ const makeStyles = (theme: AppTheme) =>
     refineButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentFg },
     refineError: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.red },
     refineNote: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2, fontStyle: 'italic' },
+    chromeLinks: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.base },
     openChatLink: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText, alignSelf: 'flex-start' },
     assistedRow: {
       flexDirection: 'row',

@@ -1,8 +1,7 @@
 // §3.1–3.3: the Chat screen and its Paste Text / Link modes. Mode pills switch
 // the input surface while sharing the one underlying chat/draft — switching
-// never loses progress. Includes the mic (transcript lands in the input, never
-// auto-sent — §3.1), the "View Generated Recipe" gate, New Chat, and access to
-// Chat History.
+// never loses progress. Includes the "View Generated Recipe" gate, New Chat,
+// and access to Chat History. Long-press any bubble to copy it (§B1).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,11 +15,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
+import { hapticLight } from '../components/ui/haptics';
 import { SourcePill } from './BotHistoryScreen';
 import type { QuickStart } from './surfaceContext';
-import { useVoiceInput } from './useVoiceInput';
 import type { BotChatSource, BotMessage } from './types';
 
 export type InputMode = 'chat' | 'paste' | 'link';
@@ -66,8 +66,21 @@ export function BotChatView(props: BotChatViewProps) {
   const [chatInput, setChatInput] = useState(props.initialInput ?? '');
   const [pasteInput, setPasteInput] = useState('');
   const [linkInput, setLinkInput] = useState('');
+  // §B1: transient "Copied" toast after a long-press copy.
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const voice = useVoiceInput((text) => setChatInput((prev) => (prev ? `${prev} ${text}` : text)));
+  async function copyBubble(content: string) {
+    await Clipboard.setStringAsync(content);
+    hapticLight();
+    setCopied(true);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopied(false), 1400);
+  }
+
+  useEffect(() => () => {
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+  }, []);
 
   useEffect(() => {
     // Keep the latest turn in view.
@@ -177,9 +190,16 @@ export function BotChatView(props: BotChatViewProps) {
           </View>
         )}
         {props.messages.map((m) => (
-          <View key={m.id} style={[styles.bubble, m.role === 'user' ? styles.userBubble : styles.botBubble]}>
+          <TouchableOpacity
+            key={m.id}
+            activeOpacity={0.7}
+            onLongPress={() => copyBubble(m.content)}
+            delayLongPress={300}
+            accessibilityHint="Long-press to copy this message"
+            style={[styles.bubble, m.role === 'user' ? styles.userBubble : styles.botBubble]}
+          >
             <Text style={[styles.bubbleText, m.role === 'user' ? styles.userText : styles.botText]}>{m.content}</Text>
-          </View>
+          </TouchableOpacity>
         ))}
         {props.sending && (
           <View style={[styles.bubble, styles.botBubble]}>
@@ -202,36 +222,32 @@ export function BotChatView(props: BotChatViewProps) {
         </TouchableOpacity>
       )}
 
+      {copied && (
+        <View style={styles.copiedToast} pointerEvents="none">
+          <Text style={styles.copiedToastText}>Copied</Text>
+        </View>
+      )}
+
       {/* Input surface depends on the active mode. */}
-      <View style={[styles.inputArea, { paddingBottom: (insets.bottom || theme.spacing.sm) }]}>
+      <View style={[styles.inputArea, { paddingBottom: Math.max((insets.bottom || theme.spacing.sm) / 2, theme.spacing.xs) }]}>
         {props.mode === 'chat' && (
-          <>
-            {voice.error && <Text style={styles.voiceError}>{voice.error}</Text>}
-            <View style={styles.inputRow}>
-              <TouchableOpacity
-                style={[styles.micButton, voice.recording && styles.micButtonActive]}
-                onPress={voice.toggle}
-                accessibilityLabel={voice.recording ? 'Stop recording' : 'Record voice'}
-              >
-                <Text style={styles.micIcon}>{voice.recording ? '■' : '🎤'}</Text>
-              </TouchableOpacity>
-              <TextInput
-                style={styles.chatInput}
-                value={chatInput}
-                onChangeText={setChatInput}
-                placeholder="Message Dishision Bot…"
-                placeholderTextColor={theme.colors.ink3}
-                multiline
-              />
-              <TouchableOpacity
-                style={[styles.sendButton, (!chatInput.trim() || props.sending) && styles.sendButtonDisabled]}
-                onPress={sendChat}
-                disabled={!chatInput.trim() || props.sending}
-              >
-                <Text style={styles.sendButtonText}>Send</Text>
-              </TouchableOpacity>
-            </View>
-          </>
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.chatInput}
+              value={chatInput}
+              onChangeText={setChatInput}
+              placeholder="Message Dishision Bot…"
+              placeholderTextColor={theme.colors.ink3}
+              multiline
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, (!chatInput.trim() || props.sending) && styles.sendButtonDisabled]}
+              onPress={sendChat}
+              disabled={!chatInput.trim() || props.sending}
+            >
+              <Text style={styles.sendButtonText}>Send</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {props.mode === 'paste' && (
@@ -288,7 +304,7 @@ const makeStyles = (theme: AppTheme) =>
     headerTitle: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.md, color: theme.colors.ink },
     headerRight: { flexDirection: 'row', gap: theme.spacing.base },
     headerLink: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
-    pillRow: { flexDirection: 'row', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.base, paddingBottom: theme.spacing.sm },
+    pillRow: { flexDirection: 'row', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.base, paddingTop: theme.spacing.base, paddingBottom: theme.spacing.sm },
     pill: { backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm },
     pillActive: { backgroundColor: theme.colors.accent },
     pillText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
@@ -319,9 +335,8 @@ const makeStyles = (theme: AppTheme) =>
     viewRecipeText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentText },
     inputArea: { borderTopWidth: 1, borderTopColor: theme.colors.border, paddingHorizontal: theme.spacing.base, paddingTop: theme.spacing.sm, gap: theme.spacing.xs },
     inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: theme.spacing.sm },
-    micButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.chipBg, alignItems: 'center', justifyContent: 'center' },
-    micButtonActive: { backgroundColor: theme.colors.red },
-    micIcon: { fontSize: theme.fontSize.base },
+    copiedToast: { alignSelf: 'center', backgroundColor: theme.colors.ink, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.xs, marginBottom: theme.spacing.xs },
+    copiedToastText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.bg },
     chatInput: {
       flex: 1,
       maxHeight: 120,

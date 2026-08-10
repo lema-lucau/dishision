@@ -5,6 +5,7 @@
 // chat never deletes a recipe already saved from it (§4).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { formatDMY } from '../lib/formatDate';
@@ -21,6 +22,7 @@ interface BotHistoryScreenProps {
 export function BotHistoryScreen({ onBack, onOpenChat }: BotHistoryScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const db = useDb();
   const { modal, confirm } = useConfirmModal();
   const [chats, setChats] = useState<ChatSummary[] | null>(null);
@@ -102,7 +104,7 @@ export function BotHistoryScreen({ onBack, onOpenChat }: BotHistoryScreenProps) 
   const selectedCount = selected.size;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {selectionMode ? (
         <View style={styles.header}>
           <TouchableOpacity onPress={exitSelection} hitSlop={8}>

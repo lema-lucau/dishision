@@ -13,6 +13,7 @@ import { formatAddress, parseAddress, SYNC_PORT } from './address';
 import { getLocalAddress } from './localAddress';
 import { upsertHouseholdMember } from './householdMutations';
 import { initiatePairing, PairingRejectedError, type PairingSession } from './pairingProtocol';
+import { useSyncListenerStore } from './syncListenerStore';
 import { mintSyncSecret } from './syncSecret';
 import { QrScannerScreen } from '../sharing/QrScannerScreen';
 
@@ -47,11 +48,12 @@ export function PairingScreen({ profile, onBack, onPaired }: PairingScreenProps)
   const [manualCode, setManualCode] = useState('');
   const [connecting, setConnecting] = useState(false);
 
-  // Mints a fresh secret + code and starts listening the moment this
-  // screen opens; stops the moment it's left (§7.5 — "opened only while
-  // its pairing/sync screen is visible").
+  // §E: mints a fresh secret + code and publishes them as the active pairing
+  // session; the app-root responder (useHouseholdSync) already owns the fixed
+  // SYNC_PORT listener and passes this session into the pairing handshake. No
+  // second listener is opened here, so there's no port conflict. The session is
+  // cleared the moment this screen is left.
   useEffect(() => {
-    let listener: { close(): void } | null = null;
     let cancelled = false;
 
     (async () => {
@@ -62,23 +64,16 @@ export function PairingScreen({ profile, onBack, onPaired }: PairingScreenProps)
         if (cancelled) return;
         setSession({ secret, code });
         setLocalAddress(address);
-
-        const { startListener } = await import('./tcpChannel');
-        const { handleIncomingConnection } = await import('./pairingProtocol');
-        listener = startListener(SYNC_PORT, (channel) => {
-          handleIncomingConnection(db, channel, { personId: profile.person_id, displayName: profile.display_name, avatarEmoji: profile.avatar_emoji }, { secret, code }).catch(
-            (err) => logger.warn('sync', 'Incoming pairing connection failed', { error: String(err) }),
-          );
-        });
+        useSyncListenerStore.getState().setPairingSession({ secret, code });
       } catch (err) {
-        logger.warn('sync', 'Could not start pairing listener', { error: String(err) });
+        logger.warn('sync', 'Could not prepare pairing session', { error: String(err) });
         if (!cancelled) setError("Couldn't determine this device's network address. Check WiFi is connected.");
       }
     })();
 
     return () => {
       cancelled = true;
-      listener?.close();
+      useSyncListenerStore.getState().setPairingSession(null);
     };
   }, [db, profile]);
 

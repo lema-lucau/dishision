@@ -127,6 +127,9 @@ export function WeeklyPlanningScreen({ weekStartIso, onClose, onCreateRecipeWith
       let written = 0;
       for (const day of plan.days) {
         if (!accepted.has(day.date)) continue;
+        // §J: a leftover day is a no-cook day — it must not write a planned_meal
+        // that implies cooking again. It's shown for context only.
+        if (day.isLeftover) continue;
         if (day.existing_recipe_id != null && recipesById.has(day.existing_recipe_id)) {
           const recipe = recipesById.get(day.existing_recipe_id)!;
           await createPlannedMeal(db, {
@@ -150,9 +153,11 @@ export function WeeklyPlanningScreen({ weekStartIso, onClose, onCreateRecipeWith
   }
 
   const recipeLabel = (day: ProposedMealPlan['days'][number]): string => {
-    if (day.existing_recipe_id != null && recipesById.has(day.existing_recipe_id)) return recipesById.get(day.existing_recipe_id)!.name;
-    if (day.new_recipe_name) return day.new_recipe_name;
-    return 'Unknown recipe';
+    const name =
+      day.existing_recipe_id != null && recipesById.has(day.existing_recipe_id)
+        ? recipesById.get(day.existing_recipe_id)!.name
+        : day.new_recipe_name ?? 'Unknown recipe';
+    return day.isLeftover ? `Leftovers · ${name}` : name;
   };
 
   return (
@@ -179,13 +184,20 @@ export function WeeklyPlanningScreen({ weekStartIso, onClose, onCreateRecipeWith
               <>
                 {assistantNote && <Text style={styles.note}>{assistantNote}</Text>}
                 {plan.days.map((day) => {
-                  const isNew = day.existing_recipe_id == null || !recipesById.has(day.existing_recipe_id);
+                  // §J: a leftover day is a no-cook day — shown for context, never
+                  // toggled or applied as a cook.
+                  const isLeftover = day.isLeftover === true;
+                  const isNew = !isLeftover && (day.existing_recipe_id == null || !recipesById.has(day.existing_recipe_id));
                   const isAccepted = accepted.has(day.date);
                   return (
-                    <View key={day.date} style={styles.dayCard}>
+                    <View key={day.date} style={[styles.dayCard, isLeftover && styles.leftoverCard]}>
                       <View style={styles.dayHeader}>
                         <Text style={styles.dayDate}>{weekdayLabel(day.date)}</Text>
-                        {isNew ? (
+                        {isLeftover ? (
+                          <View style={styles.leftoverBadge}>
+                            <Text style={styles.leftoverBadgeText}>Leftovers</Text>
+                          </View>
+                        ) : isNew ? (
                           <View style={styles.newBadge}>
                             <Text style={styles.newBadgeText}>New</Text>
                           </View>
@@ -277,6 +289,9 @@ const makeStyles = (theme: AppTheme) =>
     checkboxTick: { color: theme.colors.accentFg, fontSize: theme.fontSize.sm, fontFamily: theme.fonts.body.bold },
     newBadge: { backgroundColor: theme.colors.amberTint, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.sm, paddingVertical: 2 },
     newBadgeText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.xs, color: theme.colors.amberText },
+    leftoverCard: { backgroundColor: theme.colors.surfaceWarm, borderStyle: 'dashed' },
+    leftoverBadge: { backgroundColor: theme.colors.greenTint, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.sm, paddingVertical: 2 },
+    leftoverBadgeText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.xs, color: theme.colors.green },
     dayRecipe: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink },
     dayReason: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3 },
     createButton: { marginTop: theme.spacing.xs, backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.card, paddingVertical: theme.spacing.sm, alignItems: 'center' },

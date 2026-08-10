@@ -3,6 +3,7 @@
 // first time a user changes a value and overwritten thereafter.
 import type { DbClient } from '../db/DbClient';
 import type { RecommendationWeights } from './getSetting';
+import { activeSymbol, clampActiveIndex, type Currency } from '../lib/currency';
 
 export async function setSetting(db: DbClient, key: string, value: string): Promise<void> {
   await db.runAsync(
@@ -34,6 +35,14 @@ export async function setAlertTakeover(db: DbClient, on: boolean): Promise<void>
   await setSetting(db, 'alert_takeover', on ? '1' : '0');
 }
 
+export async function setCookAutoAdvance(db: DbClient, on: boolean): Promise<void> {
+  await setSetting(db, 'cook_auto_advance', on ? '1' : '0');
+}
+
+export async function setAutoSyncEnabled(db: DbClient, on: boolean): Promise<void> {
+  await setSetting(db, 'auto_sync_enabled', on ? '1' : '0');
+}
+
 export async function setAutoAddShortfalls(db: DbClient, on: boolean): Promise<void> {
   await setSetting(db, 'auto_add_shortfalls', on ? '1' : '0');
 }
@@ -41,6 +50,20 @@ export async function setAutoAddShortfalls(db: DbClient, on: boolean): Promise<v
 export async function setCurrency(db: DbClient, code: string, symbol: string): Promise<void> {
   await setSetting(db, 'currency_code', code);
   await setSetting(db, 'currency_symbol', symbol);
+}
+
+// §G: persist the shortlist + which entry is active, writing the active symbol
+// (and its name as the code) through to currency_symbol/currency_code so every
+// existing reader keeps working unchanged.
+export async function setCurrencyState(db: DbClient, shortlist: Currency[], activeIndex: number): Promise<void> {
+  const index = clampActiveIndex(activeIndex, shortlist.length);
+  await setSetting(db, 'currency_shortlist', JSON.stringify(shortlist));
+  await setSetting(db, 'currency_active', String(index));
+  const active = shortlist[index];
+  if (active) {
+    await setSetting(db, 'currency_code', active.name);
+    await setSetting(db, 'currency_symbol', activeSymbol(shortlist, index));
+  }
 }
 
 export async function setCostStalenessDays(db: DbClient, days: number): Promise<void> {

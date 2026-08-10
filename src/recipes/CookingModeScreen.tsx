@@ -28,8 +28,10 @@ import {
   MAIN_LANE_KEY,
   buildLanes,
   laneStatuses,
+  lanesReadyToAdvance,
   resolveVisibleLane,
   shouldShowLaneTabs,
+  visibleLaneWindow,
   type LaneStatus,
 } from '../cooking/lanes';
 import {
@@ -60,10 +62,11 @@ import {
 } from '../cooking/sessionClock';
 import { getSurfaceEnabled } from '../bot/botSurfaceSettings';
 import { CookingQuickAskSheet } from '../bot/CookingQuickAskSheet';
+import { useBackHandler } from '../navigation/backStore';
 import { useDb } from '../db/DbContext';
-import { formatClock, formatDuration } from '../lib/formatDuration';
+import { formatClock, formatDuration, formatDurationPrecise } from '../lib/formatDuration';
 import { useUiChromeStore } from '../navigation/uiChromeStore';
-import { getSettingWithDefault } from '../settings/getSetting';
+import { getCookAutoAdvance, getSettingWithDefault } from '../settings/getSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { EnrichedRecipe, EnrichedStep } from './loadRecipes';
 
@@ -114,6 +117,7 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
 
   useEffect(() => {
     getSurfaceEnabled(db, 'cooking_quick_ask').then(setQuickAskEnabled);
+    getCookAutoAdvance(db).then(setAutoAdvance);
   }, [db]);
 
   const prepSteps = useMemo(() => recipe.steps.filter((s) => s.phase === 'prep'), [recipe.steps]);
@@ -146,6 +150,20 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   const [pinnedLaneKey, setPinnedLaneKey] = useState<string | null>(null);
   const lastAlertedStepId = useRef<number | null>(null);
   const deniedNoticeShown = useRef(false);
+  // §D1 auto-advance setting + guards. `advancing` prevents overlapping async
+  // advances when several ticks land during one write; `promptedStepId` stops
+  // the confirm-before-advance dialog re-firing for the same due step.
+  const [autoAdvance, setAutoAdvance] = useState(true);
+  const advancing = useRef(false);
+  const promptedStepId = useRef<number | null>(null);
+
+  // §F: hardware back checkpoints and leaves Cooking Mode, matching the on-screen
+  // exit — never falls through to close the app. (Open sheets/takeover are RN
+  // Modals, which intercept back themselves before this runs.)
+  useBackHandler(stage !== 'loading', () => {
+    void handleExit();
+    return true;
+  });
 
   const lanes = useMemo(() => buildLanes(timelineSteps), [timelineSteps]);
   const showLaneTabs = shouldShowLaneTabs(lanes);
@@ -253,21 +271,6 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
 
   const elapsedSeconds = session ? computeElapsedSeconds(session, tickNow) : 0;
 
-  // Auto-advance is purely time-driven and always keeps the LIVE step
-  // (session.currentStepId) marching forward — it never looks at what the
-  // cook is currently viewing. Peeking backward with ← must never be
-  // fought by this effect.
-  useEffect(() => {
-    if (stage !== 'active' || !session || session.pausedAt != null) return;
-    const currentIndex = timelineSteps.findIndex((s) => s.id === session.currentStepId);
-    const next = timelineSteps[currentIndex + 1];
-    if (!next) return;
-    const nextTiming = stepTimings.find((s) => s.id === next.id)!;
-    const nextStart = effectiveStartOffset(nextTiming, stepRuntime.get(next.id), session.driftSeconds);
-    if (elapsedSeconds >= nextStart) handleAdvance(next.id, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elapsedSeconds, stage, session?.pausedAt, session?.currentStepId]);
-
   async function handleAdvance(newStepId: number, auto: boolean) {
     if (!session) return;
     const oldStepId = session.currentStepId;
@@ -329,6 +332,74 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
     }
   }
 
+  // §D1 auto-advance within a lane: complete an overdue live step and start the
+  // next step *in the same lane*. This is what makes intra-lane steps progress
+  // reliably from the master clock, independent of the merged timeline order.
+  // A backward peek (viewingStepId) is never disturbed — this only writes step
+  // completion + starts the next; the displayed step follows the visible lane.
+  async function advanceLaneStep(overdueStepId: number) {
+    if (!session || advancing.current) return;
+    const lane = lanes.find((l) => l.stepIds.includes(overdueStepId));
+    if (!lane) return;
+    const idx = lane.stepIds.indexOf(overdueStepId);
+    const nextInLane = lane.stepIds[idx + 1] ?? null;
+    const now = new Date().toISOString();
+    advancing.current = true;
+    try {
+      await completeStep(db, session.id, overdueStepId, now);
+      if (nextInLane != null) {
+        // Move the session pointer + start the next step so it gets a real
+        // actualStartOffset (drift/phase track the most recently started step).
+        await advanceToStep(db, session, nextInLane, now);
+        const nextStep = stepById.get(nextInLane);
+        if (nextStep && nextStep.phase !== session.phase) await setPhase(db, session, nextStep.phase, now);
+      }
+
+      let updated = await reloadSession(session.id);
+      if (!updated) return;
+      if (nextInLane != null) {
+        const nextTiming = stepTimings.find((s) => s.id === nextInLane);
+        if (nextTiming) {
+          const drift = Math.max(0, computeDriftSeconds(nextTiming, computeElapsedSeconds(updated, Date.now())));
+          if (drift !== updated.driftSeconds) {
+            await updateDrift(db, updated, drift, now);
+            updated = await reloadSession(session.id);
+          }
+        }
+      }
+      if (!updated) return;
+      const runtime = await loadStepRuntime(db, updated.id, updated.startedAt);
+      setStepRuntime(runtime);
+      await reconcileNotificationsFor(updated, runtime);
+
+      // Alert on the completed step's timer (passive/important), same rule as a
+      // manual advance — the timer that just ran out is exactly the moment the
+      // takeover/vibrate was asked for.
+      const completedStep = stepById.get(overdueStepId);
+      const nextStep = nextInLane != null ? stepById.get(nextInLane) : null;
+      const shouldAlert = (completedStep?.effort === 'passive' && completedStep.durationSeconds != null) || nextStep?.important;
+      if (shouldAlert && lastAlertedStepId.current !== overdueStepId) {
+        lastAlertedStepId.current = overdueStepId;
+        const vibrateOn = (await getSettingWithDefault(db, 'alert_vibrate', '1')) === '1';
+        const takeoverOn = (await getSettingWithDefault(db, 'alert_takeover', '1')) === '1';
+        if (vibrateOn) Vibration.vibrate(400);
+        if (takeoverOn && (nextStep ?? completedStep)) setTakeoverStep(nextStep ?? completedStep ?? null);
+        const alertLaneKey = laneKeyOf(nextStep ?? completedStep);
+        const { key, releasePin } = resolveVisibleLane({
+          statuses: laneStatuses(lanes, timingById, runtime, computeElapsedSeconds(updated, Date.now()), updated.driftSeconds),
+          pinnedKey: pinnedLaneKey,
+          currentKey: visibleLaneKey,
+          takeoverLaneKey: alertLaneKey,
+        });
+        if (releasePin) setPinnedLaneKey(null);
+        setVisibleLaneKey(key);
+        setViewingStepId(null);
+      }
+    } finally {
+      advancing.current = false;
+    }
+  }
+
   // Ready → running (§5.6). Rebasing the clock here is what keeps drift
   // honest: the minutes spent reading the first step are not "behind".
   async function handleStartClock() {
@@ -381,6 +452,29 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   // otherwise switching to the rice tab would show you the curry.
   const laneLiveStepId = visibleStatus?.liveStepId ?? visibleLaneStepIds[visibleLaneStepIds.length - 1] ?? null;
   const displayedStepId = viewingStepId ?? laneLiveStepId ?? session?.currentStepId ?? null;
+
+  // §D1: drive auto-advance off the per-lane statuses. When on, any lane whose
+  // timed live step has elapsed advances itself. When off, the *visible* lane's
+  // due step waits for a "ready for the next step?" confirmation and holds until
+  // the cook advances (manually or by confirming).
+  useEffect(() => {
+    if (stage !== 'active' || !session || session.pausedAt != null || isReady) return;
+    const dueStepIds = lanesReadyToAdvance(statuses);
+    if (dueStepIds.length === 0) {
+      promptedStepId.current = null;
+      return;
+    }
+    if (autoAdvance) {
+      advanceLaneStep(dueStepIds[0]);
+      return;
+    }
+    // Confirm-before-advance: prompt once for the visible lane's due step.
+    const visibleDue = laneLiveStepId != null && dueStepIds.includes(laneLiveStepId) ? laneLiveStepId : null;
+    if (visibleDue == null || promptedStepId.current === visibleDue) return;
+    promptedStepId.current = visibleDue;
+    confirm('Ready for the next step?', stepById.get(visibleDue)?.instruction, 'Next step', () => advanceLaneStep(visibleDue));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statuses, autoAdvance, stage, session?.pausedAt, isReady, laneLiveStepId]);
 
   function selectLane(key: string) {
     if (key === visibleLaneKey) return;
@@ -579,8 +673,18 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
       )}
 
       {showLaneTabs && (
-        <View style={styles.laneTabs} testID="lane-tabs">
-          {statuses.map((status) => {
+        // §D2: a bounded, horizontally-scrollable strip with fixed-width tabs —
+        // ~3 fit per screen so the strip never grows vertically or eats the step
+        // area. The 3 most relevant lanes (visible + attention-needing) are
+        // ordered first so they show without scrolling; the rest scroll into view.
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.laneTabs}
+          contentContainerStyle={styles.laneTabsContent}
+          testID="lane-tabs"
+        >
+          {visibleLaneWindow(statuses, visibleLaneKey, statuses.length).map((status) => {
             const active = status.key === visibleLaneKey;
             return (
               <Pressable
@@ -607,7 +711,7 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
       )}
 
       <ScrollView style={styles.bodyScroll} contentContainerStyle={styles.body}>
@@ -621,7 +725,7 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
           <View style={styles.stepTimerRow}>
             <ClockIcon size={22} color={theme.colors.accentText} />
             <Text style={styles.stepTimer}>
-              {formatDuration(
+              {formatDurationPrecise(
                 !isReady && displayedStepId === laneLiveStepId
                   ? liveStepRemaining ?? 0
                   : currentTiming.durationSeconds,
@@ -774,9 +878,9 @@ function StepListModal({
 function laneTimerLabel(status: LaneStatus): string {
   if (status.state === 'done') return 'done';
   if (status.seconds == null) return `${status.completedCount}/${status.totalCount}`;
-  if (status.state === 'waiting') return `in ${formatDuration(status.seconds)}`;
+  if (status.state === 'waiting') return `in ${formatDurationPrecise(status.seconds)}`;
   if (status.state === 'overdue') return 'now';
-  return formatDuration(status.seconds);
+  return formatDurationPrecise(status.seconds);
 }
 
 const makeStyles = (theme: AppTheme) =>
@@ -805,12 +909,13 @@ const makeStyles = (theme: AppTheme) =>
   // A resting clock reads ink-3 and no lighter — at three feet in bad light
   // that contrast IS the "not started yet" affordance (redesign R6.8.1).
   clockResting: { color: theme.colors.ink3 },
-  laneTabs: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+  // §D2: a single, non-growing row. Fixed-width tabs keep sizing consistent
+  // whatever the lane count; ~3 fit per screen and the rest scroll horizontally.
+  laneTabs: { flexGrow: 0 },
+  laneTabsContent: { flexDirection: 'row', gap: theme.spacing.sm, paddingRight: theme.spacing.base },
   laneTab: {
     minHeight: 44,
-    minWidth: 84,
-    flexGrow: 1,
-    flexBasis: 0,
+    width: 112,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radius.pill,

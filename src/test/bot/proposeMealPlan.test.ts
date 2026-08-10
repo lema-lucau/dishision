@@ -39,4 +39,34 @@ describe('parseMealPlan (§A2.5)', () => {
     const plan = parseMealPlan({ days: [{ date: '2026-06-01T00:00:00Z', existing_recipe_id: 1 }] });
     expect(plan?.days[0].date).toBe('2026-06-01');
   });
+
+  it('accepts a leftover day pointing at its source recipe, with no new cook (§J)', () => {
+    const plan = parseMealPlan({
+      days: [
+        { date: '2026-06-01', existing_recipe_id: 7, reasoning: 'batch cook' },
+        { date: '2026-06-02', is_leftover: true, existing_recipe_id: 7, reasoning: 'leftovers from Monday' },
+      ],
+    });
+    expect(plan?.days).toHaveLength(2);
+    expect(plan?.days[0]).toMatchObject({ isLeftover: false });
+    expect(plan?.days[1]).toMatchObject({ isLeftover: true, existing_recipe_id: 7, new_recipe_name: null });
+  });
+
+  it('drops a leftover day that names no source recipe', () => {
+    const plan = parseMealPlan({
+      days: [
+        { date: '2026-06-02', is_leftover: true, reasoning: 'leftovers but of what?' },
+        { date: '2026-06-03', existing_recipe_id: 5 },
+      ],
+    });
+    expect(plan?.days).toHaveLength(1);
+    expect(plan?.days[0].date).toBe('2026-06-03');
+  });
+
+  it('ignores a new recipe name on a leftover day', () => {
+    const plan = parseMealPlan({
+      days: [{ date: '2026-06-02', is_leftover: true, existing_recipe_id: 4, new_recipe_name: 'Should be ignored' }],
+    });
+    expect(plan?.days[0]).toMatchObject({ isLeftover: true, existing_recipe_id: 4, new_recipe_name: null });
+  });
 });

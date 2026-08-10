@@ -2,7 +2,7 @@
 // sheet in the app mounts inside one of these — no screen hand-rolls a
 // backdrop, radius, or safe-area inset again.
 import { useMemo } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, type AppTheme } from '../../theme/ThemeContext';
 
@@ -35,7 +35,10 @@ export function Sheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onRequestClose} testID={testID}>
-      <View style={styles.root}>
+      {/* §K1: lift the sheet above the keyboard so a bottom-anchored input in
+          any sheet (currency manage, mid-cook quick-ask, ingredient price…)
+          stays visible while typing. */}
+      <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={styles.backdrop} onPress={onRequestClose} accessibilityLabel="Close" />
         <View style={[styles.sheet, theme.elevation.e3, { maxHeight, paddingBottom: theme.spacing.base + insets.bottom }]}>
           <View style={styles.grabber} />
@@ -49,7 +52,7 @@ export function Sheet({
           )}
           {footer ? <View style={styles.footer}>{footer}</View> : null}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

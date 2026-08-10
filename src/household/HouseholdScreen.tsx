@@ -4,14 +4,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDb } from '../db/DbContext';
-import { logger } from '../debug/logStore';
 import { formatDMY } from '../lib/formatDate';
 import { EmojiTile } from '../recipes/EmojiTile';
 import type { Profile } from '../profile/ensureProfile';
 import { getCurrencySymbol } from '../settings/getSetting';
 import { ImportPreviewScreen } from '../sharing/ImportPreviewScreen';
+import { useBackHandler } from '../navigation/backStore';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
-import { SYNC_PORT } from './address';
 import { countRecipeVisibility, listHouseholdMembers, type HouseholdMember } from './householdMutations';
 import type { HouseholdCacheRecipe } from './loadHouseholdCacheRecipes';
 import { ManageVisibilityScreen } from './ManageVisibilityScreen';
@@ -58,28 +57,30 @@ export function HouseholdScreen({ profile, onBack }: HouseholdScreenProps) {
     getCurrencySymbol(db).then(setCurrencySymbol);
   }, [reload, db]);
 
-  // §7.5: listens for a regular sync from an already-paired member for as
-  // long as the main list view is visible (the Add person sub-screen runs
-  // its own listener, which also accepts regular syncs — see PairingScreen).
-  useEffect(() => {
-    if (view.mode !== 'list') return;
-    let listener: { close(): void } | null = null;
-    let cancelled = false;
-    (async () => {
-      const { startListener } = await import('./tcpChannel');
-      const { handleIncomingConnection } = await import('./pairingProtocol');
-      if (cancelled) return;
-      listener = startListener(SYNC_PORT, (channel) => {
-        handleIncomingConnection(db, channel, me, null).catch((err) =>
-          logger.warn('sync', 'Incoming connection failed', { error: String(err) }),
-        );
-      });
-    })();
-    return () => {
-      cancelled = true;
-      listener?.close();
-    };
-  }, [view.mode, db, me]);
+  // §E: the incoming-sync responder now runs app-wide (useHouseholdSync) on the
+  // fixed SYNC_PORT whenever the app is foregrounded — it's no longer tied to
+  // this screen being open, so paired members sync even from Home.
+
+  // §F: back unwinds household sub-screens; from the list it falls through to
+  // TabShell, which closes the Household screen.
+  useBackHandler(true, () => {
+    switch (view.mode) {
+      case 'addPerson':
+      case 'manageVisibility':
+      case 'member':
+        setView({ mode: 'list' });
+        return true;
+      case 'memberRecipes':
+        setView({ mode: 'member', personId: view.personId });
+        return true;
+      case 'memberRecipeDetail':
+      case 'importPreview':
+        setView({ mode: 'memberRecipes', personId: view.personId });
+        return true;
+      default:
+        return false; // 'list'
+    }
+  });
 
   if (view.mode === 'addPerson') {
     return (

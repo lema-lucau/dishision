@@ -208,7 +208,7 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) opens in the ready sta
             }
           }
         >
-          2 mins
+          2 min
         </Text>
       </View>
       <View
@@ -531,6 +531,7 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) opens in the ready sta
           false,
           false,
           false,
+          false,
           undefined,
         ]
       }
@@ -679,189 +680,194 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) shows one tab per lane
       00:00
     </Text>
   </View>
-  <View
-    style={
+  <RCTScrollView
+    contentContainerStyle={
       {
         "flexDirection": "row",
-        "flexWrap": "wrap",
         "gap": 8,
+        "paddingRight": 16,
+      }
+    }
+    horizontal={true}
+    showsHorizontalScrollIndicator={false}
+    style={
+      {
+        "flexGrow": 0,
       }
     }
     testID="lane-tabs"
   >
-    <View
-      accessibilityRole="tab"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": undefined,
-          "expanded": undefined,
-          "selected": true,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
-      style={
-        [
+    <View>
+      <View
+        accessibilityRole="tab"
+        accessibilityState={
           {
-            "alignItems": "center",
-            "backgroundColor": "#F3E9DF",
-            "borderRadius": 20,
-            "flexBasis": 0,
-            "flexGrow": 1,
-            "gap": 2,
-            "justifyContent": "center",
-            "minHeight": 44,
-            "minWidth": 84,
-            "paddingHorizontal": 12,
-            "paddingVertical": 8,
-          },
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": true,
+          }
+        }
+        accessibilityValue={
           {
-            "backgroundColor": "#F4E0D7",
-          },
-        ]
-      }
-      testID="lane-tab-Curry"
-    >
-      <Text
-        numberOfLines={1}
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
         style={
           [
             {
-              "color": "#7A6E64",
-              "fontFamily": "PublicSans_600SemiBold",
-              "fontSize": 12.5,
+              "alignItems": "center",
+              "backgroundColor": "#F3E9DF",
+              "borderRadius": 20,
+              "gap": 2,
+              "justifyContent": "center",
+              "minHeight": 44,
+              "paddingHorizontal": 12,
+              "paddingVertical": 8,
+              "width": 112,
             },
             {
-              "color": "#A34A2A",
+              "backgroundColor": "#F4E0D7",
+            },
+          ]
+        }
+        testID="lane-tab-Curry"
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "color": "#7A6E64",
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+              },
+              {
+                "color": "#A34A2A",
+              },
+              false,
+            ]
+          }
+        >
+          ●
+           
+          Curry
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "color": "#A0938A",
+                "fontFamily": "IBMPlexMono_500Medium",
+                "fontSize": 11,
+              },
+              false,
+            ]
+          }
+        >
+          2 min
+        </Text>
+      </View>
+      <View
+        accessibilityRole="tab"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": false,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "backgroundColor": "#F3E9DF",
+              "borderRadius": 20,
+              "gap": 2,
+              "justifyContent": "center",
+              "minHeight": 44,
+              "paddingHorizontal": 12,
+              "paddingVertical": 8,
+              "width": 112,
             },
             false,
           ]
         }
+        testID="lane-tab-Rice"
       >
-        ●
-         
-        Curry
-      </Text>
-      <Text
-        style={
-          [
-            {
-              "color": "#A0938A",
-              "fontFamily": "IBMPlexMono_500Medium",
-              "fontSize": 11,
-            },
-            false,
-          ]
-        }
-      >
-        2 mins
-      </Text>
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "color": "#7A6E64",
+                "fontFamily": "PublicSans_600SemiBold",
+                "fontSize": 12.5,
+              },
+              false,
+              false,
+            ]
+          }
+        >
+          ○
+           
+          Rice
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "color": "#A0938A",
+                "fontFamily": "IBMPlexMono_500Medium",
+                "fontSize": 11,
+              },
+              false,
+            ]
+          }
+        >
+          in 2 min
+        </Text>
+      </View>
     </View>
-    <View
-      accessibilityRole="tab"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": undefined,
-          "expanded": undefined,
-          "selected": false,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
-      style={
-        [
-          {
-            "alignItems": "center",
-            "backgroundColor": "#F3E9DF",
-            "borderRadius": 20,
-            "flexBasis": 0,
-            "flexGrow": 1,
-            "gap": 2,
-            "justifyContent": "center",
-            "minHeight": 44,
-            "minWidth": 84,
-            "paddingHorizontal": 12,
-            "paddingVertical": 8,
-          },
-          false,
-        ]
-      }
-      testID="lane-tab-Rice"
-    >
-      <Text
-        numberOfLines={1}
-        style={
-          [
-            {
-              "color": "#7A6E64",
-              "fontFamily": "PublicSans_600SemiBold",
-              "fontSize": 12.5,
-            },
-            false,
-            false,
-          ]
-        }
-      >
-        ○
-         
-        Rice
-      </Text>
-      <Text
-        style={
-          [
-            {
-              "color": "#A0938A",
-              "fontFamily": "IBMPlexMono_500Medium",
-              "fontSize": 11,
-            },
-            false,
-          ]
-        }
-      >
-        in 2 mins
-      </Text>
-    </View>
-  </View>
+  </RCTScrollView>
   <RCTScrollView
     contentContainerStyle={
       {
@@ -1009,7 +1015,7 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) shows one tab per lane
             }
           }
         >
-          2 mins
+          2 min
         </Text>
       </View>
       <View
@@ -1329,6 +1335,7 @@ exports[`CookingModeScreen (§5.6, §11.2 snapshot suite) shows one tab per lane
           {
             "alignSelf": "stretch",
           },
+          false,
           false,
           false,
           false,

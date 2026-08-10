@@ -67,7 +67,11 @@ export async function buildPlanningContext(db: DbClient, weekStartIso: string): 
     .join('\n');
 
   const lines: string[] = [];
-  lines.push(`Plan dinners for these days: ${dates.join(', ')}.`);
+  lines.push(`Plan dinners across these days: ${dates.join(', ')}.`);
+  lines.push('');
+  lines.push(
+    'HOUSEHOLD: cooking for two people. Each cook typically yields ~2–4 servings of leftovers — enough to cover lunch and/or dinner for both on at least one following day. So do NOT schedule a fresh cook every day: schedule fewer cooks with leftover days in between, and lean on existing leftovers first before planning a new cook.',
+  );
   lines.push('');
   lines.push('SAVED RECIPES — reference these by id in existing_recipe_id whenever one fits:');
   lines.push(catalog || '(no recipes saved yet)');
@@ -89,9 +93,13 @@ export async function buildPlanningContext(db: DbClient, weekStartIso: string): 
     lines.push(leftovers);
   }
 
-  const instructions = `You are helping plan the week's dinners. Call propose_meal_plan with one entry per day you're planning, each with a one-line reason. ${preferExistingLine(
+  const instructions = `You are helping plan the week's dinners for a two-person household. Call propose_meal_plan with one entry per day, each with a one-line reason. ${preferExistingLine(
     settings.preferExisting,
-  )} Reference existing recipes by their id (existing_recipe_id); only use new_recipe_name when nothing saved suits. Don't re-plan a day that's already planned unless asked. If the user just chats, reply briefly and re-propose when they've given direction.`;
+  )} Reference existing recipes by their id (existing_recipe_id); only use new_recipe_name when nothing saved suits.
+
+Space the cooks out — each cook makes enough for leftovers, so plan a mix of COOK days and LEFTOVER days rather than a cook every single day. For a leftover day, set is_leftover: true and point existing_recipe_id at the recipe those leftovers come from (the cook earlier in the week, or an existing leftover). A leftover day needs no new_recipe_name and creates no new cook. Use existing leftovers first before planning a new cook.
+
+Don't re-plan a day that's already planned unless asked. If the user just chats, reply briefly and re-propose when they've given direction.`;
 
   return {
     dates,

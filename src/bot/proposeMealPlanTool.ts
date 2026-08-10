@@ -5,7 +5,7 @@
 export const PROPOSE_MEAL_PLAN_TOOL = {
   name: 'propose_meal_plan',
   description:
-    'Propose a set of meals for the requested days. Prefer existing saved recipes where they fit; only propose a new recipe where nothing suitable exists.',
+    'Propose a set of meals for the requested days. Prefer existing saved recipes where they fit; only propose a new recipe where nothing suitable exists. Space cooks out across the week: mark days that live off a previous cook\'s leftovers with is_leftover so you are not scheduling a cook every day.',
   input_schema: {
     type: 'object',
     properties: {
@@ -15,7 +15,15 @@ export const PROPOSE_MEAL_PLAN_TOOL = {
           type: 'object',
           properties: {
             date: { type: 'string', description: 'ISO date (YYYY-MM-DD)' },
-            existing_recipe_id: { type: ['integer', 'null'], description: 'Reference a saved recipe by id where one fits.' },
+            is_leftover: {
+              type: ['boolean', 'null'],
+              description:
+                'True for a leftover day — no new cook. Point existing_recipe_id at the recipe the leftovers come from. Requires no new_recipe_name.',
+            },
+            existing_recipe_id: {
+              type: ['integer', 'null'],
+              description: 'Reference a saved recipe by id where one fits (required for a leftover day: the source recipe).',
+            },
             new_recipe_name: { type: ['string', 'null'], description: 'Only if proposing something not already saved.' },
             reasoning: {
               type: 'string',
@@ -33,6 +41,8 @@ export const PROPOSE_MEAL_PLAN_TOOL = {
 
 export interface ProposedMealPlanDay {
   date: string;
+  /** §J: a leftover day — no new cook; existing_recipe_id names the source. */
+  isLeftover?: boolean;
   existing_recipe_id?: number | null;
   new_recipe_name?: string | null;
   reasoning?: string;
@@ -52,16 +62,23 @@ export function parseMealPlan(input: unknown): ProposedMealPlan | null {
   const days: ProposedMealPlanDay[] = [];
   for (const d of raw.days) {
     if (!d || typeof d !== 'object') continue;
-    const day = d as ProposedMealPlanDay;
+    const day = d as { date?: unknown; is_leftover?: unknown; existing_recipe_id?: unknown; new_recipe_name?: unknown; reasoning?: unknown };
     if (typeof day.date !== 'string' || !day.date.trim()) continue;
     const existingId = typeof day.existing_recipe_id === 'number' ? day.existing_recipe_id : null;
     const newName = typeof day.new_recipe_name === 'string' && day.new_recipe_name.trim() ? day.new_recipe_name.trim() : null;
-    // A day needs to point somewhere.
-    if (existingId == null && newName == null) continue;
+    const isLeftover = day.is_leftover === true;
+    // A cook day needs to point somewhere; a leftover day must name its source
+    // recipe (existing_recipe_id) and never carries a new recipe.
+    if (isLeftover) {
+      if (existingId == null) continue;
+    } else if (existingId == null && newName == null) {
+      continue;
+    }
     days.push({
       date: day.date.slice(0, 10),
+      isLeftover,
       existing_recipe_id: existingId,
-      new_recipe_name: newName,
+      new_recipe_name: isLeftover ? null : newName,
       reasoning: typeof day.reasoning === 'string' ? day.reasoning : undefined,
     });
   }

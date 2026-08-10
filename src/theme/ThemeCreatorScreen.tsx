@@ -3,9 +3,16 @@
 // derives a full, coordinated palette live (see customTheme.ts). An optional
 // Advanced section exposes every derived token for hand-tweaking. From the
 // preview they can Save, or Save & apply.
-import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Sheet } from '../components/ui';
+import { getBotSettings } from '../bot/botSettings';
+import { runSurfaceTurn } from '../bot/botSession';
+import { getSurfaceEnabled } from '../bot/botSurfaceSettings';
+import { getUserName } from '../bot/botUser';
+import { PROPOSE_THEME_TOOL, parseProposedTheme } from '../bot/proposeThemeTool';
+import { useBackHandler } from '../navigation/backStore';
 import { useDb } from '../db/DbContext';
 import { ColorPickerSheet } from './ColorPickerSheet';
 import {
@@ -54,6 +61,54 @@ export function ThemeCreatorScreen({ editing, onClose }: ThemeCreatorScreenProps
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [picker, setPicker] = useState<PickerTarget | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  // §B4 theme-creator bot: generate a palette from a description.
+  const [botEnabled, setBotEnabled] = useState(false);
+  const [botSheetOpen, setBotSheetOpen] = useState(false);
+  const [botPrompt, setBotPrompt] = useState('');
+  const [botSending, setBotSending] = useState(false);
+  const [botError, setBotError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getSurfaceEnabled(db, 'theme_creator').then(setBotEnabled);
+  }, [db]);
+
+  async function generatePalette() {
+    const prompt = botPrompt.trim();
+    if (!prompt || botSending) return;
+    setBotSending(true);
+    setBotError(null);
+    try {
+      const [settings, userName] = await Promise.all([getBotSettings(db), getUserName(db)]);
+      const result = await runSurfaceTurn(db, {
+        surface: 'theme_creator',
+        userName,
+        settings,
+        instructions:
+          'The user is designing an app colour theme. Call propose_theme with a mode, three hex colours, and an evocative name that capture the described mood. Ensure the accent and secondary read clearly against the background.',
+        includeCurrentRecipe: false,
+        tools: [PROPOSE_THEME_TOOL],
+        messages: [{ role: 'user', content: prompt }],
+        chatId: null,
+      });
+      const call = result.toolUse.find((t) => t.name === 'propose_theme');
+      const proposed = call ? parseProposedTheme(call.input) : null;
+      if (!proposed) {
+        setBotError(result.assistantText || "Couldn't read a palette from that — try describing the mood differently.");
+        return;
+      }
+      // Fill the creator's fields for review — never auto-save (§B4).
+      setMode(proposed.mode);
+      setSeed({ bg: proposed.background, accent: proposed.accent, secondary: proposed.secondary });
+      setOverrides({});
+      if (!name.trim()) setName(proposed.name);
+      setBotSheetOpen(false);
+      setBotPrompt('');
+    } catch (e) {
+      setBotError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBotSending(false);
+    }
+  }
 
   const fullSeed: CustomThemeSeed = { mode, ...seed };
   const derived = useMemo(() => derivedTokensFor(fullSeed), [mode, seed]);
@@ -99,6 +154,16 @@ export function ThemeCreatorScreen({ editing, onClose }: ThemeCreatorScreenProps
     if (picker.kind === 'seed') setSeed((prev) => ({ ...prev, [picker.key]: hex }));
     else setOverrides((prev) => ({ ...prev, [picker.key]: hex }));
   }
+
+  // §F: back from the full-screen preview returns to the editor; from the editor
+  // it falls through to the theme picker, which handles creator → grid.
+  useBackHandler(true, () => {
+    if (previewing) {
+      setPreviewing(false);
+      return true;
+    }
+    return false;
+  });
 
   if (previewing) {
     return (
@@ -146,6 +211,13 @@ export function ThemeCreatorScreen({ editing, onClose }: ThemeCreatorScreenProps
             ))}
           </View>
         </View>
+
+        {/* §B4: generate a palette from a description */}
+        {botEnabled && (
+          <TouchableOpacity style={styles.botButton} onPress={() => setBotSheetOpen(true)}>
+            <Text style={styles.botButtonText}>✨ Generate a palette with Dishision Bot</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Name */}
         <Text style={styles.fieldLabel}>NAME</Text>
@@ -260,6 +332,29 @@ export function ThemeCreatorScreen({ editing, onClose }: ThemeCreatorScreenProps
         onSelect={applyPicked}
         onClose={() => setPicker(null)}
       />
+
+      <Sheet visible={botSheetOpen} onRequestClose={() => setBotSheetOpen(false)} title="Generate a palette">
+        <View style={styles.botSheet}>
+          <Text style={styles.botSheetHint}>Describe a mood, place, or season — Dishision Bot will fill the colours for you to tweak.</Text>
+          <TextInput
+            style={styles.botSheetInput}
+            value={botPrompt}
+            onChangeText={setBotPrompt}
+            placeholder="e.g. cozy autumn evening, coastal morning, neon arcade"
+            placeholderTextColor={theme.colors.ink3}
+            multiline
+            editable={!botSending}
+          />
+          {botError && <Text style={styles.botSheetError}>{botError}</Text>}
+          <TouchableOpacity
+            style={[styles.botSheetButton, (!botPrompt.trim() || botSending) && styles.botSheetButtonDisabled]}
+            onPress={generatePalette}
+            disabled={!botPrompt.trim() || botSending}
+          >
+            {botSending ? <ActivityIndicator color={theme.colors.accentFg} /> : <Text style={styles.botSheetButtonText}>Generate</Text>}
+          </TouchableOpacity>
+        </View>
+      </Sheet>
     </View>
   );
 }
@@ -420,15 +515,45 @@ const makeStyles = (theme: AppTheme) =>
     },
     saveBtnText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.md, color: theme.colors.accentFg },
 
+    // H2: a *solid* secondary Save — filled with ink and light (bg-coloured)
+    // text so it reads as a real button, still visually secondary to the accent
+    // "Save & apply" beside it.
     footerGhost: {
       flex: 1,
       paddingVertical: theme.spacing.md,
       borderRadius: theme.radius.card,
-      borderWidth: 1,
-      borderColor: theme.colors.borderStrong,
+      backgroundColor: theme.colors.ink,
       alignItems: 'center',
     },
-    footerGhostText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.md, color: theme.colors.ink },
+    footerGhostText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.md, color: theme.colors.bg },
+
+    botButton: {
+      backgroundColor: theme.colors.accentTint,
+      borderRadius: theme.radius.pill,
+      paddingVertical: theme.spacing.md,
+      alignItems: 'center',
+      marginBottom: theme.spacing.sm,
+    },
+    botButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+    botSheet: { gap: theme.spacing.sm },
+    botSheetHint: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+    botSheetInput: {
+      minHeight: 72,
+      borderWidth: 1,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: theme.radius.card,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.sm,
+      textAlignVertical: 'top',
+      fontFamily: theme.fonts.body.regular,
+      fontSize: theme.fontSize.base,
+      color: theme.colors.ink,
+      backgroundColor: theme.colors.surface,
+    },
+    botSheetError: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.red },
+    botSheetButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.card, paddingVertical: theme.spacing.md, alignItems: 'center' },
+    botSheetButtonDisabled: { opacity: 0.45 },
+    botSheetButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
     footerPrimary: {
       flex: 2,
       paddingVertical: theme.spacing.md,

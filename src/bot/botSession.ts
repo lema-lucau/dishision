@@ -13,7 +13,13 @@ import { MODEL_IDS, type BotBehaviourSettings } from './types';
 import { logUsage } from './usageRepo';
 
 // The surfaces, matching the bot_usage_log.surface tag (§A1.4).
-export type BotSurface = 'recipe_chat' | 'cook_log_refine' | 'cooking_quick_ask' | 'weekly_planning' | 'feeling_fallback';
+export type BotSurface =
+  | 'recipe_chat'
+  | 'cook_log_refine'
+  | 'cooking_quick_ask'
+  | 'weekly_planning'
+  | 'feeling_fallback'
+  | 'theme_creator';
 
 export interface SurfaceTurnRequest {
   surface: BotSurface;

@@ -2,6 +2,7 @@
 // pairing's QR/crypto glue lives in syncSecret.ts and PairingScreen.tsx.
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { markHouseholdDirty } from './autoSync';
 
 export interface HouseholdMember {
   personId: string;
@@ -115,6 +116,7 @@ export async function markSynced(db: DbClient, personId: string): Promise<void> 
 export async function setRecipeVisibility(db: DbClient, recipeId: number, visibility: 'private' | 'public'): Promise<void> {
   await db.runAsync("UPDATE recipe SET visibility = ?, updated_at = datetime('now') WHERE id = ?", [visibility, recipeId]);
   logger.info('db', 'Recipe visibility changed', { recipeId, visibility });
+  markHouseholdDirty(); // §E: a recipe becoming public/private is worth syncing
 }
 
 export async function countRecipeVisibility(db: DbClient): Promise<{ total: number; public: number }> {

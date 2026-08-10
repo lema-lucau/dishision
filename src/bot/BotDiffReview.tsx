@@ -6,6 +6,7 @@
 // RecipeDiffView (removed lines struck red, added lines green), finer grained.
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PillButton } from '../components/ui';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { BotDiffChange } from './botRecipeDiff';
@@ -35,6 +36,7 @@ function changeVerb(change: BotDiffChange): string {
 export function BotDiffReview({ changes, accepted, onToggle, onAcceptAll, onApply, onCancel }: BotDiffReviewProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
 
   // Group by section heading for a scannable layout (fields, ingredients, then
   // each lane's steps).
@@ -53,7 +55,7 @@ export function BotDiffReview({ changes, accepted, onToggle, onAcceptAll, onAppl
   }, [changes]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Review changes</Text>
         <Text style={styles.subtitle}>
@@ -62,6 +64,9 @@ export function BotDiffReview({ changes, accepted, onToggle, onAcceptAll, onAppl
       </View>
 
       <View style={styles.quickRow}>
+        <Text style={styles.acceptedCount}>
+          {accepted.size} of {changes.length} change{changes.length === 1 ? '' : 's'} accepted
+        </Text>
         <TouchableOpacity onPress={onAcceptAll}>
           <Text style={styles.quickLink}>Accept all</Text>
         </TouchableOpacity>
@@ -99,8 +104,8 @@ export function BotDiffReview({ changes, accepted, onToggle, onAcceptAll, onAppl
       </ScrollView>
 
       <View style={styles.footer}>
-        <PillButton label="Discard" variant="ghost" onPress={onCancel} />
-        <PillButton label="Apply selected" onPress={onApply} style={styles.applyButton} />
+        <PillButton label="Discard" variant="accent" destructive haptic="light" onPress={onCancel} style={styles.footerButton} />
+        <PillButton label="Apply selected" onPress={onApply} style={styles.footerButton} />
       </View>
     </View>
   );
@@ -112,7 +117,8 @@ const makeStyles = (theme: AppTheme) =>
     header: { paddingHorizontal: theme.spacing.base, paddingTop: theme.spacing.base, gap: 2 },
     title: { fontFamily: theme.fonts.display.bold, fontSize: theme.fontSize.lg, color: theme.colors.ink },
     subtitle: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
-    quickRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm },
+    quickRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.sm },
+    acceptedCount: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
     quickLink: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
     scroll: { flex: 1 },
     scrollContent: { padding: theme.spacing.base, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
@@ -142,5 +148,5 @@ const makeStyles = (theme: AppTheme) =>
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
     },
-    applyButton: { flex: 1 },
+    footerButton: { flex: 1 },
   });

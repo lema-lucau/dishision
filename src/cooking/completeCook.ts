@@ -7,6 +7,7 @@
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
 import { recipeName } from '../debug/logNames';
+import { markHouseholdDirty } from '../household/autoSync';
 import { findOrCreateOpenShoppingList } from '../plan/shoppingListMutations';
 import { getAutoAddShortfalls } from '../settings/getSetting';
 import { computeConsumption, type ConsumptionIngredientInput } from './pantryConsumption';
@@ -167,6 +168,7 @@ export async function completeCook(db: DbClient, input: CompleteCookInput): Prom
 
     await db.execAsync('COMMIT');
     logger.info('db', 'Cook completed', { recipeId: input.recipeId, recipeName: await recipeName(db, input.recipeId), cookLogId, shortfalls: shortfalls.length });
+    markHouseholdDirty(); // §E: a logged cook (rating/leftovers) is worth syncing
     return { cookLogId, leftoverId, shortfalls };
   } catch (error) {
     await db.execAsync('ROLLBACK');

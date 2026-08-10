@@ -7,6 +7,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { loadRecipeDraft } from '../recipes/loadRecipeForEdit';
+import { useBackHandler } from '../navigation/backStore';
 import type { RecipeDraft } from '../recipes/recipeSave';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { BotApiError } from './anthropicClient';
@@ -16,10 +17,12 @@ import { saveBotRecipe, type SaveMode } from './botSave';
 import { retryTurn, sendUserTurn } from './botTurn';
 import { getUserName } from './botUser';
 import { applyBotDiff, buildBotDiff, type BotDiffChange } from './botRecipeDiff';
+import { countVersions, listVersions, writeVersion, type BotRecipeVersion } from './botVersionRepo';
 import { BotChatView, type InputMode } from './BotChatView';
 import { BotDiffReview } from './BotDiffReview';
 import { BotHistoryScreen } from './BotHistoryScreen';
 import { BotReviewScreen } from './BotReviewScreen';
+import { BotVersionsScreen } from './BotVersionsScreen';
 import { BotSettingsScreen } from './BotSettingsScreen';
 import { buildNewChat, getChat, getMessages, persistChat, setSourceUrl, updateDraft } from './chatRepo';
 import { fetchAndExtract, linkMessage, LinkFetchError } from './linkFetch';
@@ -27,7 +30,7 @@ import { draftToProposed, proposedToDraft, resolveDraftIngredients } from './pro
 import { buildCookRefineSeed, buildQuickStarts, type QuickStart } from './surfaceContext';
 import type { BotChat, BotMessage } from './types';
 
-type Phase = 'loading' | 'chat' | 'review' | 'diff' | 'history' | 'settings';
+type Phase = 'loading' | 'chat' | 'review' | 'diff' | 'history' | 'settings' | 'versions';
 
 interface BotChatScreenProps {
   onExit: () => void;
@@ -91,6 +94,9 @@ export function BotChatScreen({
   const [saving, setSaving] = useState(false);
   const [noApiKey, setNoApiKey] = useState(false);
   const [quickStarts, setQuickStarts] = useState<QuickStart[]>([]);
+  // §B2 persisted version history.
+  const [versionCount, setVersionCount] = useState(0);
+  const [versions, setVersions] = useState<BotRecipeVersion[]>([]);
 
   const userNameRef = useRef('you');
   // §A2.2: a quick-start chip attaches its scoped context (pantry, leftovers) to
@@ -118,9 +124,20 @@ export function BotChatScreen({
       setWorkingDraft(hydrated?.draft ?? null);
       setNewIngredientNames(hydrated?.newIngredientNames ?? new Set());
       setDishisionAssistedState(c.dishisionAssisted);
+      // §B2: a chat reopened from history that has a draft but predates version
+      // history gets its current draft seeded as version 0 so "Versions" is
+      // meaningful and later refines diff against a recorded baseline.
+      if (c.draft && (await countVersions(db, c.id)) === 0) {
+        await writeVersion(db, c.id, c.draft, null, 'Initial recipe');
+      }
+      setVersionCount(await countVersions(db, c.id));
     },
     [db],
   );
+
+  const refreshVersionCount = useCallback(async () => {
+    if (chat) setVersionCount(await countVersions(db, chat.id));
+  }, [chat, db]);
 
   // Bootstrap: reopen a chat, seed from an existing recipe, or start fresh.
   useEffect(() => {
@@ -256,6 +273,22 @@ export function BotChatScreen({
       }
     }
     setWorkingDraft(p.draft);
+    // §B2: the working draft advanced without a diff-review step — record a
+    // version. Initial proposal (no baseline) has a null summary; an in-chat
+    // refine records what actually changed.
+    if (persistedRef.current) {
+      const proposed = draftToProposed(p.draft);
+      if (base == null) {
+        await writeVersion(db, chat.id, proposed, null, 'Initial recipe');
+        await refreshVersionCount();
+      } else {
+        const changes = buildBotDiff(base, p.draft);
+        if (changes.length > 0) {
+          await writeVersion(db, chat.id, proposed, changes);
+          await refreshVersionCount();
+        }
+      }
+    }
   }
 
   async function runSend(text: string, fromReview: boolean): Promise<void> {
@@ -269,6 +302,12 @@ export function BotChatScreen({
     try {
       // First real content — write the chat to disk before anything FKs to it (§B7).
       await ensurePersisted(chat);
+      // §B2: seed the pre-existing draft (an existing-recipe/cook-log refine) as
+      // version 0 so history has the baseline the first refine diffs against.
+      if (workingDraftRef.current && (await countVersions(db, chat.id)) === 0) {
+        await writeVersion(db, chat.id, draftToProposed(workingDraftRef.current), null, 'Initial recipe');
+        await refreshVersionCount();
+      }
       // Sync manual on-screen edits into the chat draft so the model's CURRENT
       // RECIPE STATE reflects them (§7.3).
       let currentChat = chat;
@@ -371,8 +410,36 @@ export function BotChatScreen({
     const merged = applyBotDiff(pendingDiff.base, pendingDiff.next, diffAccepted);
     setWorkingDraft(merged);
     await updateDraft(db, chat.id, draftToProposed(merged));
+    // §B2: record a new version whose summary is exactly the changes the user
+    // kept (not everything the bot proposed).
+    const acceptedChanges = pendingDiff.changes.filter((c) => diffAccepted.has(c.id));
+    if (acceptedChanges.length > 0) {
+      await writeVersion(db, chat.id, draftToProposed(merged), acceptedChanges);
+      await refreshVersionCount();
+    }
     setPendingDiff(null);
     setPhase('review');
+  }
+
+  // §B2: restore sets the working draft (and chat draft) back to a version, then
+  // appends it as a new head so history stays linear and later refines diff
+  // against the restored draft.
+  async function restoreVersion(v: BotRecipeVersion) {
+    if (!chat) return;
+    const hydrated = await hydrateDraft(db, v.draft);
+    if (!hydrated) return;
+    setWorkingDraft(hydrated.draft);
+    setNewIngredientNames(hydrated.newIngredientNames);
+    await updateDraft(db, chat.id, v.draft);
+    await writeVersion(db, chat.id, v.draft, null, `Restored v${v.versionIndex + 1}`);
+    await refreshVersionCount();
+    setPhase('review');
+  }
+
+  async function openVersions() {
+    if (!chat) return;
+    setVersions(await listVersions(db, chat.id));
+    setPhase('versions');
   }
   async function discardDiff() {
     if (!pendingDiff || !chat) return;
@@ -429,6 +496,32 @@ export function BotChatScreen({
     setDishisionAssistedState(on);
   }
 
+  // §F: hardware back unwinds the bot's own screen stack one level at a time,
+  // and only exits the bot from the chat root. Sheets/confirm modals are RN
+  // Modals that intercept back before this runs.
+  useBackHandler(true, () => {
+    switch (phase) {
+      case 'diff':
+        void discardDiff();
+        return true;
+      case 'versions':
+        setPhase('review');
+        return true;
+      case 'review':
+        void leaveReview('chat');
+        return true;
+      case 'history':
+      case 'settings':
+        setPhase('chat');
+        return true;
+      case 'chat':
+        void handleExit();
+        return true;
+      default:
+        return false;
+    }
+  });
+
   if (phase === 'loading' || !chat) {
     return (
       <View style={styles.center}>
@@ -466,6 +559,16 @@ export function BotChatScreen({
     );
   }
 
+  if (phase === 'versions') {
+    return (
+      <BotVersionsScreen
+        versions={versions}
+        onBack={() => setPhase('review')}
+        onRestore={restoreVersion}
+      />
+    );
+  }
+
   if (phase === 'diff' && pendingDiff) {
     return (
       <BotDiffReview
@@ -498,6 +601,8 @@ export function BotChatScreen({
           onSaveNew={() => handleSave('new')}
           onSaveOverwrite={() => handleSave('overwrite')}
           saving={saving}
+          versionCount={versionCount}
+          onOpenVersions={openVersions}
         />
         {modal}
       </>

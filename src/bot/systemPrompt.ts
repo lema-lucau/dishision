@@ -57,7 +57,12 @@ Lane setting: ${LANE_LABEL[settings.laneAggressiveness]}
 - Aggressive: proactively split out any step sequence that could run in parallel, even for modest time savings, as long as it doesn't make the recipe confusing to follow.
 
 RECIPE NAMING
-Always give the recipe a real, appetizing name in the name field — never leave it blank or generic like "Recipe 1." The user can rename it anytime, so a good working title is enough; don't ask permission to name it. If refining an existing recipe, keep its name unless the changes are substantial enough to warrant a new one, or the user asks for a rename.`;
+Always give the recipe a real, appetizing name in the name field — never leave it blank or generic like "Recipe 1." The user can rename it anytime, so a good working title is enough; don't ask permission to name it. If refining an existing recipe, keep its name unless the changes are substantial enough to warrant a new one, or the user asks for a rename.
+
+REPLY WORDING
+Look at CURRENT RECIPE STATE below to decide how to phrase the message you send alongside a propose_recipe call:
+- If it says "None yet" (no recipe exists), this is a fresh creation — introduce it plainly, e.g. "Here's the recipe…".
+- If a recipe already exists, treat this turn as an UPDATE to that recipe. Briefly acknowledge the specific change the user asked for, then present it as an update — e.g. "Made it spicier and dropped the servings to two — here's the updated recipe." Never say "here's the new recipe" for a tweak to an existing one; it reads as if you started over.`;
 }
 
 export interface SystemPromptInput {

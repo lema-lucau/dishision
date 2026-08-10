@@ -13,7 +13,7 @@
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
 import { buildSharePayload } from '../sharing/payload';
-import { getHouseholdMember, markSynced, removeHouseholdMember, updateMemberProfile, upsertHouseholdMember } from './householdMutations';
+import { getHouseholdMember, markSynced, removeHouseholdMember, updateLastKnownAddress, updateMemberProfile, upsertHouseholdMember } from './householdMutations';
 import { applyReceivedRatings, listMyPublicRatings } from './opinionSync';
 import { applyReceivedSharedCooks, listPendingSharedCooks, markSharedCooksSynced } from './sharedCooks';
 import { deleteVanishedCacheRows, upsertHouseholdCacheEntry } from './syncCache';
@@ -24,6 +24,15 @@ export interface LocalIdentity {
   personId: string;
   displayName: string;
   avatarEmoji: string;
+  /** §E: our current LAN address (host:port), re-exchanged each sync so peers
+   * self-heal a stale stored address. Optional — pairing/tests may omit it. */
+  address?: string | null;
+}
+
+// §E: persist a peer's freshly-advertised address if it's present and differs
+// from what we have. Kept tiny + pure-ish for the unit test.
+export async function persistPeerAddress(db: DbClient, personId: string, address: string | null | undefined): Promise<void> {
+  if (address && address.trim()) await updateLastKnownAddress(db, personId, address.trim());
 }
 
 // Returns the new sync_event id so callers can attach per-item detail (§B6).
@@ -61,10 +70,11 @@ export async function runInitiatorSync(
     throw new SyncAuthError('Peer rejected the connection');
   }
 
-  await channel.send({ type: 'profile', displayName: me.displayName, avatarEmoji: me.avatarEmoji });
+  await channel.send({ type: 'profile', displayName: me.displayName, avatarEmoji: me.avatarEmoji, address: me.address ?? null });
   const theirProfile = await channel.receive();
   if (theirProfile.type === 'profile') {
     await updateMemberProfile(db, peerPersonId, theirProfile.displayName, theirProfile.avatarEmoji);
+    await persistPeerAddress(db, peerPersonId, theirProfile.address);
   }
 
   await channel.send({ type: 'tombstone_check' });
@@ -228,8 +238,9 @@ export async function runResponderSync(
   const theirProfileMsg = await channel.receive();
   if (theirProfileMsg.type === 'profile') {
     await updateMemberProfile(db, hello.personId, theirProfileMsg.displayName, theirProfileMsg.avatarEmoji);
+    await persistPeerAddress(db, hello.personId, theirProfileMsg.address);
   }
-  await channel.send({ type: 'profile', displayName: me.displayName, avatarEmoji: me.avatarEmoji });
+  await channel.send({ type: 'profile', displayName: me.displayName, avatarEmoji: me.avatarEmoji, address: me.address ?? null });
 
   await channel.receive(); // tombstone_check
   const iRemovedThem = (await getHouseholdMember(db, hello.personId))?.removedAt != null;

@@ -4,14 +4,16 @@
 // Hidden themes are gated behind a "View hidden themes" screen where they can be
 // un-hidden. Deletion (custom themes only) is permanent.
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
+import { useBackHandler } from '../navigation/backStore';
+import { parseHHMM } from './autoThemeSchedule';
 import { isCustomThemeId, type CustomThemeDef } from './customTheme';
 import { ThemeCreatorScreen } from './ThemeCreatorScreen';
 import { ThemePreview } from './ThemePreview';
-import { useCustomThemes, useTheme, useThemeControls, type AppTheme } from './ThemeContext';
+import { useAutoTheme, useCustomThemes, useTheme, useThemeControls, type AppTheme, type AutoThemeConfig } from './ThemeContext';
 import { DARK_THEME_IDS, DEFAULT_THEME_ID, LIGHT_THEME_IDS, themes, type Theme } from './themes';
 import {
   deleteCustomThemeDef,
@@ -93,6 +95,16 @@ export function ThemePickerScreen({ onClose }: ThemePickerScreenProps) {
       true,
     );
   }
+
+  // §F: back from any sub-view returns to the grid; from the grid it falls
+  // through to TabShell, which closes the picker.
+  useBackHandler(true, () => {
+    if (view.mode !== 'grid') {
+      setView({ mode: 'grid' });
+      return true;
+    }
+    return false;
+  });
 
   if (view.mode === 'creator') {
     return <ThemeCreatorScreen editing={view.editing} onClose={() => setView({ mode: 'grid' })} />;
@@ -248,6 +260,10 @@ function ThemeGrid({
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* §A1 auto day/night */}
+        <AutoThemeSection resolve={resolve} />
+        <View style={styles.sectionSpacer} />
+
         {/* Favourites */}
         <SectionHeader
           label="FAVOURITES"
@@ -306,6 +322,136 @@ function ThemeGrid({
         onDelete={() => menuFor && onDelete(menuFor)}
       />
     </View>
+  );
+}
+
+// ── §A1 Auto day/night ───────────────────────────────────────────────────────
+function AutoThemeSection({ resolve }: { resolve: (id: string) => Theme | undefined }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { customThemes } = useCustomThemes();
+  const { autoTheme, setAutoTheme } = useAutoTheme();
+  const [pick, setPick] = useState<null | 'day' | 'night'>(null);
+
+  const selectableIds = useMemo(
+    () => [...LIGHT_THEME_IDS, ...DARK_THEME_IDS, ...Object.keys(customThemes)],
+    [customThemes],
+  );
+
+  const update = (patch: Partial<AutoThemeConfig>) => setAutoTheme({ ...autoTheme, ...patch });
+  const dayName = resolve(autoTheme.dayId)?.name ?? 'Choose a theme';
+  const nightName = autoTheme.nightId ? resolve(autoTheme.nightId)?.name ?? 'Choose a theme' : 'Choose a theme';
+
+  return (
+    <View>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionLabel}>AUTO DAY / NIGHT</Text>
+        <Switch value={autoTheme.enabled} onValueChange={(v) => update({ enabled: v })} />
+      </View>
+      {autoTheme.enabled && (
+        <View style={styles.autoBody}>
+          {!autoTheme.nightId && <Text style={styles.emptyNote}>Pick a night theme to start switching.</Text>}
+          <TouchableOpacity style={styles.autoRow} onPress={() => setPick('day')}>
+            <Text style={styles.autoRowLabel}>Day theme</Text>
+            <Text style={styles.autoRowValue}>{dayName} ›</Text>
+          </TouchableOpacity>
+          <TimeField label="Switch to day at" value={autoTheme.dayTime} onChange={(t) => update({ dayTime: t })} theme={theme} />
+          <TouchableOpacity style={styles.autoRow} onPress={() => setPick('night')}>
+            <Text style={styles.autoRowLabel}>Night theme</Text>
+            <Text style={styles.autoRowValue}>{nightName} ›</Text>
+          </TouchableOpacity>
+          <TimeField label="Switch to night at" value={autoTheme.nightTime} onChange={(t) => update({ nightTime: t })} theme={theme} />
+        </View>
+      )}
+      <ThemeChoiceModal
+        visible={pick != null}
+        title={pick === 'night' ? 'Night theme' : 'Day theme'}
+        ids={selectableIds}
+        selectedId={pick === 'night' ? autoTheme.nightId : autoTheme.dayId}
+        resolve={resolve}
+        onSelect={(id) => {
+          update(pick === 'night' ? { nightId: id } : { dayId: id });
+          setPick(null);
+        }}
+        onClose={() => setPick(null)}
+      />
+    </View>
+  );
+}
+
+function TimeField({ label, value, onChange, theme }: { label: string; value: string; onChange: (t: string) => void; theme: AppTheme }) {
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  function commit() {
+    // Normalise whatever was typed to a canonical HH:MM before persisting.
+    const mins = parseHHMM(text);
+    const norm = `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+    setText(norm);
+    if (norm !== value) onChange(norm);
+  }
+  return (
+    <View style={styles.autoRow}>
+      <Text style={styles.autoRowLabel}>{label}</Text>
+      <TextInput
+        style={styles.timeInput}
+        value={text}
+        onChangeText={setText}
+        onEndEditing={commit}
+        onBlur={commit}
+        placeholder="HH:MM"
+        placeholderTextColor={theme.colors.ink3}
+        keyboardType="numbers-and-punctuation"
+        maxLength={5}
+      />
+    </View>
+  );
+}
+
+function ThemeChoiceModal({
+  visible,
+  title,
+  ids,
+  selectedId,
+  resolve,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  title: string;
+  ids: string[];
+  selectedId: string;
+  resolve: (id: string) => Theme | undefined;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.menuScrim} onPress={onClose}>
+        <Pressable style={[styles.choiceSheet, { paddingBottom: (insets.bottom || theme.spacing.sm) + theme.spacing.sm }]} onPress={() => {}}>
+          <Text style={styles.menuTitle}>{title}</Text>
+          <ScrollView style={styles.choiceScroll}>
+            {ids.map((id) => {
+              const t = resolve(id);
+              if (!t) return null;
+              const active = id === selectedId;
+              return (
+                <TouchableOpacity key={id} style={styles.choiceRow} onPress={() => onSelect(id)}>
+                  <View style={[styles.choiceSwatch, { backgroundColor: t.colors.accent }]} />
+                  <Text style={[styles.choiceName, active && styles.choiceNameActive]} numberOfLines={1}>
+                    {t.name}
+                  </Text>
+                  {active && <Text style={styles.choiceCheck}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -550,6 +696,41 @@ const makeStyles = (theme: AppTheme) =>
       letterSpacing: 1,
     },
     sectionChevron: { fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    autoBody: { gap: theme.spacing.sm, marginTop: theme.spacing.xs },
+    autoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.tile,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+    },
+    autoRowLabel: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.base, color: theme.colors.ink },
+    autoRowValue: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+    timeInput: {
+      minWidth: 72,
+      textAlign: 'right',
+      fontFamily: theme.fonts.data.medium,
+      fontSize: theme.fontSize.base,
+      color: theme.colors.ink,
+    },
+    choiceSheet: {
+      backgroundColor: theme.colors.surface,
+      borderTopLeftRadius: theme.radius.hero,
+      borderTopRightRadius: theme.radius.hero,
+      paddingHorizontal: theme.spacing.base,
+      paddingTop: theme.spacing.base,
+      maxHeight: '70%',
+    },
+    choiceScroll: { marginTop: theme.spacing.sm },
+    choiceRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.md },
+    choiceSwatch: { width: 22, height: 22, borderRadius: 6 },
+    choiceName: { flex: 1, fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.base, color: theme.colors.ink2 },
+    choiceNameActive: { color: theme.colors.ink, fontFamily: theme.fonts.body.semiBold },
+    choiceCheck: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentText },
     subLabel: {
       fontFamily: theme.fonts.body.semiBold,
       fontSize: theme.fontSize.xs,

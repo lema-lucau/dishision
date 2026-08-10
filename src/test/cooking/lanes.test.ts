@@ -7,8 +7,10 @@ import {
   laneNeedingAttention,
   laneStatus,
   laneStatuses,
+  lanesReadyToAdvance,
   resolveVisibleLane,
   shouldShowLaneTabs,
+  visibleLaneWindow,
   type Lane,
   type LaneStatus,
 } from '../../cooking/lanes';
@@ -209,5 +211,71 @@ describe('attention + visible lane (§5.6 — the app moves, not the cook)', () 
     expect(resolveVisibleLane({ statuses, pinnedKey: null, currentKey: 'Curry', takeoverLaneKey: 'Gone' }).key).toBe(
       'Curry',
     );
+  });
+});
+
+function status(over: Partial<LaneStatus> & { key: string; state: LaneStatus['state'] }): LaneStatus {
+  return {
+    name: over.key,
+    liveStepId: over.liveStepId ?? 1,
+    seconds: null,
+    completedCount: 0,
+    totalCount: 1,
+    ...over,
+  };
+}
+
+describe('lanesReadyToAdvance (§D1)', () => {
+  it('returns the live step of each overdue lane and nothing else', () => {
+    const statuses: LaneStatus[] = [
+      status({ key: 'A', state: 'overdue', liveStepId: 10 }),
+      status({ key: 'B', state: 'running', liveStepId: 20, seconds: 30 }),
+      status({ key: 'C', state: 'overdue', liveStepId: 30 }),
+      status({ key: 'D', state: 'done', liveStepId: null }),
+    ];
+    expect(lanesReadyToAdvance(statuses)).toEqual([10, 30]);
+  });
+
+  it('sequential timed steps in one lane go overdue and advance one after another', () => {
+    // Lane with steps A(0-60) then B(60-120). At t=61 A is overdue; after A is
+    // completed, B becomes live and goes overdue at t=121.
+    const lane: Lane = { key: 'sauce', name: 'sauce', stepIds: [1, 2] };
+    const t = timings(timing(1, 0, 60), timing(2, 60, 60));
+
+    const atA = laneStatus(lane, t, runtime(), 61, 0);
+    expect(atA.state).toBe('overdue');
+    expect(lanesReadyToAdvance([atA])).toEqual([1]);
+
+    const atB = laneStatus(lane, t, runtime({ 1: { completed: true } }), 121, 0);
+    expect(atB.liveStepId).toBe(2);
+    expect(atB.state).toBe('overdue');
+    expect(lanesReadyToAdvance([atB])).toEqual([2]);
+  });
+
+  it('does not auto-advance an untimed live step', () => {
+    const lane: Lane = { key: 'main', name: 'main', stepIds: [1] };
+    const s = laneStatus(lane, timings(timing(1, 0, null)), runtime(), 300, 0);
+    expect(s.state).toBe('running');
+    expect(lanesReadyToAdvance([s])).toEqual([]);
+  });
+});
+
+describe('visibleLaneWindow (§D2)', () => {
+  it('returns all lanes when at or under the count', () => {
+    const statuses = [status({ key: 'A', state: 'running' }), status({ key: 'B', state: 'running' })];
+    expect(visibleLaneWindow(statuses, 'A', 3)).toHaveLength(2);
+  });
+
+  it('keeps the visible lane first, then fills by relevance', () => {
+    const statuses: LaneStatus[] = [
+      status({ key: 'A', state: 'done' }),
+      status({ key: 'B', state: 'running' }),
+      status({ key: 'C', state: 'overdue' }),
+      status({ key: 'D', state: 'waiting' }),
+    ];
+    const window = visibleLaneWindow(statuses, 'A', 3).map((s) => s.key);
+    expect(window[0]).toBe('A'); // visible always first
+    expect(window).toContain('C'); // overdue is most relevant
+    expect(window).toHaveLength(3);
   });
 });

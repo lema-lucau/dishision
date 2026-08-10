@@ -3,6 +3,7 @@
 // read degrades honestly to a caller-supplied default rather than throwing.
 import type { DbClient } from '../db/DbClient';
 import { parseMealCategories, type MealCategory } from '../recommend/mealCategories';
+import { activeSymbol, clampActiveIndex, parseShortlist, type Currency } from '../lib/currency';
 
 export async function getSetting(db: DbClient, key: string): Promise<string | null> {
   const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM setting WHERE key = ?', [key]);
@@ -74,9 +75,39 @@ export async function getAlertTakeover(db: DbClient): Promise<boolean> {
   return (await getSettingWithDefault(db, 'alert_takeover', '1')) === '1';
 }
 
+// §D1: auto-advance cooking steps by default. When off, a step that becomes due
+// waits for the cook to confirm before advancing.
+export async function getCookAutoAdvance(db: DbClient): Promise<boolean> {
+  return (await getSettingWithDefault(db, 'cook_auto_advance', '1')) === '1';
+}
+
+// §E: automatic household sync (foreground + change triggers). On by default;
+// manual "Sync now" always remains available regardless.
+export async function getAutoSyncEnabled(db: DbClient): Promise<boolean> {
+  return (await getSettingWithDefault(db, 'auto_sync_enabled', '1')) === '1';
+}
+
 // §5.10 currency: code + symbol, display-only (no conversion, no rescale).
 export async function getCurrencyCode(db: DbClient): Promise<string> {
   return getSettingWithDefault(db, 'currency_code', 'EUR');
+}
+
+// §G currency shortlist: up to 5 currencies with one active. currency_symbol is
+// kept in sync with the active symbol so every existing reader keeps working.
+export interface CurrencyState {
+  shortlist: Currency[];
+  activeIndex: number;
+}
+
+export async function getCurrencyState(db: DbClient): Promise<CurrencyState> {
+  const shortlist = parseShortlist(await getSetting(db, 'currency_shortlist'));
+  const rawIndex = Number(await getSetting(db, 'currency_active'));
+  return { shortlist, activeIndex: clampActiveIndex(rawIndex, shortlist.length) };
+}
+
+export async function getActiveCurrencySymbol(db: DbClient): Promise<string> {
+  const { shortlist, activeIndex } = await getCurrencyState(db);
+  return activeSymbol(shortlist, activeIndex);
 }
 
 export type CostStalenessDays = 60 | 90 | 180 | 0; // 0 = never

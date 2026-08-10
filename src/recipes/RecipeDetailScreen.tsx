@@ -6,7 +6,7 @@ import { RatingBreakdownSheet } from '../household/RatingBreakdownSheet';
 import type { RatingBreakdown } from '../household/opinionSync';
 import { capitalize } from '../lib/capitalize';
 import { formatCurrency } from '../lib/currency';
-import { formatDuration } from '../lib/formatDuration';
+import { formatDuration, formatDurationPrecise } from '../lib/formatDuration';
 import { formatScaledQuantity, scaleQuantity } from '../lib/scaling';
 import { pluralizeUnit } from '../lib/unitLabels';
 import { HeroCover } from '../components/ui';
@@ -205,7 +205,7 @@ export function RecipeDetailScreen({
                   )}
                   {step.durationSeconds != null && (
                     <View style={[styles.stepBadge, { backgroundColor: timeColors.bg }]}>
-                      <Text style={[styles.stepBadgeText, { color: timeColors.fg }]}>{formatDuration(step.durationSeconds)}</Text>
+                      <Text style={[styles.stepBadgeText, { color: timeColors.fg }]}>{formatDurationPrecise(step.durationSeconds)}</Text>
                     </View>
                   )}
                   {step.important && (

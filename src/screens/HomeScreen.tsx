@@ -307,7 +307,7 @@ export function HomeScreen({ onOpenRecipe, onCreateWithBot }: HomeScreenProps) {
                       <PillButton
                         label="Bin"
                         size="small"
-                        variant="ghost"
+                        variant="soft"
                         haptic="light"
                         destructive
                         onPress={() => handleBin(leftover)}
