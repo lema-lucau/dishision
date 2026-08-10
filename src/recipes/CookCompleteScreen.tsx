@@ -106,12 +106,13 @@ export function CookCompleteScreen({ recipe, retroactive, onDone, onCancel, onRe
     setQuickTags((tags) => (tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag]));
   }
 
-  // §A2.4: if a mid-cook "refine after cooking" note was left, surface it here
-  // by prefilling "what to change", then clear it so it doesn't reappear.
+  // §I: if a mid-cook note/question was left, surface it here by prefilling the
+  // log's Notes field (not "what to change" — that field stays for explicit
+  // post-cook refine intent), then clear it so it doesn't reappear.
   useEffect(() => {
     getPendingCookNote(db, recipe.id).then((note) => {
       if (note) {
-        setWhatToChange((prev) => prev || note);
+        setNotes((prev) => (prev ? `${prev}\n${note}` : note));
         setExpanded(true);
         clearPendingCookNote(db, recipe.id);
       }
@@ -517,7 +518,8 @@ const makeStyles = (theme: AppTheme) =>
     fontFamily: theme.fonts.body.bold,
     fontSize: theme.fontSize.xs,
     letterSpacing: theme.fontSize.xs * 0.13,
-    color: theme.colors.ink,
+    // On-photo chip ink — reads on the light chip in both theme modes (A5).
+    color: theme.onPhoto.chipInk,
   },
   heroTitle: {
     fontFamily: theme.fonts.display.bold,

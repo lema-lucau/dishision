@@ -3,6 +3,7 @@
 // wire transport lives in syncProtocol.ts.
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
+import { markHouseholdDirty } from './autoSync';
 
 export interface SharedCookEntry {
   recipeShareId: string;
@@ -38,6 +39,7 @@ export async function queueSharedCook(db: DbClient, recipientPersonId: string, c
     ],
   );
   logger.info('sync', 'Queued shared cook', { recipientPersonId, recipe: cook.recipeName });
+  markHouseholdDirty(); // §E: a queued shared cook should push on the next cycle
 }
 
 export async function listPendingSharedCooks(db: DbClient, recipientPersonId: string): Promise<QueuedSharedCook[]> {

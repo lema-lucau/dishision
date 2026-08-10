@@ -3,18 +3,18 @@
 // an actual slider control — no slider component is on the §15.1 allowlist,
 // and steppers give the same tunability without a new dependency.
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { SyncLogScreen } from '../household/SyncLogScreen';
 import {
   getAlertSound,
-  getAlertTakeover,
   getAlertVibrate,
   getAutoAddShortfalls,
+  getAutoSyncEnabled,
+  getCookAutoAdvance,
   getCostStalenessDays,
-  getCurrencyCode,
-  getCurrencySymbol,
+  getCurrencyState,
   getDefaultServingSize,
   getRecencyWindowDays,
   getRecommendCategories,
@@ -24,11 +24,12 @@ import {
 } from '../settings/getSetting';
 import {
   setAlertSound,
-  setAlertTakeover,
   setAlertVibrate,
   setAutoAddShortfalls,
+  setAutoSyncEnabled,
+  setCookAutoAdvance,
   setCostStalenessDays,
-  setCurrency,
+  setCurrencyState,
   setDebugMode,
   setDefaultServingSize,
   setRecencyWindowDays,
@@ -40,6 +41,8 @@ import { MealCategoryPickerModal } from '../recommend/MealCategoryPickerModal';
 import { MEAL_CATEGORIES, MEAL_CATEGORY_LABELS, type MealCategory } from '../recommend/mealCategories';
 import { useSettingsStore } from '../debug/settingsStore';
 import { BotSettingsScreen } from '../bot/BotSettingsScreen';
+import { ManageCurrenciesModal } from './ManageCurrenciesModal';
+import { DEFAULT_SHORTLIST, type Currency } from '../lib/currency';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 
 interface SettingsScreenProps {
@@ -54,13 +57,6 @@ const STALENESS_OPTIONS: { label: string; value: CostStalenessDays }[] = [
   { label: '90 days', value: 90 },
   { label: '180 days', value: 180 },
   { label: 'Never', value: 0 },
-];
-
-const CURRENCY_PRESETS: { code: string; symbol: string }[] = [
-  { code: 'EUR', symbol: '€' },
-  { code: 'GBP', symbol: '£' },
-  { code: 'USD', symbol: '$' },
-  { code: 'AUD', symbol: 'A$' },
 ];
 
 const WEIGHT_LABELS: Record<keyof RecommendationWeights, string> = {
@@ -85,11 +81,14 @@ const TIPS = {
   servings: "The serving count new recipes and the 'add to shopping list' prompts start from.",
   vibrate: 'Vibrate the phone when a cooking-mode step timer finishes.',
   sound: 'Play a sound with the step-timer notification. Only the notification makes a sound; on-screen alerts while the app is open are silent (they vibrate instead).',
-  takeover: 'Show a full-screen alert when a step timer finishes — handy when the phone is propped up across the kitchen.',
+  autoAdvance:
+    "Move to the next step automatically when the current step's timer finishes. Turn off to step through by hand — the master clock keeps running so you can see your pacing, and the forward arrow advances instantly when you're ready.",
+  autoSync:
+    'Keep household recipes and ratings in sync automatically when you and a member are on the same WiFi — on app open and shortly after a change. You can still tap "Sync now" on a member any time.',
   autoAdd:
     "When you add a recipe to your shopping list, also add any ingredients you don't have enough of. Either way, shortfalls are always flagged — this only decides whether they're added to the list for you automatically.",
   currencyCustom:
-    'Set a symbol for a currency that isn\'t one of the presets above. It only relabels prices — no amounts are converted.',
+    'Keep a shortlist of up to 5 currencies and pick which one is active. Swap a slot for a preloaded currency, or add a brand-new one (name + symbol). It only relabels prices — no amounts are converted.',
   staleness: 'How old an ingredient price can get before Dishision reminds you it might be out of date.',
   debug: 'Shows developer tools and diagnostics. Leave this off for normal use.',
 } as const;
@@ -138,11 +137,12 @@ export function SettingsScreen({ onBack, onOpenBackup, onOpenRecipe }: SettingsS
   const [servingSize, setServingSize] = useState(2);
   const [vibrate, setVibrate] = useState(true);
   const [sound, setSound] = useState(true);
-  const [takeover, setTakeover] = useState(true);
+  const [autoAdvance, setAutoAdvance] = useState(true);
+  const [autoSync, setAutoSync] = useState(true);
   const [autoAdd, setAutoAdd] = useState(true);
-  const [currencyCode, setCurrencyCode] = useState('EUR');
-  const [currencySymbol, setCurrencySymbolState] = useState('€');
-  const [customSymbol, setCustomSymbol] = useState('');
+  const [currencyShortlist, setCurrencyShortlist] = useState<Currency[]>(DEFAULT_SHORTLIST);
+  const [currencyActiveIndex, setCurrencyActiveIndex] = useState(0);
+  const [manageCurrenciesOpen, setManageCurrenciesOpen] = useState(false);
   const [staleness, setStaleness] = useState<CostStalenessDays>(90);
   const [recommendCategories, setRecommendCategoriesState] = useState<MealCategory[]>(MEAL_CATEGORIES);
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
@@ -157,12 +157,12 @@ export function SettingsScreen({ onBack, onOpenBackup, onOpenRecipe }: SettingsS
       setServingSize(await getDefaultServingSize(db));
       setVibrate(await getAlertVibrate(db));
       setSound(await getAlertSound(db));
-      setTakeover(await getAlertTakeover(db));
+      setAutoAdvance(await getCookAutoAdvance(db));
+      setAutoSync(await getAutoSyncEnabled(db));
       setAutoAdd(await getAutoAddShortfalls(db));
-      setCurrencyCode(await getCurrencyCode(db));
-      const symbol = await getCurrencySymbol(db);
-      setCurrencySymbolState(symbol);
-      setCustomSymbol(symbol);
+      const currency = await getCurrencyState(db);
+      setCurrencyShortlist(currency.shortlist);
+      setCurrencyActiveIndex(currency.activeIndex);
       setStaleness(await getCostStalenessDays(db));
       setRecommendCategoriesState(await getRecommendCategories(db));
       setLoaded(true);
@@ -197,16 +197,10 @@ export function SettingsScreen({ onBack, onOpenBackup, onOpenRecipe }: SettingsS
     await setDefaultServingSize(db, clamped);
   }
 
-  async function applyCurrencyPreset(code: string, symbol: string) {
-    setCurrencyCode(code);
-    setCurrencySymbolState(symbol);
-    setCustomSymbol(symbol);
-    await setCurrency(db, code, symbol);
-  }
-
-  async function applyCustomSymbol() {
-    setCurrencySymbolState(customSymbol);
-    await setCurrency(db, currencyCode, customSymbol || '€');
+  async function applyCurrencyChange(shortlist: Currency[], activeIndex: number) {
+    setCurrencyShortlist(shortlist);
+    setCurrencyActiveIndex(activeIndex);
+    await setCurrencyState(db, shortlist, activeIndex);
   }
 
   if (showSyncLog) {
@@ -320,14 +314,14 @@ export function SettingsScreen({ onBack, onOpenBackup, onOpenRecipe }: SettingsS
         </View>
         <View style={[styles.row, styles.rowDivider]}>
           <View style={styles.labelWithInfo}>
-            <Text style={styles.rowLabel}>Full-screen takeover</Text>
-            {info('Full-screen takeover', TIPS.takeover)}
+            <Text style={styles.rowLabel}>Auto-advance steps</Text>
+            {info('Auto-advance steps', TIPS.autoAdvance)}
           </View>
           <Switch
-            value={takeover}
+            value={autoAdvance}
             onValueChange={async (v) => {
-              setTakeover(v);
-              await setAlertTakeover(db, v);
+              setAutoAdvance(v);
+              await setCookAutoAdvance(db, v);
             }}
           />
         </View>
@@ -350,34 +344,45 @@ export function SettingsScreen({ onBack, onOpenBackup, onOpenRecipe }: SettingsS
         </View>
       </View>
 
+      <Text style={styles.sectionLabel}>HOUSEHOLD</Text>
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.rowLabel}>Auto-sync</Text>
+            {info('Auto-sync', TIPS.autoSync)}
+          </View>
+          <Switch
+            value={autoSync}
+            onValueChange={async (v) => {
+              setAutoSync(v);
+              await setAutoSyncEnabled(db, v);
+            }}
+          />
+        </View>
+      </View>
+
       <View style={styles.sectionLabelRow}>
         <Text style={styles.sectionLabel}>CURRENCY</Text>
         {info('Currency', 'Display-only — this relabels every price in the app. No amounts are ever converted.')}
       </View>
       <View style={styles.chipRow}>
-        {CURRENCY_PRESETS.map((preset) => (
+        {currencyShortlist.map((c, i) => (
           <TouchableOpacity
-            key={preset.code}
-            style={[styles.currencyChip, currencyCode === preset.code && styles.currencyChipActive]}
-            onPress={() => applyCurrencyPreset(preset.code, preset.symbol)}
+            key={`${c.name}-${i}`}
+            style={[styles.currencyChip, i === currencyActiveIndex && styles.currencyChipActive]}
+            onPress={() => applyCurrencyChange(currencyShortlist, i)}
           >
-            <Text style={[styles.currencyChipText, currencyCode === preset.code && styles.currencyChipTextActive]}>
-              {preset.code} {preset.symbol}
+            <Text style={[styles.currencyChipText, i === currencyActiveIndex && styles.currencyChipTextActive]}>
+              {c.name} {c.symbol}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
       <View style={styles.customCurrencyRow}>
-        <TextInput
-          style={styles.customCurrencyInput}
-          value={customSymbol}
-          onChangeText={setCustomSymbol}
-          placeholder="Custom symbol"
-          placeholderTextColor={theme.colors.ink3}
-          onBlur={applyCustomSymbol}
-        />
-        {info('Custom currency symbol', TIPS.currencyCustom)}
-        <Text style={styles.currentCurrencyNote}>Currently {currencyCode} {currencySymbol}</Text>
+        <TouchableOpacity style={styles.manageCurrencyButton} onPress={() => setManageCurrenciesOpen(true)}>
+          <Text style={styles.manageCurrencyText}>Manage currencies</Text>
+        </TouchableOpacity>
+        {info('Manage currencies', TIPS.currencyCustom)}
       </View>
 
       <View style={styles.sectionLabelRow}>
@@ -435,6 +440,14 @@ export function SettingsScreen({ onBack, onOpenBackup, onOpenRecipe }: SettingsS
         onSave={saveRecommendCategories}
       />
 
+      <ManageCurrenciesModal
+        visible={manageCurrenciesOpen}
+        shortlist={currencyShortlist}
+        activeIndex={currencyActiveIndex}
+        onClose={() => setManageCurrenciesOpen(false)}
+        onChange={applyCurrencyChange}
+      />
+
       {modal}
     </ScrollView>
   );
@@ -486,19 +499,13 @@ const makeStyles = (theme: AppTheme) =>
     currencyChipText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
     currencyChipTextActive: { color: theme.colors.accentFg },
     customCurrencyRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
-    customCurrencyInput: {
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.borderStrong,
-      borderRadius: theme.radius.card,
+    manageCurrencyButton: {
+      backgroundColor: theme.colors.chipBg,
+      borderRadius: theme.radius.pill,
       paddingHorizontal: theme.spacing.base,
       paddingVertical: theme.spacing.sm,
-      width: 100,
-      fontFamily: theme.fonts.body.medium,
-      fontSize: theme.fontSize.base,
-      color: theme.colors.ink,
     },
-    currentCurrencyNote: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
+    manageCurrencyText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
     backupRow: {
       flexDirection: 'row',
       alignItems: 'center',

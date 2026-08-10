@@ -27,9 +27,12 @@ import {
 import {
   MAIN_LANE_KEY,
   buildLanes,
+  laneBannerTarget,
   laneStatuses,
+  lanesReadyToAdvance,
   resolveVisibleLane,
   shouldShowLaneTabs,
+  visibleLaneWindow,
   type LaneStatus,
 } from '../cooking/lanes';
 import {
@@ -37,11 +40,13 @@ import {
   beginClock,
   checkpointSession,
   completeStep,
+  discardSession,
   finishSession,
   findUnfinishedSession,
   isReadySession,
   loadStepRuntime,
   pauseSession,
+  resetToStep,
   resumeSession,
   setPhase,
   startSession,
@@ -60,10 +65,11 @@ import {
 } from '../cooking/sessionClock';
 import { getSurfaceEnabled } from '../bot/botSurfaceSettings';
 import { CookingQuickAskSheet } from '../bot/CookingQuickAskSheet';
+import { useBackHandler } from '../navigation/backStore';
 import { useDb } from '../db/DbContext';
-import { formatClock, formatDuration } from '../lib/formatDuration';
+import { formatClock, formatDuration, formatDurationPrecise } from '../lib/formatDuration';
 import { useUiChromeStore } from '../navigation/uiChromeStore';
-import { getSettingWithDefault } from '../settings/getSetting';
+import { getCookAutoAdvance, getSettingWithDefault } from '../settings/getSetting';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { EnrichedRecipe, EnrichedStep } from './loadRecipes';
 
@@ -114,6 +120,7 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
 
   useEffect(() => {
     getSurfaceEnabled(db, 'cooking_quick_ask').then(setQuickAskEnabled);
+    getCookAutoAdvance(db).then(setAutoAdvance);
   }, [db]);
 
   const prepSteps = useMemo(() => recipe.steps.filter((s) => s.phase === 'prep'), [recipe.steps]);
@@ -136,7 +143,14 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   // §A2.4: the mid-cook quick-ask sheet, gated on its surface toggle.
   const [showQuickAsk, setShowQuickAsk] = useState(false);
   const [quickAskEnabled, setQuickAskEnabled] = useState(false);
-  const [takeoverStep, setTakeoverStep] = useState<EnrichedStep | null>(null);
+  // §C1: a non-blocking replacement for the retired full-screen takeover — the
+  // lane that just alerted pulses briefly in the strip instead of stealing the
+  // screen. Cleared ~2.5s later so it never lingers.
+  const [flashLaneKey, setFlashLaneKey] = useState<string | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // §C3: parallel lanes the cook dismissed the "start it now" banner for. Reset
+  // when the cook moves to a new step so a still-idle lane can reappear.
+  const [dismissedLaneKeys, setDismissedLaneKeys] = useState<Set<string>>(new Set());
   // Non-null while the cook is peeking at a step other than the live one
   // (§ manual nav must not be auto-corrected — see the effect below).
   const [viewingStepId, setViewingStepId] = useState<number | null>(null);
@@ -146,6 +160,28 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   const [pinnedLaneKey, setPinnedLaneKey] = useState<string | null>(null);
   const lastAlertedStepId = useRef<number | null>(null);
   const deniedNoticeShown = useRef(false);
+  // §D1 auto-advance setting + guard. `advancing` prevents overlapping async
+  // advances when several ticks land during one write.
+  const [autoAdvance, setAutoAdvance] = useState(true);
+  const advancing = useRef(false);
+
+  // §C1: flash a lane tab briefly, replacing the old blocking takeover alert.
+  function flashLane(key: string) {
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    setFlashLaneKey(key);
+    flashTimer.current = setTimeout(() => setFlashLaneKey(null), 2500);
+  }
+  useEffect(() => () => {
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+  }, []);
+
+  // §F: hardware back checkpoints and leaves Cooking Mode, matching the on-screen
+  // exit — never falls through to close the app. (Open sheets/takeover are RN
+  // Modals, which intercept back themselves before this runs.)
+  useBackHandler(stage !== 'loading', () => {
+    void handleExit();
+    return true;
+  });
 
   const lanes = useMemo(() => buildLanes(timelineSteps), [timelineSteps]);
   const showLaneTabs = shouldShowLaneTabs(lanes);
@@ -253,21 +289,6 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
 
   const elapsedSeconds = session ? computeElapsedSeconds(session, tickNow) : 0;
 
-  // Auto-advance is purely time-driven and always keeps the LIVE step
-  // (session.currentStepId) marching forward — it never looks at what the
-  // cook is currently viewing. Peeking backward with ← must never be
-  // fought by this effect.
-  useEffect(() => {
-    if (stage !== 'active' || !session || session.pausedAt != null) return;
-    const currentIndex = timelineSteps.findIndex((s) => s.id === session.currentStepId);
-    const next = timelineSteps[currentIndex + 1];
-    if (!next) return;
-    const nextTiming = stepTimings.find((s) => s.id === next.id)!;
-    const nextStart = effectiveStartOffset(nextTiming, stepRuntime.get(next.id), session.driftSeconds);
-    if (elapsedSeconds >= nextStart) handleAdvance(next.id, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elapsedSeconds, stage, session?.pausedAt, session?.currentStepId]);
-
   async function handleAdvance(newStepId: number, auto: boolean) {
     if (!session) return;
     const oldStepId = session.currentStepId;
@@ -308,24 +329,69 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
     const shouldAlert = newIndex > oldIndex && ((oldStep?.effort === 'passive' && oldStep.durationSeconds != null) || newStep?.important);
     if (shouldAlert && lastAlertedStepId.current !== newStepId) {
       lastAlertedStepId.current = newStepId;
+      // §C1: haptic nudge + a non-blocking lane flash — no full-screen takeover,
+      // so a parallel lane never loses the screen out from under the cook.
       const vibrateOn = (await getSettingWithDefault(db, 'alert_vibrate', '1')) === '1';
-      const takeoverOn = (await getSettingWithDefault(db, 'alert_takeover', '1')) === '1';
       if (vibrateOn) Vibration.vibrate(400);
-      if (takeoverOn && newStep) setTakeoverStep(newStep);
-      // A takeover-class alert is the one thing that overrides a pinned lane
-      // (§5.6) — it is exactly the interruption the cook asked to be given.
-      if (newStep) {
-        const takeoverLaneKey = laneKeyOf(newStep);
-        const { key, releasePin } = resolveVisibleLane({
-          statuses: laneStatuses(lanes, timingById, runtime, computeElapsedSeconds(updated, Date.now()), updated.driftSeconds),
-          pinnedKey: pinnedLaneKey,
-          currentKey: visibleLaneKey,
-          takeoverLaneKey,
-        });
-        if (releasePin) setPinnedLaneKey(null);
-        setVisibleLaneKey(key);
-        setViewingStepId(null);
+      if (newStep) flashLane(laneKeyOf(newStep));
+    }
+  }
+
+  // §D1 auto-advance within a lane: complete an overdue live step and start the
+  // next step *in the same lane*. This is what makes intra-lane steps progress
+  // reliably from the master clock, independent of the merged timeline order.
+  // A backward peek (viewingStepId) is never disturbed — this only writes step
+  // completion + starts the next; the displayed step follows the visible lane.
+  async function advanceLaneStep(overdueStepId: number) {
+    if (!session || advancing.current) return;
+    const lane = lanes.find((l) => l.stepIds.includes(overdueStepId));
+    if (!lane) return;
+    const idx = lane.stepIds.indexOf(overdueStepId);
+    const nextInLane = lane.stepIds[idx + 1] ?? null;
+    const now = new Date().toISOString();
+    advancing.current = true;
+    try {
+      await completeStep(db, session.id, overdueStepId, now);
+      if (nextInLane != null) {
+        // Move the session pointer + start the next step so it gets a real
+        // actualStartOffset (drift/phase track the most recently started step).
+        await advanceToStep(db, session, nextInLane, now);
+        const nextStep = stepById.get(nextInLane);
+        if (nextStep && nextStep.phase !== session.phase) await setPhase(db, session, nextStep.phase, now);
       }
+
+      let updated = await reloadSession(session.id);
+      if (!updated) return;
+      if (nextInLane != null) {
+        const nextTiming = stepTimings.find((s) => s.id === nextInLane);
+        if (nextTiming) {
+          const drift = Math.max(0, computeDriftSeconds(nextTiming, computeElapsedSeconds(updated, Date.now())));
+          if (drift !== updated.driftSeconds) {
+            await updateDrift(db, updated, drift, now);
+            updated = await reloadSession(session.id);
+          }
+        }
+      }
+      if (!updated) return;
+      const runtime = await loadStepRuntime(db, updated.id, updated.startedAt);
+      setStepRuntime(runtime);
+      await reconcileNotificationsFor(updated, runtime);
+
+      // Alert on the completed step's timer (passive/important), same rule as a
+      // manual advance — the timer that just ran out is exactly the moment the
+      // takeover/vibrate was asked for.
+      const completedStep = stepById.get(overdueStepId);
+      const nextStep = nextInLane != null ? stepById.get(nextInLane) : null;
+      const shouldAlert = (completedStep?.effort === 'passive' && completedStep.durationSeconds != null) || nextStep?.important;
+      if (shouldAlert && lastAlertedStepId.current !== overdueStepId) {
+        lastAlertedStepId.current = overdueStepId;
+        // §C1: vibrate + flash the lane, never a screen-stealing takeover.
+        const vibrateOn = (await getSettingWithDefault(db, 'alert_vibrate', '1')) === '1';
+        if (vibrateOn) Vibration.vibrate(400);
+        flashLane(laneKeyOf(nextStep ?? completedStep));
+      }
+    } finally {
+      advancing.current = false;
     }
   }
 
@@ -382,6 +448,33 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   const laneLiveStepId = visibleStatus?.liveStepId ?? visibleLaneStepIds[visibleLaneStepIds.length - 1] ?? null;
   const displayedStepId = viewingStepId ?? laneLiveStepId ?? session?.currentStepId ?? null;
 
+  // §D1/§C2: drive auto-advance off the per-lane statuses. When ON, any lane
+  // whose timed live step has elapsed advances itself. When OFF, do nothing — the
+  // due step stays live, its timer keeps counting, and drift accrues (the "N min
+  // behind" banner communicates pacing). No confirm dialog: the cook advances by
+  // hand with the forward arrow, which now completes instantly (§C2).
+  useEffect(() => {
+    if (stage !== 'active' || !session || session.pausedAt != null || isReady) return;
+    if (!autoAdvance) return;
+    const dueStepIds = lanesReadyToAdvance(statuses);
+    if (dueStepIds.length === 0) return;
+    advanceLaneStep(dueStepIds[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statuses, autoAdvance, stage, session?.pausedAt, isReady]);
+
+  // §C3: a fresh step re-evaluates every lane banner — a lane the cook dismissed
+  // while on the previous step may legitimately need starting now.
+  useEffect(() => {
+    setDismissedLaneKeys(new Set());
+  }, [session?.currentStepId]);
+
+  // §C3: the parallel lane the cook should be nudged to start now, if any. Only
+  // meaningful with auto-advance OFF (lanes don't self-advance) and >1 lane.
+  const bannerLane = useMemo(() => {
+    if (autoAdvance || !showLaneTabs) return null;
+    return laneBannerTarget(statuses, visibleLaneKey, Array.from(dismissedLaneKeys));
+  }, [autoAdvance, showLaneTabs, statuses, visibleLaneKey, dismissedLaneKeys]);
+
   function selectLane(key: string) {
     if (key === visibleLaneKey) return;
     setVisibleLaneKey(key);
@@ -423,24 +516,13 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
       return;
     }
 
-    // Past the live step, → is not a peek: it marks the current step done and
-    // moves the timeline on. That is easy to fire by accident with wet hands
-    // three steps ahead of yourself, and there is no undo for a completed
-    // step — so it asks first. Peeking backward and forward inside what's
-    // already live stays instant, because nothing there commits.
-    const leaving = session.currentStepId != null ? stepById.get(session.currentStepId) : null;
-    const arriving = stepById.get(next);
-    confirm(
-      'Move on to the next step?',
-      leaving
-        ? `“${leaving.instruction}” gets marked done and the timeline moves on to “${arriving?.instruction ?? 'the next step'}”.`
-        : 'The timeline moves on to the next step.',
-      'Move on',
-      () => {
-        handleAdvance(next, false);
-        setViewingStepId(null);
-      },
-    );
+    // Past the live step, → marks the current step done and moves the timeline
+    // on. This is now instant with no confirm (§C2/§C5) — the blocking dialogs
+    // that broke parallel lanes are gone. The "Reset step timer" control (shown
+    // once you've peeked ← back to a completed step) is the undo for an
+    // accidental tap, since a completed step has no other way back.
+    handleAdvance(next, false);
+    setViewingStepId(null);
   }
 
   // "Back to live" (§5.6) — drops both the step peek and the lane pin, so the
@@ -448,6 +530,47 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   function handleGoToCurrentStep() {
     setViewingStepId(null);
     setPinnedLaneKey(null);
+  }
+
+  // §C2: recover from an accidental instant-advance. The cook peeks ← back to an
+  // already-completed step; this makes it live again and restarts its timer.
+  function handleResetStepTimer() {
+    if (!session || displayedStepId == null) return;
+    const target = displayedStepId;
+    confirm(
+      "Reset this step's timer?",
+      'Marks it the current step again and restarts its timer from now.',
+      'Reset timer',
+      async () => {
+        await resetToStep(db, session, target, visibleLaneStepIds);
+        const updated = await reloadSession(session.id);
+        if (updated) {
+          const runtime = await loadStepRuntime(db, updated.id, updated.startedAt);
+          setStepRuntime(runtime);
+          await reconcileNotificationsFor(updated, runtime);
+        }
+        lastAlertedStepId.current = null;
+        setViewingStepId(null);
+      },
+    );
+  }
+
+  // §C4: "Cancel cook" — throw the session away (logs nothing), distinct from
+  // Complete (logs the cook) and Exit (keeps it resumable). Confirmed first.
+  function handleCancelCook() {
+    confirm(
+      'Cancel this cook?',
+      'Your progress for this session is discarded. Nothing is logged.',
+      'Cancel cook',
+      async () => {
+        if (session) {
+          await cancelAllCookingNotifications();
+          await discardSession(db, session.id);
+        }
+        onExit();
+      },
+      true,
+    );
   }
 
   async function handleExit() {
@@ -557,6 +680,10 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
   const liveStepRemaining = currentTiming?.durationSeconds != null ? Math.max(0, currentTiming.durationSeconds - stepElapsed) : null;
   const isPaused = session.pausedAt != null;
   const stepIndex = visibleLaneStepIds.indexOf(displayedStepId ?? -1);
+  // §C2: the cook has peeked ← back to an already-completed step (behind the
+  // visible lane's live step) — offer to reset its timer / make it live again.
+  const liveIndexInLane = laneLiveStepId != null ? visibleLaneStepIds.indexOf(laneLiveStepId) : -1;
+  const displayedBehindLive = !isReady && stepIndex >= 0 && liveIndexInLane >= 0 && stepIndex < liveIndexInLane;
 
   return (
     <View style={[styles.container, edgeStyle]}>
@@ -579,8 +706,18 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
       )}
 
       {showLaneTabs && (
-        <View style={styles.laneTabs} testID="lane-tabs">
-          {statuses.map((status) => {
+        // §D2: a bounded, horizontally-scrollable strip with fixed-width tabs —
+        // ~3 fit per screen so the strip never grows vertically or eats the step
+        // area. The 3 most relevant lanes (visible + attention-needing) are
+        // ordered first so they show without scrolling; the rest scroll into view.
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.laneTabs}
+          contentContainerStyle={styles.laneTabsContent}
+          testID="lane-tabs"
+        >
+          {visibleLaneWindow(statuses, visibleLaneKey, statuses.length).map((status) => {
             const active = status.key === visibleLaneKey;
             return (
               <Pressable
@@ -589,7 +726,7 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
                 testID={`lane-tab-${status.key}`}
-                style={[styles.laneTab, active && styles.laneTabActive]}
+                style={[styles.laneTab, active && styles.laneTabActive, status.key === flashLaneKey && styles.laneTabFlash]}
               >
                 <Text
                   style={[
@@ -607,6 +744,25 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
               </Pressable>
             );
           })}
+        </ScrollView>
+      )}
+
+      {bannerLane && (
+        // §C3: a gentle, dismissable nudge to get a second lane going. Tapping
+        // the body switches to that lane; ✕ dismisses it until the next step.
+        <View style={styles.laneBanner}>
+          <TouchableOpacity style={styles.laneBannerBody} onPress={() => selectLane(bannerLane.key)} accessibilityRole="button">
+            <Text style={styles.laneBannerText} numberOfLines={2}>
+              ⏱ Start “{bannerLane.name}” now — you'll want it going too.
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setDismissedLaneKeys((prev) => new Set(prev).add(bannerLane.key))}
+            hitSlop={8}
+            accessibilityLabel={`Dismiss start ${bannerLane.name}`}
+          >
+            <Text style={styles.laneBannerDismiss}>✕</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -621,7 +777,7 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
           <View style={styles.stepTimerRow}>
             <ClockIcon size={22} color={theme.colors.accentText} />
             <Text style={styles.stepTimer}>
-              {formatDuration(
+              {formatDurationPrecise(
                 !isReady && displayedStepId === laneLiveStepId
                   ? liveStepRemaining ?? 0
                   : currentTiming.durationSeconds,
@@ -631,9 +787,16 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
         )}
 
         {!isViewingLive && !isReady && (
-          <TouchableOpacity style={styles.goToLiveButton} onPress={handleGoToCurrentStep} testID="back-to-live">
-            <Text style={styles.goToLiveButtonText}>Back to live</Text>
-          </TouchableOpacity>
+          <View style={styles.peekActionsRow}>
+            <TouchableOpacity style={styles.goToLiveButton} onPress={handleGoToCurrentStep} testID="back-to-live">
+              <Text style={styles.goToLiveButtonText}>Back to live</Text>
+            </TouchableOpacity>
+            {displayedBehindLive && (
+              <TouchableOpacity style={styles.resetStepButton} onPress={handleResetStepTimer} testID="reset-step-timer">
+                <Text style={styles.resetStepButtonText}>Reset step timer</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
 
         <View style={styles.divider} />
@@ -684,9 +847,16 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
           <Text style={styles.completeButtonText}>Complete</Text>
         </TouchableOpacity>
       )}
-      <TouchableOpacity style={styles.exitButton} onPress={handleExit}>
-        <Text style={styles.exitButtonText}>{isReady ? 'Exit' : 'Exit (keeps your progress)'}</Text>
-      </TouchableOpacity>
+      <View style={styles.exitRow}>
+        <TouchableOpacity style={styles.exitButton} onPress={handleExit}>
+          <Text style={styles.exitButtonText}>{isReady ? 'Exit' : 'Exit (keeps your progress)'}</Text>
+        </TouchableOpacity>
+        {!isReady && (
+          <TouchableOpacity style={styles.cancelCookButton} onPress={handleCancelCook} testID="cancel-cook">
+            <Text style={styles.cancelCookButtonText}>Cancel cook</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       <CookingQuickAskSheet
         visible={showQuickAsk}
@@ -705,13 +875,6 @@ export function CookingModeScreen({ recipe, onExit, onComplete }: CookingModeScr
         onClose={() => setShowStepList(false)}
       />
 
-      <ConfirmModal
-        visible={takeoverStep != null}
-        title="Next step"
-        message={takeoverStep?.instruction}
-        buttons={[{ label: 'Got it', onPress: () => setTakeoverStep(null) }]}
-        onRequestClose={() => setTakeoverStep(null)}
-      />
       {infoModal}
     </View>
   );
@@ -774,9 +937,9 @@ function StepListModal({
 function laneTimerLabel(status: LaneStatus): string {
   if (status.state === 'done') return 'done';
   if (status.seconds == null) return `${status.completedCount}/${status.totalCount}`;
-  if (status.state === 'waiting') return `in ${formatDuration(status.seconds)}`;
+  if (status.state === 'waiting') return `in ${formatDurationPrecise(status.seconds)}`;
   if (status.state === 'overdue') return 'now';
-  return formatDuration(status.seconds);
+  return formatDurationPrecise(status.seconds);
 }
 
 const makeStyles = (theme: AppTheme) =>
@@ -805,12 +968,13 @@ const makeStyles = (theme: AppTheme) =>
   // A resting clock reads ink-3 and no lighter — at three feet in bad light
   // that contrast IS the "not started yet" affordance (redesign R6.8.1).
   clockResting: { color: theme.colors.ink3 },
-  laneTabs: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+  // §D2: a single, non-growing row. Fixed-width tabs keep sizing consistent
+  // whatever the lane count; ~3 fit per screen and the rest scroll horizontally.
+  laneTabs: { flexGrow: 0 },
+  laneTabsContent: { flexDirection: 'row', gap: theme.spacing.sm, paddingRight: theme.spacing.base },
   laneTab: {
     minHeight: 44,
-    minWidth: 84,
-    flexGrow: 1,
-    flexBasis: 0,
+    width: 112,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radius.pill,
@@ -820,6 +984,9 @@ const makeStyles = (theme: AppTheme) =>
     gap: 2,
   },
   laneTabActive: { backgroundColor: theme.colors.accentTint },
+  // §C1: the transient pulse that replaces the old takeover — an accent ring so
+  // the cook's eye is drawn to the lane without the screen being stolen.
+  laneTabFlash: { borderWidth: 2, borderColor: theme.colors.amberText, backgroundColor: theme.colors.amberTint },
   laneTabName: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
   laneTabNameActive: { color: theme.colors.accentText },
   laneTabTimer: { fontFamily: theme.fonts.data.medium, fontSize: theme.fontSize.xs, color: theme.colors.ink3 },
@@ -838,6 +1005,7 @@ const makeStyles = (theme: AppTheme) =>
   },
   stepTimerRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
   stepTimer: { fontFamily: theme.fonts.data.semiBold, fontSize: theme.fontSize.xl, color: theme.colors.accentText },
+  peekActionsRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
   goToLiveButton: {
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.sm,
@@ -845,6 +1013,28 @@ const makeStyles = (theme: AppTheme) =>
     backgroundColor: theme.colors.accentTint,
   },
   goToLiveButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.accentText },
+  // §C2: recovery control for an accidental instant-advance. Amber (a caution,
+  // not a destructive red) — it restarts a timer, it doesn't delete anything.
+  resetStepButton: {
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.amberTint,
+  },
+  resetStepButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.amberText },
+  // §C3: the "start the other lane" nudge — an amber info banner, dismissable.
+  laneBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.amberTint,
+    borderRadius: theme.radius.tile,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.sm,
+  },
+  laneBannerBody: { flex: 1 },
+  laneBannerText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.amberText },
+  laneBannerDismiss: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.amberText, paddingHorizontal: theme.spacing.xs },
   divider: { height: 1, width: '100%', backgroundColor: theme.colors.border },
   nextPeek: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.base, color: theme.colors.ink2 },
   controlsRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
@@ -859,14 +1049,25 @@ const makeStyles = (theme: AppTheme) =>
   quickAskGlyph: { fontSize: 22 },
   completeButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.card, paddingVertical: theme.spacing.base, alignItems: 'center' },
   completeButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },
+  exitRow: { flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.base },
   exitButton: {
+    flex: 1,
     backgroundColor: theme.colors.chipBg,
     borderRadius: theme.radius.card,
     paddingVertical: theme.spacing.sm,
     alignItems: 'center',
-    marginBottom: theme.spacing.base,
   },
   exitButtonText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },
+  // §C4: destructive discard, visually distinct from Complete (accent) and Exit.
+  cancelCookButton: {
+    backgroundColor: theme.colors.redTint,
+    borderRadius: theme.radius.card,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelCookButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.sm, color: theme.colors.red },
   primaryButton: { backgroundColor: theme.colors.accent, borderRadius: theme.radius.card, paddingVertical: theme.spacing.base, alignItems: 'center' },
   primaryButtonInProgress: { backgroundColor: theme.colors.accentTint },
   primaryButtonText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.base, color: theme.colors.accentFg },

@@ -8,11 +8,13 @@
 // custom theme is a plain `Theme` (see customTheme.ts), so everything
 // downstream is identical whether the active theme shipped with the app or was
 // made in the creator.
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AppState } from 'react-native';
 import type { DbClient } from '../db/DbClient';
 import { logger } from '../debug/logStore';
 import { getSetting } from '../settings/getSetting';
 import { setSetting } from '../settings/setSetting';
+import { nextBoundaryMs, themeIdForTime } from './autoThemeSchedule';
 import { buildCustomTheme } from './customTheme';
 import { deriveVisuals, type VisualTokens } from './deriveVisuals';
 import { loadCustomThemeDefs } from './themeStorage';
@@ -20,6 +22,28 @@ import { fonts, fontSize, radius, spacing, type Fonts, type FontSize, type Radiu
 import { DEFAULT_THEME_ID, themes, type Theme } from './themes';
 
 export const THEME_SETTING_KEY = 'theme';
+
+// §A1 automatic day/night settings.
+export const AUTO_THEME_ENABLED_KEY = 'auto_theme_enabled';
+export const THEME_DAY_ID_KEY = 'theme_day_id';
+export const THEME_NIGHT_ID_KEY = 'theme_night_id';
+export const THEME_DAY_TIME_KEY = 'theme_day_time';
+export const THEME_NIGHT_TIME_KEY = 'theme_night_time';
+export const DEFAULT_DAY_TIME = '08:00';
+export const DEFAULT_NIGHT_TIME = '18:00';
+
+export interface AutoThemeConfig {
+  enabled: boolean;
+  dayId: string;
+  /** Empty until the user picks a night theme — the feature is inert until set. */
+  nightId: string;
+  dayTime: string;
+  nightTime: string;
+}
+
+function defaultAutoConfig(): AutoThemeConfig {
+  return { enabled: false, dayId: DEFAULT_THEME_ID, nightId: '', dayTime: DEFAULT_DAY_TIME, nightTime: DEFAULT_NIGHT_TIME };
+}
 
 // What components actually consume: the active theme's colour/category/mode
 // data merged with the shared, non-themed type & layout tokens. The shape is
@@ -79,6 +103,9 @@ interface ThemeContextValue {
   customThemes: Record<string, Theme>;
   // Re-read custom themes from the DB after the creator saves/deletes one.
   refreshCustomThemes: () => Promise<void>;
+  // §A1 automatic day/night config + a setter the picker uses to update it.
+  autoTheme: AutoThemeConfig;
+  setAutoTheme: (config: AutoThemeConfig) => Promise<void>;
 }
 
 // Default context = Hearth with a no-op setter. A component rendered without a
@@ -90,6 +117,8 @@ const ThemeContext = createContext<ThemeContextValue>({
   setTheme: async () => {},
   customThemes: {},
   refreshCustomThemes: async () => {},
+  autoTheme: defaultAutoConfig(),
+  setAutoTheme: async () => {},
 });
 
 interface ThemeProviderProps {
@@ -107,6 +136,7 @@ interface ThemeProviderProps {
 export function ThemeProvider({ db, children, overrideThemeId, overrideTheme }: ThemeProviderProps) {
   const [storedThemeId, setStoredThemeId] = useState<string>(DEFAULT_THEME_ID);
   const [customThemes, setCustomThemes] = useState<Record<string, Theme>>({});
+  const [autoTheme, setAutoThemeState] = useState<AutoThemeConfig>(defaultAutoConfig);
 
   const refreshCustomThemes = useCallback(async () => {
     if (!db) return;
@@ -165,6 +195,92 @@ export function ThemeProvider({ db, children, overrideThemeId, overrideTheme }: 
     [db],
   );
 
+  // §A1: keep the latest stored id in a ref so timer/AppState callbacks compare
+  // against the current value, not the one captured when the timer was armed.
+  const storedRef = useRef(storedThemeId);
+  storedRef.current = storedThemeId;
+
+  // Load the persisted auto-theme config on mount.
+  useEffect(() => {
+    if (!db || overrideTheme || overrideThemeId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [enabled, dayId, nightId, dayTime, nightTime] = await Promise.all([
+          getSetting(db, AUTO_THEME_ENABLED_KEY),
+          getSetting(db, THEME_DAY_ID_KEY),
+          getSetting(db, THEME_NIGHT_ID_KEY),
+          getSetting(db, THEME_DAY_TIME_KEY),
+          getSetting(db, THEME_NIGHT_TIME_KEY),
+        ]);
+        if (cancelled) return;
+        setAutoThemeState({
+          enabled: enabled === '1',
+          dayId: dayId || DEFAULT_THEME_ID,
+          nightId: nightId || '',
+          dayTime: dayTime || DEFAULT_DAY_TIME,
+          nightTime: nightTime || DEFAULT_NIGHT_TIME,
+        });
+      } catch (error) {
+        logger.warn('ui', 'Failed to load auto-theme settings', { error: String(error) });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [db, overrideTheme, overrideThemeId]);
+
+  const setAutoTheme = useCallback(
+    async (config: AutoThemeConfig) => {
+      setAutoThemeState(config);
+      if (!db) return;
+      try {
+        await setSetting(db, AUTO_THEME_ENABLED_KEY, config.enabled ? '1' : '0');
+        await setSetting(db, THEME_DAY_ID_KEY, config.dayId);
+        await setSetting(db, THEME_NIGHT_ID_KEY, config.nightId);
+        await setSetting(db, THEME_DAY_TIME_KEY, config.dayTime);
+        await setSetting(db, THEME_NIGHT_TIME_KEY, config.nightTime);
+      } catch (error) {
+        logger.error('ui', 'Failed to persist auto-theme settings', { error: String(error) });
+      }
+    },
+    [db],
+  );
+
+  // Compute the scheduled theme for "now" and apply it if it differs. Never
+  // fights an active preview (override*), and never runs when auto is off or no
+  // night theme has been chosen (feature inert until set — §A1).
+  const applyScheduledTheme = useCallback(() => {
+    if (overrideThemeId || overrideTheme) return;
+    if (!autoTheme.enabled || !autoTheme.nightId || !autoTheme.dayId) return;
+    const target = themeIdForTime(new Date(), autoTheme.dayTime, autoTheme.nightTime, autoTheme.dayId, autoTheme.nightId);
+    if (storedRef.current !== target) void setTheme(target);
+  }, [autoTheme, overrideThemeId, overrideTheme, setTheme]);
+
+  // Apply on mount/config-change, re-arm a timer for the next boundary, and
+  // re-apply whenever the app returns to the foreground.
+  useEffect(() => {
+    if (overrideThemeId || overrideTheme) return;
+    if (!autoTheme.enabled || !autoTheme.nightId) return;
+    applyScheduledTheme();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const arm = () => {
+      const ms = nextBoundaryMs(new Date(), autoTheme.dayTime, autoTheme.nightTime);
+      timer = setTimeout(() => {
+        applyScheduledTheme();
+        arm();
+      }, ms + 500);
+    };
+    arm();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') applyScheduledTheme();
+    });
+    return () => {
+      if (timer) clearTimeout(timer);
+      sub.remove();
+    };
+  }, [autoTheme, applyScheduledTheme, overrideThemeId, overrideTheme]);
+
   const activeId = overrideThemeId ?? storedThemeId;
   const activeTheme = overrideTheme ?? resolveTheme(activeId, customThemes);
   const value = useMemo<ThemeContextValue>(
@@ -174,8 +290,10 @@ export function ThemeProvider({ db, children, overrideThemeId, overrideTheme }: 
       setTheme,
       customThemes,
       refreshCustomThemes,
+      autoTheme,
+      setAutoTheme,
     }),
-    [activeTheme, setTheme, customThemes, refreshCustomThemes],
+    [activeTheme, setTheme, customThemes, refreshCustomThemes, autoTheme, setAutoTheme],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
@@ -199,4 +317,10 @@ export function useCustomThemes(): {
 } {
   const { customThemes, refreshCustomThemes } = useContext(ThemeContext);
   return { customThemes, refreshCustomThemes };
+}
+
+/** §A1: the automatic day/night config + its setter, for the theme hub UI. */
+export function useAutoTheme(): { autoTheme: AutoThemeConfig; setAutoTheme: (config: AutoThemeConfig) => Promise<void> } {
+  const { autoTheme, setAutoTheme } = useContext(ThemeContext);
+  return { autoTheme, setAutoTheme };
 }

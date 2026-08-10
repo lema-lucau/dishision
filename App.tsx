@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAutoBackup } from './src/backup/useAutoBackup';
+import { useHouseholdSync } from './src/household/useHouseholdSync';
 import { DbProvider } from './src/db/DbContext';
 import { openDatabase } from './src/db/openDatabase';
 import { logger } from './src/debug/logStore';
@@ -61,6 +62,8 @@ function ThemedRoot({
   useDeepLinkListener();
   // §10: writes an automatic local backup on every active -> background transition.
   useAutoBackup(db);
+  // §E: always-on foreground responder + auto-sync on foreground/change.
+  useHouseholdSync(db, profile);
   return (
     <>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />

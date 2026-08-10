@@ -18,7 +18,8 @@ import { ListRow, Sheet } from '../components/ui';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { capitalize } from '../lib/capitalize';
-import { formatDuration } from '../lib/formatDuration';
+import { formatDuration, formatMinSec } from '../lib/formatDuration';
+import { combineMinutesSeconds, minutesPart, secondsPart } from '../lib/stepDuration';
 import { UNIT_OPTIONS } from '../lib/unitLabels';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import { laneColor, phaseColor, timeTagColor } from '../theme/stepColors';
@@ -518,7 +519,7 @@ export function RecipeFormScreen({
                     )}
                     {step.durationSeconds != null && (
                       <View style={[styles.stepBadge, { backgroundColor: timeColors.bg }]}>
-                        <Text style={[styles.stepBadgeText, { color: timeColors.fg }]}>{formatDuration(step.durationSeconds)}</Text>
+                        <Text style={[styles.stepBadgeText, { color: timeColors.fg }]}>{formatMinSec(step.durationSeconds)}</Text>
                       </View>
                     )}
                     {step.important && (
@@ -579,28 +580,44 @@ export function RecipeFormScreen({
               ))}
             </View>
           )}
+          {/* §B1: Duration is mins + seconds; a seconds-only step is fine. */}
           <View style={styles.inlineRow}>
-            <Text style={styles.switchLabel}>Duration (mins)</Text>
+            <Text style={styles.switchLabel}>Duration</Text>
             <TextInput
               style={[styles.input, styles.flexSmall]}
               keyboardType="numeric"
-              value={step.durationSeconds != null ? String(step.durationSeconds / 60) : ''}
-              onChangeText={(v) => updateStep(index, { durationSeconds: v ? Number(v) * 60 : undefined })}
-              placeholder="—"
+              value={minutesPart(step.durationSeconds)}
+              onChangeText={(v) => updateStep(index, { durationSeconds: combineMinutesSeconds(v, secondsPart(step.durationSeconds)) })}
+              placeholder="mins"
             />
-            {draft.timelineMode === 'parallel' && (
-              <>
-                <Text style={styles.switchLabel}>Offset (mins)</Text>
-                <TextInput
-                  style={[styles.input, styles.flexSmall]}
-                  keyboardType="numeric"
-                  value={step.startOffsetSeconds != null ? String(step.startOffsetSeconds / 60) : ''}
-                  onChangeText={(v) => updateStep(index, { startOffsetSeconds: v ? Number(v) * 60 : undefined })}
-                  placeholder="0"
-                />
-              </>
-            )}
+            <TextInput
+              style={[styles.input, styles.flexSmall]}
+              keyboardType="numeric"
+              value={secondsPart(step.durationSeconds)}
+              onChangeText={(v) => updateStep(index, { durationSeconds: combineMinutesSeconds(minutesPart(step.durationSeconds), v) })}
+              placeholder="secs"
+            />
           </View>
+          {/* §B1: Offset gets its own row in parallel mode — mins + seconds. */}
+          {draft.timelineMode === 'parallel' && (
+            <View style={styles.inlineRow}>
+              <Text style={styles.switchLabel}>Offset</Text>
+              <TextInput
+                style={[styles.input, styles.flexSmall]}
+                keyboardType="numeric"
+                value={minutesPart(step.startOffsetSeconds)}
+                onChangeText={(v) => updateStep(index, { startOffsetSeconds: combineMinutesSeconds(v, secondsPart(step.startOffsetSeconds)) })}
+                placeholder="mins"
+              />
+              <TextInput
+                style={[styles.input, styles.flexSmall]}
+                keyboardType="numeric"
+                value={secondsPart(step.startOffsetSeconds)}
+                onChangeText={(v) => updateStep(index, { startOffsetSeconds: combineMinutesSeconds(minutesPart(step.startOffsetSeconds), v) })}
+                placeholder="secs"
+              />
+            </View>
+          )}
           <View style={styles.inlineRow}>
             <View style={styles.segmented}>
               {(['active', 'passive'] as Effort[]).map((e) => (

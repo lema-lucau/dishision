@@ -9,6 +9,7 @@ import { migration008 } from './008_prune_empty_bot_chats';
 import { migration009 } from './009_sync_log_items';
 import { migration010 } from './010_bot_usage_surface';
 import { migration011 } from './011_bot_chat_cook_log';
+import { migration012 } from './012_bot_recipe_versions';
 
 export interface Migration {
   version: number;
@@ -29,4 +30,5 @@ export const migrations: Migration[] = [
   { version: 9, sql: migration009 },
   { version: 10, sql: migration010 },
   { version: 11, sql: migration011 },
+  { version: 12, sql: migration012 },
 ];

@@ -6,7 +6,9 @@
 // "Refine after cooking" just leaves a note for later.
 import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Sheet } from '../components/ui';
+import { hapticLight } from '../components/ui/haptics';
 import { useDb } from '../db/DbContext';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { ApiMessage } from './anthropicClient';
@@ -45,7 +47,17 @@ export function CookingQuickAskSheet({ visible, onClose, recipeId, recipeName, i
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [noted, setNoted] = useState(false);
+  const [copied, setCopied] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function copyBubble(content: string) {
+    await Clipboard.setStringAsync(content);
+    hapticLight();
+    setCopied(true);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopied(false), 1400);
+  }
 
   function contextFragment(): string {
     const lines = [`The user is cooking "${recipeName}" right now.`];
@@ -92,7 +104,7 @@ export function CookingQuickAskSheet({ visible, onClose, recipeId, recipeName, i
   async function noteForLater() {
     // Capture the most recent thing the user asked about, or a generic marker.
     const lastQuestion = [...items].reverse().find((i) => i.role === 'user')?.content;
-    await setPendingCookNote(db, recipeId, lastQuestion ? `Mid-cook note: ${lastQuestion}` : 'Refine based on how this cook went.');
+    await setPendingCookNote(db, recipeId, lastQuestion ? `Mid-cook: ${lastQuestion}` : 'Refine based on how this cook went.');
     setNoted(true);
   }
 
@@ -104,13 +116,25 @@ export function CookingQuickAskSheet({ visible, onClose, recipeId, recipeName, i
             <Text style={styles.hint}>Quick questions only — I won't change your recipe while you're cooking.</Text>
           )}
           {items.map((item, i) => (
-            <View key={i} style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.botBubble]}>
+            <TouchableOpacity
+              key={i}
+              activeOpacity={0.7}
+              onLongPress={() => copyBubble(item.content)}
+              delayLongPress={300}
+              accessibilityHint="Long-press to copy this message"
+              style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.botBubble]}
+            >
               <Text style={[styles.bubbleText, item.role === 'user' ? styles.userText : styles.botText]}>{item.content}</Text>
-            </View>
+            </TouchableOpacity>
           ))}
           {sending && <ActivityIndicator color={theme.colors.accent} style={{ marginTop: theme.spacing.sm }} />}
           {error && <Text style={styles.error}>{error}</Text>}
         </ScrollView>
+        {copied && (
+          <View style={styles.copiedToast} pointerEvents="none">
+            <Text style={styles.copiedToastText}>Copied</Text>
+          </View>
+        )}
 
         {items.length === 0 && (
           <View style={styles.chipRow}>
@@ -161,6 +185,8 @@ const makeStyles = (theme: AppTheme) =>
     userText: { color: theme.colors.accentFg },
     botText: { color: theme.colors.ink },
     error: { fontFamily: theme.fonts.body.medium, fontSize: theme.fontSize.sm, color: theme.colors.red },
+    copiedToast: { alignSelf: 'center', backgroundColor: theme.colors.ink, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.base, paddingVertical: theme.spacing.xs },
+    copiedToastText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.xs, color: theme.colors.bg },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
     chip: { backgroundColor: theme.colors.chipBg, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm },
     chipText: { fontFamily: theme.fonts.body.semiBold, fontSize: theme.fontSize.sm, color: theme.colors.ink2 },

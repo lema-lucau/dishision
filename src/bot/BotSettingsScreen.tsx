@@ -4,6 +4,7 @@
 // links out), the model, and the §5.1 tweakable behaviours.
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
@@ -71,6 +72,7 @@ function ChipRow<T extends string>({
 export function BotSettingsScreen({ onBack }: BotSettingsScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const db = useDb();
   const { modal, notice } = useConfirmModal();
 
@@ -172,7 +174,7 @@ export function BotSettingsScreen({ onBack }: BotSettingsScreenProps) {
   const maskedValue = revealKey ? keyInput : keyInput ? '•'.repeat(Math.min(keyInput.length, 40)) : '';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingTop: insets.top + theme.spacing.base }]}>
       <TouchableOpacity onPress={onBack}>
         <Text style={styles.back}>← Back</Text>
       </TouchableOpacity>

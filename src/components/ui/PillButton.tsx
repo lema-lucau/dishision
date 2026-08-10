@@ -51,11 +51,17 @@ export function PillButton({
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const reduceMotion = useReducedMotion();
 
-  const labelColor = destructive
-    ? theme.colors.red
-    : variant === 'accent'
-      ? theme.colors.accentFg
-      : theme.colors.accentText;
+  // A *solid* destructive (accent variant + destructive) is a filled red button
+  // with light text — for a decisive "Discard"/delete. A soft destructive is
+  // red-tinted with red text; a ghost destructive keeps red text on transparent.
+  const solidDestructive = destructive && variant === 'accent';
+  const labelColor = solidDestructive
+    ? theme.colors.accentFg
+    : destructive
+      ? theme.colors.red
+      : variant === 'accent'
+        ? theme.colors.accentFg
+        : theme.colors.accentText;
 
   function handlePress() {
     if (disabled) return;
@@ -67,7 +73,10 @@ export function PillButton({
     styles.shape,
     size === 'small' && styles.shapeSmall,
     fullWidth && styles.fullWidth,
-    variant === 'soft' && { backgroundColor: theme.colors.accentTint },
+    // A soft destructive is a *filled* red-tinted button (H1) — clearly a
+    // button, not the transparent ghost that blends into a card behind it.
+    variant === 'soft' && { backgroundColor: destructive ? theme.colors.redTint : theme.colors.accentTint },
+    solidDestructive && { backgroundColor: theme.colors.red },
     variant === 'ghost' && styles.ghost,
     disabled && styles.disabled,
     style,
@@ -92,7 +101,7 @@ export function PillButton({
         pressed && !reduceMotion && !disabled && styles.pressed,
       ]}
     >
-      {variant === 'accent' ? (
+      {variant === 'accent' && !solidDestructive ? (
         <LinearGradient
           colors={theme.gradients.accent.colors}
           start={theme.gradients.accent.start}

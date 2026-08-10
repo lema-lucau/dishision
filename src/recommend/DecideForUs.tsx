@@ -176,7 +176,8 @@ const makeStyles = (theme: AppTheme) =>
       fontFamily: theme.fonts.body.bold,
       fontSize: theme.fontSize.xs,
       letterSpacing: theme.fontSize.xs * 0.13,
-      color: theme.colors.ink,
+      // On-photo chip ink — reads on the light chip in both theme modes (A5).
+      color: theme.onPhoto.chipInk,
     },
     dishName: {
       fontFamily: theme.fonts.display.bold,

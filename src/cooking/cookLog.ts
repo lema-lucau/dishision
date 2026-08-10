@@ -1,6 +1,7 @@
 // §5.9 cook log CRUD. Counts, ratings, and streaks are never stored here or
 // anywhere else (§2.5) — they're derived fresh from these rows every read.
 import type { DbClient } from '../db/DbClient';
+import { markHouseholdDirty } from '../household/autoSync';
 import { capitalize } from '../lib/capitalize';
 
 export interface CookLogDraft {
@@ -101,6 +102,7 @@ export async function updateCookLog(db: DbClient, cookLogId: number, draft: Cook
     await writeTags(db, cookLogId, draft.quickTags);
     await writePhotos(db, cookLogId, draft.photos);
     await db.execAsync('COMMIT');
+    markHouseholdDirty(); // §E: an edited rating/notes should re-sync opinions
   } catch (error) {
     await db.execAsync('ROLLBACK');
     throw error;

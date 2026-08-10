@@ -112,3 +112,12 @@ export async function removePantryItem(db: DbClient, canonicalId: number): Promi
 export async function removePantryItems(db: DbClient, canonicalIds: number[]): Promise<void> {
   for (const id of canonicalIds) await removePantryItem(db, id);
 }
+
+// §C2 "Clear pantry" — empties every pantry_item row, including the stock held
+// against staples (the staple flags themselves survive; only the on-hand
+// quantity is cleared). Each removal still logs its 'manual' movement.
+export async function clearPantry(db: DbClient): Promise<void> {
+  const rows = await db.getAllAsync<{ canonical_id: number }>('SELECT canonical_id FROM pantry_item');
+  for (const r of rows) await removePantryItem(db, r.canonical_id);
+  logger.info('pantry', 'Pantry cleared', { count: rows.length });
+}

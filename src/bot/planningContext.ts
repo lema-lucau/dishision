@@ -6,6 +6,7 @@
 import type { DbClient } from '../db/DbClient';
 import { loadPlannedRange } from '../plan/loadPlannedRange';
 import { loadEnrichedRecipes } from '../recipes/loadRecipes';
+import { getHouseholdSize } from '../settings/getSetting';
 import { getWeeklyPlanningSettings } from './botSettings';
 import { buildLeftoverContextFragment, buildPantryContextFragment } from './surfaceContext';
 import type { PreferExisting } from './types';
@@ -13,9 +14,15 @@ import type { PreferExisting } from './types';
 export interface PlanningContext {
   /** The target days (YYYY-MM-DD), one per horizon day from the week start. */
   dates: string[];
+  /** People a batch is divided across — drives the leftover layout (§E). */
+  householdSize: number;
   contextFragment: string;
   autoMessage: string;
   instructions: string;
+}
+
+function peopleLabel(n: number): string {
+  return n === 1 ? 'one person' : `${n} people`;
 }
 
 function addDays(iso: string, n: number): string {
@@ -47,6 +54,7 @@ function preferExistingLine(pref: PreferExisting): string {
 export async function buildPlanningContext(db: DbClient, weekStartIso: string): Promise<PlanningContext> {
   const settings = await getWeeklyPlanningSettings(db);
   const horizon = Number(settings.horizon);
+  const householdSize = await getHouseholdSize(db);
   const dates = Array.from({ length: horizon }, (_, i) => addDays(weekStartIso, i));
   const weekEnd = dates[dates.length - 1];
 
@@ -67,7 +75,11 @@ export async function buildPlanningContext(db: DbClient, weekStartIso: string): 
     .join('\n');
 
   const lines: string[] = [];
-  lines.push(`Plan dinners for these days: ${dates.join(', ')}.`);
+  lines.push(`Plan the dinners to cook across the next ${dates.length} days (starting ${dates[0]}).`);
+  lines.push('');
+  lines.push(
+    `HOUSEHOLD: cooking for ${peopleLabel(householdSize)}. Return an ORDERED list of fresh dinners to cook — the app schedules leftover days between them automatically based on each recipe's batch size, so do NOT mark leftover days or assign dates yourself. Just choose the cooks, in the order they should happen, and space variety across the list. Lean on existing leftovers/pantry first.`,
+  );
   lines.push('');
   lines.push('SAVED RECIPES — reference these by id in existing_recipe_id whenever one fits:');
   lines.push(catalog || '(no recipes saved yet)');
@@ -89,14 +101,19 @@ export async function buildPlanningContext(db: DbClient, weekStartIso: string): 
     lines.push(leftovers);
   }
 
-  const instructions = `You are helping plan the week's dinners. Call propose_meal_plan with one entry per day you're planning, each with a one-line reason. ${preferExistingLine(
+  const instructions = `You are helping plan dinners for a ${peopleLabel(householdSize)} household across the next ${dates.length} days. Call propose_meal_plan with an ORDERED list of fresh dinners to cook (the "cooks" array), each with a one-line reason. ${preferExistingLine(
     settings.preferExisting,
-  )} Reference existing recipes by their id (existing_recipe_id); only use new_recipe_name when nothing saved suits. Don't re-plan a day that's already planned unless asked. If the user just chats, reply briefly and re-propose when they've given direction.`;
+  )} Reference existing recipes by their id (existing_recipe_id); only use new_recipe_name when nothing saved suits.
+
+Do NOT assign dates and do NOT mark leftover days — the app schedules the leftover days between your cooks automatically from each recipe's batch size. Just pick the cooks in the order they should happen, spacing variety across the list, and provide enough to fill the span in the worst case (up to one per day); the app stops early once coverage is reached. Lean on existing leftovers and the pantry first.
+
+Don't re-propose meals already planned this week unless asked. If the user just chats, reply briefly and re-propose when they've given direction.`;
 
   return {
     dates,
+    householdSize,
     contextFragment: lines.join('\n'),
-    autoMessage: 'Help me plan this week. Propose dinners for these days.',
+    autoMessage: `Help me plan the next ${dates.length} days of dinners. Give me an ordered list of cooks.`,
     instructions,
   };
 }

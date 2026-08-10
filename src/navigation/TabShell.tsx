@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { BackHandler, Platform, StyleSheet, Text, ToastAndroid, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { runBackHandlers } from './backStore';
 import { DebugScreen } from '../debug/DebugScreen';
 import { useSettingsStore } from '../debug/settingsStore';
 import type { Profile } from '../profile/ensureProfile';
@@ -40,12 +41,50 @@ export function TabShell({ profile, onRestored }: TabShellProps) {
   const tabBarHidden = useUiChromeStore((s) => s.tabBarHidden);
   const insets = useSafeAreaInsets();
   const pendingImport = useImportIntentStore((s) => s.pending);
+  // §F: guards the Home-root double-press-to-exit.
+  const exitArmedRef = useRef(false);
 
   // §7.2: a recipe arriving via deep link or .dishision file jumps straight
   // to the Recipes tab's import preview, whichever tab was active.
   useEffect(() => {
     if (pendingImport) setActiveTab('recipes');
   }, [pendingImport]);
+
+  // §F: the single app-root hardware-back listener (Android). Registered layers
+  // (full-screen sub-flows) get first refusal via runBackHandlers(); if none
+  // consumed the press, unwind TabShell's own layers, then non-Home → Home,
+  // then Home-root double-press to exit.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (runBackHandlers()) return true;
+      if (debugScreenOpen) {
+        setDebugScreenOpen(false);
+        return true;
+      }
+      if (themePickerOpen) {
+        setThemePickerOpen(false);
+        return true;
+      }
+      if (householdOpen) {
+        setHouseholdOpen(false);
+        return true;
+      }
+      if (activeTab !== 'home') {
+        setActiveTab('home');
+        return true;
+      }
+      // Home root: require a second press within ~2s to actually exit.
+      if (exitArmedRef.current) return false; // let the OS close the app
+      exitArmedRef.current = true;
+      ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+      setTimeout(() => {
+        exitArmedRef.current = false;
+      }, 2000);
+      return true;
+    });
+    return () => sub.remove();
+  }, [activeTab, debugScreenOpen, themePickerOpen, householdOpen]);
 
   if (themePickerOpen) {
     return <ThemePickerScreen onClose={() => setThemePickerOpen(false)} />;

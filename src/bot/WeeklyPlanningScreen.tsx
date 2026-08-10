@@ -5,12 +5,13 @@
 // planned_meal rows; a proposed NEW recipe becomes a "create with Dishision Bot"
 // action rather than being auto-generated. After applying, offers to generate a
 // shopping list from the newly planned week.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConfirmModal } from '../components/useConfirmModal';
 import { useDb } from '../db/DbContext';
 import { createPlannedMeal } from '../plan/planMutations';
+import { layoutLeftoverPlan, type PlannedDay } from '../plan/leftoverPlanner';
 import { loadEnrichedRecipes } from '../recipes/loadRecipes';
 import { useTheme, type AppTheme } from '../theme/ThemeContext';
 import type { ApiMessage } from './anthropicClient';
@@ -18,7 +19,7 @@ import { getBotSettings } from './botSettings';
 import { runSurfaceTurn } from './botSession';
 import { getUserName } from './botUser';
 import { buildPlanningContext, type PlanningContext } from './planningContext';
-import { parseMealPlan, PROPOSE_MEAL_PLAN_TOOL, type ProposedMealPlan } from './proposeMealPlanTool';
+import { parseMealPlan, PROPOSE_MEAL_PLAN_TOOL, type ProposedCook, type ProposedMealPlan } from './proposeMealPlanTool';
 
 interface WeeklyPlanningScreenProps {
   /** The first day of the week to plan (YYYY-MM-DD). */
@@ -73,6 +74,29 @@ export function WeeklyPlanningScreen({ weekStartIso, onClose, onCreateRecipeWith
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // §E: lay the bot's ordered cooks across the span, inserting leftover days
+  // deterministically. A saved recipe's baseServings is its batch size; a
+  // proposed NEW recipe (no known batch) is assumed to feed one meal, so it
+  // occupies just its own day until it's created.
+  const buildDays = useCallback(
+    (p: ProposedMealPlan | null, ctx: PlanningContext | null): PlannedDay<ProposedCook>[] => {
+      if (!p || !ctx || ctx.dates.length === 0) return [];
+      return layoutLeftoverPlan<ProposedCook>({
+        cooks: p.cooks,
+        startDate: ctx.dates[0],
+        spanDays: ctx.dates.length,
+        householdSize: ctx.householdSize,
+        servingsOf: (c) =>
+          c.existing_recipe_id != null && recipesById.has(c.existing_recipe_id)
+            ? recipesById.get(c.existing_recipe_id)!.baseServings
+            : ctx.householdSize,
+      });
+    },
+    [recipesById],
+  );
+
+  const days = useMemo(() => buildDays(plan, context), [buildDays, plan, context]);
+
   async function runTurn(text: string, ctx: PlanningContext) {
     setError(null);
     setSending(true);
@@ -98,7 +122,9 @@ export function WeeklyPlanningScreen({ weekStartIso, onClose, onCreateRecipeWith
       const parsed = planCall ? parseMealPlan(planCall.input) : null;
       if (parsed) {
         setPlan(parsed);
-        setAccepted(new Set(parsed.days.map((d) => d.date)));
+        // Accept all fresh-cook days by default; leftover days aren't applied.
+        const laid = buildDays(parsed, ctx);
+        setAccepted(new Set(laid.filter((d) => d.kind === 'cook').map((d) => d.date)));
         setAppliedCount(null);
         setAssistantNote(parsed.notes ?? null);
       } else {
@@ -121,24 +147,28 @@ export function WeeklyPlanningScreen({ weekStartIso, onClose, onCreateRecipeWith
   }
 
   async function applySelected() {
-    if (!plan) return;
+    if (days.length === 0) return;
     setApplying(true);
     try {
       let written = 0;
-      for (const day of plan.days) {
+      for (const day of days) {
+        // §E: a leftover day is a no-cook day — shown for context, never written
+        // as a planned_meal (that would imply cooking again).
+        if (day.kind !== 'cook') continue;
         if (!accepted.has(day.date)) continue;
-        if (day.existing_recipe_id != null && recipesById.has(day.existing_recipe_id)) {
-          const recipe = recipesById.get(day.existing_recipe_id)!;
+        const cook = day.cook;
+        if (cook.existing_recipe_id != null && recipesById.has(cook.existing_recipe_id)) {
+          const recipe = recipesById.get(cook.existing_recipe_id)!;
           await createPlannedMeal(db, {
-            recipeId: day.existing_recipe_id,
+            recipeId: cook.existing_recipe_id,
             plannedDate: day.date,
             slot: 'dinner',
             plannedServings: recipe.baseServings,
           });
           written += 1;
         }
-        // New-recipe days are intentionally NOT auto-created — they surface a
-        // "create with Dishision Bot" action instead.
+        // New-recipe cook days are intentionally NOT auto-created — they surface
+        // a "create with Dishision Bot" action instead.
       }
       setAppliedCount(written);
       if (written === 0) {
@@ -149,11 +179,10 @@ export function WeeklyPlanningScreen({ weekStartIso, onClose, onCreateRecipeWith
     }
   }
 
-  const recipeLabel = (day: ProposedMealPlan['days'][number]): string => {
-    if (day.existing_recipe_id != null && recipesById.has(day.existing_recipe_id)) return recipesById.get(day.existing_recipe_id)!.name;
-    if (day.new_recipe_name) return day.new_recipe_name;
-    return 'Unknown recipe';
-  };
+  const cookName = (cook: ProposedCook): string =>
+    cook.existing_recipe_id != null && recipesById.has(cook.existing_recipe_id)
+      ? recipesById.get(cook.existing_recipe_id)!.name
+      : cook.new_recipe_name ?? 'Unknown recipe';
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -173,19 +202,27 @@ export function WeeklyPlanningScreen({ weekStartIso, onClose, onCreateRecipeWith
           </View>
         ) : (
           <>
-            {assistantNote && !plan && <Text style={styles.note}>{assistantNote}</Text>}
+            {assistantNote && days.length === 0 && <Text style={styles.note}>{assistantNote}</Text>}
 
-            {plan && (
+            {days.length > 0 && (
               <>
                 {assistantNote && <Text style={styles.note}>{assistantNote}</Text>}
-                {plan.days.map((day) => {
-                  const isNew = day.existing_recipe_id == null || !recipesById.has(day.existing_recipe_id);
+                {days.map((day) => {
+                  // §E: leftover days are shown for context, never toggled or
+                  // applied as a cook. The app owns the cook/leftover pattern.
+                  const isLeftover = day.kind === 'leftover';
+                  const cook = isLeftover ? day.sourceCook : day.cook;
+                  const isNew = !isLeftover && (cook.existing_recipe_id == null || !recipesById.has(cook.existing_recipe_id));
                   const isAccepted = accepted.has(day.date);
                   return (
-                    <View key={day.date} style={styles.dayCard}>
+                    <View key={day.date} style={[styles.dayCard, isLeftover && styles.leftoverCard]}>
                       <View style={styles.dayHeader}>
                         <Text style={styles.dayDate}>{weekdayLabel(day.date)}</Text>
-                        {isNew ? (
+                        {isLeftover ? (
+                          <View style={styles.leftoverBadge}>
+                            <Text style={styles.leftoverBadgeText}>Leftovers</Text>
+                          </View>
+                        ) : isNew ? (
                           <View style={styles.newBadge}>
                             <Text style={styles.newBadgeText}>New</Text>
                           </View>
@@ -195,10 +232,10 @@ export function WeeklyPlanningScreen({ weekStartIso, onClose, onCreateRecipeWith
                           </TouchableOpacity>
                         )}
                       </View>
-                      <Text style={styles.dayRecipe}>{recipeLabel(day)}</Text>
-                      {day.reasoning && <Text style={styles.dayReason}>{day.reasoning}</Text>}
+                      <Text style={styles.dayRecipe}>{isLeftover ? `Leftovers · ${cookName(cook)}` : cookName(cook)}</Text>
+                      {!isLeftover && cook.reasoning && <Text style={styles.dayReason}>{cook.reasoning}</Text>}
                       {isNew && (
-                        <TouchableOpacity style={styles.createButton} onPress={() => onCreateRecipeWithBot(day.new_recipe_name ?? recipeLabel(day))}>
+                        <TouchableOpacity style={styles.createButton} onPress={() => onCreateRecipeWithBot(cook.new_recipe_name ?? cookName(cook))}>
                           <Text style={styles.createButtonText}>✨ Create with Dishision Bot</Text>
                         </TouchableOpacity>
                       )}
@@ -277,6 +314,9 @@ const makeStyles = (theme: AppTheme) =>
     checkboxTick: { color: theme.colors.accentFg, fontSize: theme.fontSize.sm, fontFamily: theme.fonts.body.bold },
     newBadge: { backgroundColor: theme.colors.amberTint, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.sm, paddingVertical: 2 },
     newBadgeText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.xs, color: theme.colors.amberText },
+    leftoverCard: { backgroundColor: theme.colors.surfaceWarm, borderStyle: 'dashed' },
+    leftoverBadge: { backgroundColor: theme.colors.greenTint, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.sm, paddingVertical: 2 },
+    leftoverBadgeText: { fontFamily: theme.fonts.body.bold, fontSize: theme.fontSize.xs, color: theme.colors.green },
     dayRecipe: { fontFamily: theme.fonts.display.semiBold, fontSize: theme.fontSize.base, color: theme.colors.ink },
     dayReason: { fontFamily: theme.fonts.body.regular, fontSize: theme.fontSize.sm, color: theme.colors.ink3 },
     createButton: { marginTop: theme.spacing.xs, backgroundColor: theme.colors.accentTint, borderRadius: theme.radius.card, paddingVertical: theme.spacing.sm, alignItems: 'center' },

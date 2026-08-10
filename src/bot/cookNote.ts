@@ -1,8 +1,8 @@
 // §A2.4: a note the user leaves mid-cook ("refine this recipe after cooking")
 // so they can act on it once they're done, rather than starting a refinement
 // while they're still at the stove. Stored per recipe in the shared `setting`
-// table; the Cook Complete screen reads it to prefill "what to change", then
-// clears it.
+// table; the Cook Complete screen reads it to prefill the log's Notes field
+// (§I), then clears it.
 import type { DbClient } from '../db/DbClient';
 import { getSetting } from '../settings/getSetting';
 import { setSetting } from '../settings/setSetting';

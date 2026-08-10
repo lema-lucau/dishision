@@ -38,6 +38,9 @@ export interface VisualTokens {
     ink: string;
     inkDim: string;
     chipBg: string;
+    /** Ink for text sitting on the light `chipBg` chip — a fixed near-black so
+     *  it reads in every theme mode (batch-2 A5). */
+    chipInk: string;
     /** PhotoViewer's fixed backdrop (base §5.9, redesign R6.16.4). */
     viewerBg: string;
     /** QR quiet zone — pure white in every theme or scanners fail (R6.12.2). */
@@ -97,6 +100,10 @@ export function deriveVisuals(c: ColourTokens, mode: ThemeMode): VisualTokens {
       ink: 'rgba(255, 255, 255, 0.98)',
       inkDim: 'rgba(255, 255, 255, 0.72)',
       chipBg: 'rgba(255, 246, 240, 0.92)',
+      // Text/icon ink for content sitting ON the light `chipBg` chip. A warm
+      // near-black so it reads in every theme mode — `colors.ink` is near-white
+      // in dark themes and vanishes against the light chip (batch-2 A5).
+      chipInk: 'rgba(26, 16, 10, 0.96)',
       viewerBg: '#0B0908',
       qrQuietZone: '#FFFFFF',
     },

@@ -175,7 +175,7 @@ describe('CookingModeScreen (§5.6, §11.2 snapshot suite)', () => {
     expect(result.getByTestId('pause-toggle')).toBeTruthy();
   });
 
-  it('asks before → commits a step, and cancelling leaves the live step where it was', async () => {
+  it('→ past the live step commits instantly with no confirm (§C2/§C5)', async () => {
     const db = await createTestDb();
     const { recipeId, stepIds } = await seedRecipe(db, [null, null]);
 
@@ -207,28 +207,29 @@ describe('CookingModeScreen (§5.6, §11.2 snapshot suite)', () => {
     fireEvent.press(result.getByTestId('start-cooking'));
     await waitFor(() => expect(result.getByTestId('step-forward')).toBeTruthy());
 
+    // The blocking "Move on to the next step?" confirm is gone — the arrow
+    // completes the current step and advances immediately.
     fireEvent.press(result.getByTestId('step-forward'));
-    await waitFor(() => expect(result.getByText('Move on to the next step?')).toBeTruthy());
-
-    // Cancel: nothing commits — the live step and the step's completion are
-    // exactly where they were.
-    fireEvent.press(result.getByText('Cancel'));
-    await waitFor(() => expect(result.queryByText('Move on to the next step?')).toBeNull());
-    const held = await db.getFirstAsync<{ current_step_id: number }>('SELECT current_step_id FROM cooking_session');
-    expect(held?.current_step_id).toBe(stepIds[0]);
-    const uncompleted = await db.getFirstAsync<{ completed_at: string | null }>(
-      'SELECT completed_at FROM cooking_session_step WHERE step_id = ?',
-      [stepIds[0]],
-    );
-    expect(uncompleted?.completed_at).toBeNull();
-
-    // Confirming does what → always did.
-    fireEvent.press(result.getByTestId('step-forward'));
-    await waitFor(() => expect(result.getByText('Move on')).toBeTruthy());
-    fireEvent.press(result.getByText('Move on'));
     await waitFor(async () => {
       const moved = await db.getFirstAsync<{ current_step_id: number }>('SELECT current_step_id FROM cooking_session');
       expect(moved?.current_step_id).toBe(stepIds[1]);
+    });
+    expect(result.queryByText('Move on to the next step?')).toBeNull();
+    const completed = await db.getFirstAsync<{ completed_at: string | null }>(
+      'SELECT completed_at FROM cooking_session_step WHERE step_id = ?',
+      [stepIds[0]],
+    );
+    expect(completed?.completed_at).not.toBeNull();
+
+    // Recovery: peek ← back to the completed step and reset its timer.
+    fireEvent.press(result.getByTestId('step-back'));
+    await waitFor(() => expect(result.getByTestId('reset-step-timer')).toBeTruthy());
+    fireEvent.press(result.getByTestId('reset-step-timer'));
+    await waitFor(() => expect(result.getByText("Reset this step's timer?")).toBeTruthy());
+    fireEvent.press(result.getByText('Reset timer'));
+    await waitFor(async () => {
+      const back = await db.getFirstAsync<{ current_step_id: number }>('SELECT current_step_id FROM cooking_session');
+      expect(back?.current_step_id).toBe(stepIds[0]);
     });
   });
 

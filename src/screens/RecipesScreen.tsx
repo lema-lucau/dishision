@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDb } from '../db/DbContext';
+import { useBackHandler } from '../navigation/backStore';
 import { loadRatingBreakdown, type RatingBreakdown } from '../household/opinionSync';
 import { localDateKey } from '../lib/formatDate';
 import { addRecipeToShoppingList } from '../plan/shoppingListGeneration';
@@ -241,6 +242,31 @@ export function RecipesScreen({
     for (const r of recipes ?? []) for (const t of r.tags) set.add(t);
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [recipes]);
+
+  // §F: hardware back unwinds this tab's own sub-screens to the list. The bot
+  // and cooking-mode sub-flows register their own handlers (tried first), so
+  // they're intentionally left to fall through here; from the list, back falls
+  // through to TabShell (Recipes tab → Home).
+  useBackHandler(true, () => {
+    switch (view.mode) {
+      case 'detail':
+      case 'edit':
+      case 'share':
+      case 'cookComplete':
+        setView(view.mode === 'detail' ? { mode: 'list' } : { mode: 'detail', recipeId: view.recipeId });
+        return true;
+      case 'create':
+      case 'exclusions':
+      case 'ingredients':
+      case 'importEntry':
+      case 'importPreview':
+      case 'mergeDuplicates':
+        setView({ mode: 'list' });
+        return true;
+      default:
+        return false; // 'list', 'bot', 'cookingMode'
+    }
+  });
 
   if (recipes === null) {
     return (
